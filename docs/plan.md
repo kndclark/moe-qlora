@@ -694,3 +694,13 @@ base with thinking off vs v3):
 QLoRA also did not inject facts (memory: qlora-does-not-inject-facts). That is why G7a
 exists, why G6 gates on the task rows as well as the flag rows, and why "worth it" is a
 separate verdict from "feasible".
+
+### F1 rerun (determinism check) — CHOSEN before the run, 2026-09-25
+- Config: F1 unchanged (g5_followups.py, no env), label g5-attnbf16-lean-cce-rerun-laptop.
+- CHOSEN reading: every step's loss equal to F1's to all printed digits at 512/1024/2048
+  -> runs are deterministic, so F2's later-loss drift comes from its backward (grad
+  summation order). Any step differing -> run-to-run nondeterminism; F1-vs-variant loss
+  differences of that size carry no signal.
+- RESULT (MEASURED): 68 of 72 step losses differ from F1 (step 0 equal; step 1 @512:
+  F1 1.988, rerun 1.980, F2 1.984). -> Run-to-run NONDETERMINISM. F2's drift is noise,
+  and later-step loss gaps of this size (~0.01-0.03) between configs carry no signal.
