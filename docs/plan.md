@@ -251,6 +251,22 @@ Every gate writes `results/<gate>-<label>.json` from a probe in `probes/`.
   - Isolated per-layer update error by type, mean (max): attention 0.227 (0.456), mamba
     0.127 (0.166), MoE 0.107 (0.123). The worst layers are the NF4 attention
     projections, not the 4-bit experts.
+- **Result (MEASURED, laptop, 2026-09-25): FAIL** (`results/g2-{lightning,qwen}-laptop.json`).
+  Max-power profile; self-checks as on the desktop (0 dtype mismatches over 239 tensors,
+  embedding diff 0.0, 46 stacks hooked).
+  - Lightning: KL 0.1208 nats/token (p99 0.80, max 5.09), top-1 83.27%, NLL gap 0.063.
+  - Qwen3-8B: KL 0.0562, top-1 86.83%, NLL gap 0.017.
+  - KL ratio **2.148 > 2.0, fail**; top-1 83.27 ≥ 81.83, pass. The gate needs both.
+  - Isolated error by type, mean (max): attention 0.227 (0.457), mamba 0.127 (0.167),
+    MoE 0.107 (0.123); the same ranking as the desktop.
+  - Input: the doc now carries an uncommitted Ally X to-do, so `doc_sha256` reads
+    `7a880f38…` / 4448 tokens against the debug run's `971fa5f7…` / 4089. The edit is
+    past the first 2048 tokens; `predicted_tokens` (2044 / 2004) match the debug runs.
+- **Route 1 + lean scan (David asked 2026-09-25), laptop: FAIL**
+  (`results/g2-lean-lightning-laptop.json`, `probes/g2_lean_scan.py`; the patch covers
+  both the bf16 reference and Route 1, 276 scan calls = 23 x 4 x 3 as expected). KL
+  0.1198, ratio **2.130 > 2.0, fail**; top-1 83.66%, pass. Against the same Qwen run,
+  which has no mamba layers. The scan choice moves the ratio by 0.019; neither passes.
 
 ### G5: training step (Route 1, placement A)
 - **Setup:**
