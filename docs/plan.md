@@ -14,7 +14,11 @@ replace Qwen3-8B as the lab's default adapter base?
 
 - **Feasible** = G1, G2, G4 and G5 all pass on the laptop (RTX 5090 Laptop, sm_120).
   The desktop 3090 (sm_86) runs G1 and G4 too. A desktop failure is recorded but does not
-  block, because training needs only one card and the 48 GB pool is not a training path.
+  block, because the first target is one card. If G5 fails on memory on the laptop, the
+  verdict is "not feasible on one card", and the next experiment is a layer split across
+  both cards (the 48 GB pool). Cross-node training is proven by
+  `~/gpu-lab/bench/pipeline_poc.py` but not built. (Amended 2026-09-24 by David, before
+  G5 ran; no CHOSEN threshold changed.)
 - **Worth it** = feasible, *and* G6 shows the adapter beating base Lightning on the lab's
   held-out eval. The lab's own evals have already had base + catalog beat tuned adapters
   (see "Why it might not matter"), so feasibility alone does not justify switching.
@@ -295,6 +299,103 @@ Every gate writes `results/<gate>-<label>.json` from a probe in `probes/`.
     ~5.3 GiB of headroom (other apps open), seq 1024 may OOM on the torch path. That
     would be a Route 1 result as run. Kernels (a new dependency) or a memory-lean
     rewrite of the scan are David's call, not a retry.
+- **Debug run, desktop 3090, 2026-09-24 (MEASURED; not the gate, which is the laptop):**
+  `results/g5-desktop-debug.{json,log}`, 153.5 s wall, probe run unchanged.
+  - Setup checks: 950/950 records rendered, epoch 933,904 tokens; 93 LoRA modules
+    (in_proj and shared_experts up/down 23 each, q/k/v/o 6 each), 11,359,232 trainable
+    params, none outside LoRA; 17.06 GiB NVML idle after PEFT.
+  - seq 512: 20/20 measured steps, losses finite (3.16 at warm-up step 0, then 1.0–2.8),
+    median 2.51 s = 204 tokens/s, torch peak allocated 20.78 GiB on every measured step,
+    device peak 21.88 GiB (pass line 23.5). Warm-up step 0 sampled 23.81 GiB.
+  - seq 1024: **OOM on step 0**, "Tried to allocate 4.00 GiB" with 21.32 GiB already
+    allocated (23.56 GiB card). 4.00 GiB is exactly the fp32 product at
+    `modeling_nemotron_h.py:298`, `(C[:, :, :, None] * B[:, :, None]).sum(dim=-1)`, at
+    8 chunks × 128 × 128 × 64 heads × 128 state (ARITHMETIC; the probe keeps no traceback,
+    so the op is inferred from the size). seq 2048 not run: an OOM ends the sweep.
+  - Time at seq 512, each block's forward + recompute + backward timed alone: mamba
+    1.748 s (70% of the step), MoE 0.725 s (29%), attention 0.035 s (1%). These sum to
+    99.9% of the step, which leaves ~0 for lm_head, loss and optimizer, so the isolated
+    times run slightly high and the shares are approximate. The profiler's top CUDA ops
+    are elementwise mul, MulBackward0 and sum (the torch-path scan), ahead of mm,
+    grouped_mm and bnb dequantize.
+  - Thermal guard: one `sw_thermal` sample (phase max 65 C core) set `abort` during or
+    just after the profiler step (still labelled `breakdown_seq512`); the per-block
+    timing and the profiler table had both finished.
+    `sw_power_cap` throughout, at the 350 W limit.
+  - For the laptop gate (ARITHMETIC, not measured): torch sees 23.40 GiB there, less than
+    the 3090's 23.56, and seq 1024 needed at least 25.32 GiB where it failed. The same
+    code should OOM at seq 1024 on the laptop too, unless the torch path changes.
+  - kernels-community (SOURCED raw, HF model API, 2026-09-24): `mamba-ssm` rev c8ffc584
+    and `causal-conv1d` rev f2651e77 publish builds up to torch 2.12
+    (`torch212-cxx11-cu130-x86_64-linux`); none for torch 2.13, which the image runs.
+- **Result, Route 1 as run (MEASURED, laptop, 2026-09-24): FAIL**, on memory at seq 1024.
+  `results/g5-laptop.{json,log}`, platform profile max-power, enforced power limit
+  150 W, 1.52 GiB NVML in use by other apps before CUDA init.
+  - seq 512: 20/20 measured steps, losses finite, median 2.595 s = 197.3 tokens/s, torch
+    peak allocated 20.82 GiB on every measured step, device peak 23.01 GiB against the
+    23.39 GiB line (0.38 GiB spare). Warm-up step 0 loss 3.19 (desktop 3.16).
+  - seq 1024: OOM on step 0, "Tried to allocate 4.00 GiB" with 21.37 GiB allocated, as
+    on the desktop. The gate reads "seq 1024 did not complete 20 measured steps".
+  - Time at seq 512, blocks timed alone: mamba 1.912 s (74%), MoE 0.691 s (27%),
+    attention 0.023 s (1%); the shares sum past 100%, so they run slightly high. No
+    abort: max 71 C, 136 W, `sw_power_cap` only.
+  - Per the decision rule: not feasible on one card as run. The memory-lean scan below is
+    David's option 2; the pool stays the named fallback.
+- **Lean scan check (MEASURED, desktop 3090, 2026-09-24):** `probes/lean_scan.py` rewrites
+  the five broadcast-then-sum contractions in the torch `mamba2_chunk_scan` as
+  `torch.einsum`; `probes/lean_scan_check.py` compares it to the original on random
+  inputs at Lightning's shapes (seq 300 with initial states, seq 1024).
+  - Line CHOSEN before the first run: every output and gradient within 1e-4 of the
+    original's max. With bf16 inputs as the mixer passes them: **FAIL**, worst 1.39e-3
+    (`results/lean-scan-check-desktop.json`). Every fp32 quantity agreed to ≤ 5.7e-7;
+    only the gradients of bf16 inputs (hidden_states, dt, B, C) failed.
+  - Same line with every input fp32, added after the fail (`...-fp32.json`): **PASS**,
+    worst 7.75e-7 over outputs and all gradients. The math matches.
+  - bf16 gradients described (`...-ulp.json`, not a pass line): at most 567 of 4,194,304
+    elements differ, no sign flips; max abs difference ≤ 1.39e-3 of the tensor's max.
+    A first reading, "each difference is one bf16 step", is refuted: the worst element is
+    288 bf16 steps off. Why a few elements differ by many steps is UNKNOWN (suspected:
+    near-zero elements where fp32 noise exceeds the bf16 step; untested).
+  - The scan's own forward + backward peak: seq 1024 8.35 → 0.57 GiB, seq 2048 16.69 →
+    1.14 GiB; time at 1024 0.109 → 0.027 s.
+- **Route 1 + lean scan, desktop debug (MEASURED, 3090, 2026-09-24; not the gate):**
+  `results/g5-lean-desktop-debug.{json,log}`, `probes/g5_lean_scan.py` (runs
+  `g5_train_step.py` unchanged after `lean_scan.install()`); 3,381 scan calls went
+  through the patch.
+  - seq 512: 523 tokens/s (unpatched 204), device peak 20.26 GiB (unpatched 21.88).
+  - seq 1024: 20/20 steps, 771.5 tokens/s, device peak 20.77 GiB, torch peak allocated
+    19.64 GiB on every measured step. Probe's gate block: memory pass, epoch 0.34 h,
+    pass.
+  - seq 2048: 20/20 steps, 966.9 tokens/s, device peak 22.41 GiB.
+  - Time at seq 1024: MoE 65%, mamba 31%, attention 3%. Profiler top ops: mm,
+    grouped_mm, bnb dequantize.
+- **Step-0 loss moved by the lean scan (MEASURED, desktop, 2026-09-24).** With LoRA B = 0,
+  step 0 is the frozen model: unpatched 3.1572, lean 3.1861 on the same card and tokens.
+  - Repeatable, not noise (`lean-scan-loss-check-desktop.json`, one load, five forwards):
+    original 3.157189 twice with identical logits, lean 3.186051 twice. Lean against
+    original: max logit difference 8.03, argmax changed at 42 of 512 positions.
+  - Per call on real inputs (`lean-scan-layer-check-desktop.json`): lean within
+    7e-8 to 4.3e-6 of the original's max over all 23 calls, so no bug on real data.
+    Gaussian noise of the same std moved the loss only 0.003 and 0.007 (seeds 1, 2).
+  - Against an fp64 scan (`lean-scan-fp64-check-desktop.json`): step-0 loss 3.1876.
+    Per call, both are within 6.4e-6 of fp64, the original slightly closer on all 23
+    calls (summed mean error 2.9e-7 vs 4.1e-7). At the loss, lean is 0.0015 from fp64
+    and the original 0.030; the laptop's unpatched step 0 was 3.1907.
+  - Reading: fp32-level rounding differences move this model's loss by up to ~0.03, and
+    the unpatched desktop value is the outlier. Why the model is this sensitive is
+    UNKNOWN (suspected: near-tie top-6 routing flips; untested).
+- **Result, Route 1 + lean scan (MEASURED, laptop, 2026-09-24): PASS**, same CHOSEN lines.
+  `results/g5-lean-laptop.{json,log}`, max-power, 150 W enforced, 1.52 GiB NVML used by
+  other apps before CUDA init; 3,381 scan calls through the patch; no abort (max 73 C,
+  147 W, `sw_power_cap` only).
+  - seq 1024: 20/20 steps, 871.4 tokens/s, device peak 22.00 GiB against 23.39 (1.39 GiB
+    spare), torch peak allocated 19.68 GiB on every measured step. Epoch 0.30 h
+    against 8 h.
+  - seq 512: 606.0 tokens/s, device peak 21.36 GiB. seq 2048: 1,070.5 tokens/s, but device
+    peak 23.53 GiB is above the 23.39 line (not the gate length).
+  - Step-0 loss 3.1787 (fp64-scan desktop 3.1876; see above).
+  - Time at seq 1024: MoE 67%, mamba 28%, attention 3%.
+  - Feasibility still needs G2 on the laptop (desktop debug failed the KL line).
 
 ### G7a: base Lightning on the lab's evals (cheap side check)
 - Serve `...-NVFP4` (20.1 GiB) with vLLM 0.29 on the laptop. Run the same eval sets that
