@@ -701,6 +701,27 @@ separate verdict from "feasible".
   -> runs are deterministic, so F2's later-loss drift comes from its backward (grad
   summation order). Any step differing -> run-to-run nondeterminism; F1-vs-variant loss
   differences of that size carry no signal.
-- RESULT (MEASURED): 68 of 72 step losses differ from F1 (step 0 equal; step 1 @512:
-  F1 1.988, rerun 1.980, F2 1.984). -> Run-to-run NONDETERMINISM. F2's drift is noise,
-  and later-step loss gaps of this size (~0.01-0.03) between configs carry no signal.
+- RESULT (MEASURED; corrected 2026-09-25 — the first write-up said "68 of 72" and missed
+  the spike below): 68 of 69 step losses differ from F1 (23 per length; only step 0 @512
+  is equal; step 1 @512: F1 1.988, rerun 1.980, F2 1.984). -> Run-to-run
+  NONDETERMINISM, by the CHOSEN rule.
+  - @512 the rerun is plain noise: max |rerun − F1| 0.026, mean +0.002. F2's drift is
+    the same size (max 0.021, mean +0.001), so the lean backward's drift is noise too.
+  - @1024 the rerun has a LOSS SPIKE no other run shows (F1, F2, all three F3 variants
+    open 1024 at 1.06-1.37): step 0 3.358 (F1 1.369), peak 3.851 at step 1; from step 10
+    on it runs 0.005-0.13 above F1. The last 512 step's loss was normal (1.684 vs F1
+    1.683) and the next loss was 3.358, so the damage was done by that one update (the
+    model and optimizer carry across lengths).
+  - @2048 the rerun stays above F1 on all 23 steps (mean +0.045, max +0.100). Inferred
+    to be the spike's after-effect, not base noise: @512 the noise has mixed signs (10 of
+    23 steps above F1). Its last-5 mean @2048 is 0.698 vs 0.667.
+  - Cause UNKNOWN (grad norms are not logged). g5_train_step.py has no gradient clipping,
+    no LR warmup, constant lr 1e-4, batch 1, 8-bit paged Adam, so one outlier gradient
+    lands unclipped. qlora.py does not share this: Trainer clips at max_grad_norm 1.0
+    (SOURCED: transformers 5.16.1 default in gpu-lab:training), warms up and logs
+    grad_norm each step. G6 should keep clipping and read that grad_norm log.
+  - Reading of the F3 training-loss table: the base noise (≤0.026 per step @512) is well
+    under the F3 gaps (last-5 means 0.06-0.17 below F1's; 0.05 between neighbouring
+    variants), but one of the six runs on this
+    data spiked and that moved its last-5 mean by 0.031, so the table stays a loss-stream
+    curiosity, not an eval.
