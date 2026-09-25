@@ -1,0 +1,128 @@
+/probes/f3_check.py:48: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:822.)
+  return float((a.float() - b.float()).abs().max() / b.float().abs().max())
+{
+ "torch": "2.13.0+cu130",
+ "module_shared": {
+  "n_modules": 2,
+  "shapes": [
+   [
+    256,
+    8
+   ],
+   [
+    8,
+    128
+   ],
+   [
+    128,
+    8
+   ],
+   [
+    8,
+    256
+   ]
+  ],
+  "b0_bitwise_equal_to_stock": true,
+  "out_rel_max_diff_vs_dense": 7.389590450657124e-07,
+  "grad_rel_max_diff_vs_dense": {
+   "lora_up_A": 6.146220812297543e-07,
+   "lora_up_B": 1.1237476655878709e-06,
+   "lora_down_A": 4.98544693527947e-07,
+   "lora_down_B": 7.219244935185998e-07
+  },
+  "out_rel_change_vs_stock": 1.5547136068344116
+ },
+ "module_per_expert": {
+  "n_modules": 2,
+  "shapes": [
+   [
+    8,
+    256,
+    8
+   ],
+   [
+    8,
+    8,
+    128
+   ],
+   [
+    8,
+    128,
+    8
+   ],
+   [
+    8,
+    8,
+    256
+   ]
+  ],
+  "b0_bitwise_equal_to_stock": true,
+  "out_rel_max_diff_vs_dense": 6.237522143237584e-07,
+  "grad_rel_max_diff_vs_dense": {
+   "lora_up_A": 7.580010787933134e-07,
+   "lora_up_B": 9.67105165727844e-07,
+   "lora_down_A": 6.922360853423015e-07,
+   "lora_down_B": 9.179734092867875e-07
+  },
+  "out_rel_change_vs_stock": 1.522462248802185
+ },
+ "model_shared": {
+  "trainable_tensors": 28,
+  "lm_head_lora_tensors": [
+   "base_model.model.lm_head.lora_A.default.weight",
+   "base_model.model.lm_head.lora_B.default.weight"
+  ],
+  "expert_lora_tensors": 8,
+  "all_grads_present": true,
+  "all_grads_nonzero": true,
+  "loss_stock_vs_chunked": [
+   6.9922776222229,
+   6.992278099060059,
+   4.76837158203125e-07
+  ],
+  "grad_rel_max_diff_worst": 4.5857248665015504e-07,
+  "grad_rel_max_diff_lm_head": {
+   "lora_A.default.weight": 3.2783754022602807e-07,
+   "lora_B.default.weight": 2.046193259275242e-07
+  },
+  "chunked_calls": 1,
+  "expert_forward_calls": 12
+ },
+ "model_per_expert": {
+  "trainable_tensors": 28,
+  "lm_head_lora_tensors": [
+   "base_model.model.lm_head.lora_A.default.weight",
+   "base_model.model.lm_head.lora_B.default.weight"
+  ],
+  "expert_lora_tensors": 8,
+  "all_grads_present": true,
+  "all_grads_nonzero": true,
+  "loss_stock_vs_chunked": [
+   6.969550609588623,
+   6.969550609588623,
+   0.0
+  ],
+  "grad_rel_max_diff_worst": 6.411423214558454e-07,
+  "grad_rel_max_diff_lm_head": {
+   "lora_A.default.weight": 2.8174088129162556e-07,
+   "lora_B.default.weight": 1.6153862247847428e-07
+  },
+  "chunked_calls": 2,
+  "expert_forward_calls": 20
+ },
+ "gpu_per_expert_r4": {
+  "ok": false,
+  "error": "RuntimeError: strides should be multiple of 16 bytes"
+ },
+ "gpu_per_expert_r8": {
+  "ok": true,
+  "rel_max_diff_vs_fp32_loop": 0.004818399902433157,
+  "grads_finite": true
+ },
+ "gpu_per_expert_r16": {
+  "ok": true,
+  "rel_max_diff_vs_fp32_loop": 0.003917589783668518,
+  "grads_finite": true
+ }
+}

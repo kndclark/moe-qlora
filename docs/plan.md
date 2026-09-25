@@ -453,6 +453,186 @@ Every gate writes `results/<gate>-<label>.json` from a probe in `probes/`.
     run's own load: 16.39 GiB after PEFT, against 16.20 for the lean-scan run above.
     `g4_route1_load.py` itself was not re-run.
 
+### After the verdict: memory and placement follow-ups (David, 2026-09-25)
+David asked for all three code-only ideas from the NVIDIA research. Each runs on the
+verdict configuration (Route 1 + lean scan + attention bf16) and is recorded beside it.
+None of them changes a gate result above.
+
+**F1: chunked cross-entropy, to fit seq 2048 on the laptop.** `probes/chunked_ce.py` runs
+lm_head and the loss a chunk of positions at a time (default 256), each chunk under
+checkpointing, so neither the full bf16 logits nor their fp32 copies exist. The idea is
+NVIDIA AutoModel's `_ChunkedCrossEntropySum`, which chunks only the fp32 upcast.
+- Step 1, where the peak is (`probes/g5_mem_phases.py`, seq 2048): torch peak per phase
+  with the stock loss, then with the chunked loss, plus a CUDA memory history at the peak.
+- Exactness, loss head alone on real final hidden states (CHOSEN before the run):
+  |loss difference| ≤ 1e-4 nats; gradient w.r.t. the hidden states max |difference| ≤ 1e-2
+  × max |stock gradient| and cosine ≥ 0.9999. (CPU fp64 toy check before the run: loss
+  4.8e-7 apart, both paths computing in fp32; gradients 1.7e-18 apart.)
+- Pass (CHOSEN before the run): G5's own lines, at seq 2048: 20/20 measured steps, finite
+  losses, device peak ≤ card − 0.5 GiB. Seq 1024 must still pass G5. Speed is recorded,
+  not gated.
+- **Step 1 result (MEASURED, laptop, 2026-09-25; `results/g5mem-attnbf16-lean-2048-laptop.
+  {json,log}`):** the peak was at the loss, and chunking removes it.
+  - Stock loss: step torch peak **21.03 GiB, in the loss backward** (body forward 19.76,
+    body backward 20.90). Live then, of the step's own allocations (4.55 GiB): fp32 logits
+    from `modeling_nemotron_h.py:1170` 1.0 GiB, `fixed_cross_entropy` 1.0 GiB, two
+    frame-less 1.0 GiB buffers (the backward's fp32 gradients, by size), checkpointed layer
+    inputs 0.52 GiB.
+  - Chunked (256): step peak **19.90 GiB, 1.12 GiB lower**, now in the body backward: the
+    two dequantized expert stacks (`dequantize_4bit`, 2.38 GiB) plus the checkpointed
+    inputs. Loss forward 17.29 and loss backward 17.42 (stock 19.04 and 21.03). The stock
+    body backward is exactly 1.0 GiB higher because the returned output keeps its fp32
+    logits alive through the backward.
+  - Exactness: **pass.** Loss 1.612694 on both (difference 0.0); gradient max difference
+    7.2e-7 against a max of 9.5e-5 (0.75%, line 1%; about 1.5 bf16 steps at that size),
+    cosine 0.999996. Not bitwise equal: the lm_head backward runs as 8 smaller matmuls.
+  - No abort; max 69 C, 141 W, `sw_power_cap` only; 1.53 GiB NVML used by other apps.
+- **Result (MEASURED, laptop, 2026-09-25): PASS at seq 2048.**
+  `results/g5-attnbf16-lean-cce-laptop.{json,log}` via `probes/attn_bf16.py
+  g5_chunked_ce.py` (`g5_train_step.py` unchanged; 3,381 scan calls, 70 chunked-loss
+  calls, 24 bf16 attention projections). Max-power, 150 W enforced (175 W in the run
+  compared against), 1.58 GiB NVML used by other apps before CUDA init; no abort, max
+  74 C, 146 W, `sw_power_cap` only.
+
+  | seq | device peak, GiB (line 23.39) | torch peak, GiB | tokens/s |
+  |---|---|---|---|
+  | 512 | 21.13 (was 21.48) | 19.11 (19.36) | 581.0 (593.4, −2.1%) |
+  | 1024 | 21.41 (22.10) | 19.38 (19.88) | 841.1 (856.6, −1.8%) |
+  | 2048 | **22.09 (23.82, over)** | 19.90 (21.03) | 1,029.9 (1,066.8, −3.5%) |
+
+  - 20/20 measured steps at every length, losses finite, torch peak flat step to step.
+    Seq 1024 still passes G5: epoch 0.31 h.
+  - Step-0 loss at seq 512 3.1403, identical to the unchunked run. Later lengths start
+    after 23+ optimizer steps, so theirs differ slightly (1.3686 vs 1.3682, 0.9649 vs
+    0.9693); gradients are not bitwise equal (see exactness), so that is expected.
+  - The slowdown is the lm_head recompute plus, possibly, the lower enforced power limit
+    (146 W drawn against 150); this run cannot separate the two.
+  - Time at seq 1024: MoE 68%, mamba 28%, attention 2%.
+
+**F2: a leaner LoRA backward.** `probes/lean_lora.py` replaces the plain path of PEFT 0.21's
+`Linear4bit` and `Linear` LoRA branch with one autograd Function that saves the bf16 input
+and the two factors and recomputes `x.float() @ A^T` in the backward. PEFT's own branch
+(adapters fp32 by its default `autocast_adapter_dtype=True`) saves an fp32 copy of the
+input and the fp32 A-activation. The idea is NVIDIA AutoModel's `LoRATritonFunction`
+(Triton there, plain PyTorch here). Same ops in the same order as PEFT's forward.
+- Pre-run check (MEASURED, `results/f2-check.{json,log}`, one 2688 → 3712 layer, r=16):
+  forward and all three gradients (input, A, B) **bitwise equal** to PEFT's, on CPU (64
+  tokens) and on the laptop GPU (2,048 tokens), for both `Linear` and `Linear4bit`. What
+  the graph keeps per layer at 2,048 tokens: PEFT 21.5 MiB, lean 10.5 MiB (the bf16 input,
+  which in the model another op often keeps anyway).
+- Expectation (ARITHMETIC, not a line): under checkpointing only the layer being
+  recomputed holds these, so the step peak falls by 0 to about 0.035 GiB at seq 2048. It
+  may be 0: the peak is in the routed experts' backward, and autograd probably runs the
+  shared experts' backward (created later in the forward) before it.
+- Pass (CHOSEN before the run): G5's own lines at seq 1024 and 2048, as F1; `lean_lora`
+  calls > 0 for both kinds and 0 fallbacks; step-0 loss at seq 512 exactly F1's 3.1403
+  (the forward is bitwise PEFT's). Reported, not gated: torch and device peak against F1
+  at each length, tokens/s.
+- Run: `EXPERT_LORA` unset, `LEAN_LORA=1`, `probes/attn_bf16.py g5_followups.py LABEL`
+  (`g5_followups.py` = F1's configuration plus switches; `g5_train_step.py` unchanged).
+- **Result (MEASURED, laptop, 2026-09-25): PASS, and no gain.**
+  `results/g5-attnbf16-lean-cce-leanlora-laptop.{json,log}`: 10,143 `Linear4bit` and 3,528
+  `Linear` calls through the Function, 0 fallbacks; 150 W enforced, 1.44 GiB NVML used by
+  other apps; no abort, max 74 C, 145 W, `sw_power_cap` only.
+
+  | seq | device peak, GiB (F1) | torch peak, GiB (F1) | tokens/s (F1) |
+  |---|---|---|---|
+  | 512 | 21.15 (21.13) | 19.114 (19.114) | 585.0 (581.0) |
+  | 1024 | 21.48 (21.41) | 19.377 (19.377) | 841.1 (841.1) |
+  | 2048 | 22.09 (22.09) | 19.901 (19.901) | 1,025.5 (1,029.9) |
+
+  - The torch peak is **identical to the MiB** at every length, so the saving at the peak
+    is zero. Device peaks differ by other apps' NVML use (idle after PEFT: torch numbers
+    identical, NVML 18.23 vs 18.17 GiB). Step-0 loss 3.1403, as required.
+  - Later losses differ slightly from F1's (step 1 at seq 512: 1.984 vs 1.988) although
+    the isolated check was bitwise. Either the step is not reproducible run to run, or the
+    gradient contributions into a shared input are summed in another order. UNKNOWN which;
+    an unchanged rerun of F1 would settle it, and it also bears on F1's own reading of its
+    later-step loss differences.
+  - Not worth keeping: NVIDIA's version pays off by fusing kernels and when training
+    without checkpointing, and neither applies here.
+
+**F3: LoRA on lm_head and the routed experts.** Correction to how this was proposed: no
+NVIDIA recipe targets lm_head on purpose (SOURCED: AutoModel's exclude-mode default
+`["*.out_proj"]` would catch it only incidentally; its VL recipes exclude it), and
+Megatron-Bridge's Lightning recipe targets the expert linears with
+`share_expert_adapters=True` by default: one adapter shared by every expert in the layer,
+not one per expert. AutoModel's Nemotron recipes put no LoRA on experts.
+- Code: `probes/expert_lora.py` (drafted by a research agent, shared mode added) adds the
+  LoRA to the activations inside the experts forward, so no (128, out, in) delta is built
+  and the NF4 expert weights stay as they are. Stock PEFT 0.21 `target_parameters` crashes
+  here (hand-off #4). lm_head (bf16, untied) takes an ordinary PEFT LoRA and, with F1's
+  chunked loss, runs a chunk at a time.
+- Pre-run checks (MEASURED, `results/f3-check.{json,log}`, CPU fp32, tiny nemotron_h):
+  with B = 0 the LoRA experts forward is **bitwise** the stock `grouped_mm_experts_forward`
+  in both modes; with random factors, output 6.2e-7 (per-expert) and 7.4e-7 (shared)
+  relative to a dense fp32 reference, factor gradients ≤ 1.1e-6. Whole tiny model,
+  checkpointing on, placement A + lm_head + experts: chunked vs stock loss 0.0 / 4.8e-7
+  apart, every gradient present and nonzero, worst 6.4e-7 relative. GPU, real shapes,
+  bf16: per-expert r=16 and r=8 run (0.4-0.5% from an fp32 loop, bf16 rounding); **r=4
+  cannot run**: `torch` grouped_mm needs 16-byte strides ("strides should be multiple of
+  16 bytes"), so r=8 is the smallest per-expert rank on this path.
+- Configurations, all on F1's (placement A unchanged, r=16), all with lm_head r=16, alpha
+  = 2r throughout:
+
+  | config | expert factors | params, M | resident, GiB (ARITHMETIC) |
+  |---|---|---|---|
+  | shared r=16 | fp32, one set per layer | 3.34 + lm_head 2.14 | 0.05 |
+  | per-expert r=16 | bf16 (fp32 would be 3.99 GiB) | 428.1 + 2.14 | 2.41 |
+  | per-expert r=8 | bf16 | 214.0 + 2.14 | 1.22 |
+
+  Resident = weights + gradients + 8-bit Adam (2 bytes). Headroom under the line on F1:
+  1.98 GiB at 1024, 1.30 at 2048. So (ARITHMETIC) shared passes both lengths; per-expert
+  r=16 fails at 1024 (about 23.9 GiB incl. the agent's +0.10 GiB transient, against
+  23.39, and the card has 23.89); r=8 passes at 1024 (about 22.7) and misses at 2048 by
+  about 0.1. UNKNOWN: the Adam states are bitsandbytes *paged* memory, which the driver can
+  move to host RAM under pressure; that could shift both peak and speed.
+- Order (CHOSEN): shared r=16; per-expert r=16; per-expert r=8 only if r=16 fails at 1024.
+- Pass, per configuration (CHOSEN before the runs): G5's lines at seq 1024 (20/20 measured
+  steps, finite losses, device peak ≤ card − 0.5 GiB, epoch ≤ 8 h); seq 2048 against the
+  same memory line, reported separately; step-0 loss at seq 512 exactly F1's 3.1403 (every
+  new B starts at 0 and adds exact zeros); by the end of the run every expert factor
+  tensor (23 × 4) and both lm_head factors have moved from their initial values at the
+  sampled positions, else the adapter did not train. F2 stays off, so each F3 result
+  differs from F1 by one change.
+- Run: `EXPERT_LORA=shared|per_expert EXPERT_R=16|8 LM_HEAD_LORA=1`, same command as F2.
+- **Results (MEASURED, laptop, 2026-09-25): shared r=16 PASS, per-expert r=16 FAIL
+  (memory), per-expert r=8 PASS**, each at both 1024 and 2048.
+  `results/g5-attnbf16-lean-cce-f3{shared16,perexpert16,perexpert8}-laptop.{json,log}`.
+  All three: 20/20 measured steps at every length, losses finite, step-0 loss 3.1403 at
+  seq 512, all 92 expert factor tensors and both lm_head factors moved, 3,381 LoRA experts
+  calls, no abort, 150 W enforced, max 75 C, `sw_power_cap` only, 1.38-1.43 GiB NVML used
+  by other apps.
+
+  | config | trainable, M | device peak 1024 / 2048, GiB (line 23.39) | torch peak 1024 / 2048 | tokens/s 512 / 1024 / 2048 | epoch h @1024 |
+  |---|---|---|---|---|---|
+  | F1 (reference) | 11.36 | 21.41 / 22.09 | 19.38 / 19.90 | 581.0 / 841.1 / 1,029.9 | 0.31 |
+  | shared r=16 | 16.84 | 21.57 / 22.25 | 19.44 / 19.99 | 588.9 / 844.0 / 1,026.7 | 0.31 |
+  | per-expert r=16 | 441.58 | **23.82 / 23.82** | 20.80 / 21.12 | 407.2 / 674.4 / 900.2 | 0.38 |
+  | per-expert r=8 | 227.54 | 22.40 / 22.95 | 20.02 / 20.43 | 431.4 / 707.4 / 930.0 | 0.37 |
+
+  - Shared r=16 costs almost nothing: +0.16 GiB device peak, speed unchanged.
+  - Per-expert r=16 did **not** run out of memory: the device sat at 23.82 of 23.89 GiB at
+    every length, i.e. full, while torch's own peak rose only 1.43 GiB at 1024 (arithmetic:
+    2.41 resident). The 8-bit Adam states are bitsandbytes paged memory, outside torch's
+    allocator; with the card full the driver probably kept part of them in host RAM, which
+    would also account for part of the slowdown. Page traffic was not recorded, so the
+    paging is inferred, not measured. It fails G5's memory line either way.
+  - Per-expert r=8 fits 2048 with 0.44 GiB to spare where the arithmetic said it would
+    miss by 0.13: the arithmetic counted every gradient and Adam state as resident at the
+    peak (measured torch rise +0.64 GiB at 1024, arithmetic 1.22).
+  - The per-expert cost in time is the extra grouped matmuls, not the rank: MoE blocks take
+    1.04 s per step at 1024 at both r=8 and r=16 (F1 0.82 s); −16% tokens/s at 1024, −26%
+    at 512. Epoch time is still far under the 8 h line.
+  - Training loss falls further with more adapter capacity (mean of the last 5 steps at
+    seq 2048: F1 0.667, shared 0.604, per-expert r=8 0.550, r=16 0.497). This is loss on
+    the training stream, not an eval, and could be memorisation; only G6 can say whether
+    any of it helps.
+  - Open before G6/G7 (UNKNOWN): whether vLLM 0.29 can serve either expert layout (the
+    fallback is folding `dense_delta` into the BF16 experts and re-quantizing); the
+    per-expert factors are bf16 without fp32 master copies, so 8-bit Adam's small updates
+    at lr 1e-4 may be partly rounded away.
+
 ### G7a: base Lightning on the lab's evals (cheap side check)
 - Serve `...-NVFP4` (20.1 GiB) with vLLM 0.29 on the laptop. Run the same eval sets that
   the Qwen3-8B adapters lost to base + catalog.
