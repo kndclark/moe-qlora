@@ -22,6 +22,11 @@ replace Qwen3-8B as the lab's default adapter base?
 - **Worth it** = feasible, *and* G6 shows the adapter beating base Lightning on the lab's
   held-out eval. The lab's own evals have already had base + catalog beat tuned adapters
   (see "Why it might not matter"), so feasibility alone does not justify switching.
+- **Verdict (David, 2026-09-25): feasible**, in the configuration Route 1 + lean scan +
+  attention q/k/v/o in bf16: G2 1.903x as run and 1.908x lean (line 2x), G5 22.10 GiB at
+  seq 1024 (line 23.39), G1 and G4 unaffected (see each gate). Route 1 as defined stays
+  recorded as failed on G2 and G5. The G2 margin is thin (5%, one text). "Worth it" is
+  still open and needs G6. The `~/gpu-lab` edit ban under "Hard stops" is lifted.
 
 ## Routes
 
@@ -267,6 +272,23 @@ Every gate writes `results/<gate>-<label>.json` from a probe in `probes/`.
   both the bf16 reference and Route 1, 276 scan calls = 23 x 4 x 3 as expected). KL
   0.1198, ratio **2.130 > 2.0, fail**; top-1 83.66%, pass. Against the same Qwen run,
   which has no mamba layers. The scan choice moves the ratio by 0.019; neither passes.
+- **Route 1 + attention in bf16 (follow-up David authorised 2026-09-25), laptop: PASS
+  on both scans.** A new configuration beside the gate result above, which stays failed.
+  `probes/attn_bf16.py` wraps the probes unchanged and adds `llm_int8_skip_modules` for
+  the 24 attention q/k/v/o_proj and lm_head (an explicit list replaces the default
+  lm_head skip). It changes nothing else: 92 Linear4bit layers and the 46 expert stacks
+  stay NF4. Cost +0.194 GiB (ARITHMETIC, 6 x 23,396,352 params, bf16 vs NF4). NVIDIA's
+  own NVFP4 release of this model keeps the same 24 projections in bf16
+  (`hf_quant_config.json` ignore list, rev `bee75962`, read from the local snapshot).
+  - As run (`results/g2-attnbf16-lightning-laptop.json`): KL 0.1070 nats/token (p99
+    0.71), ratio **1.903 ≤ 2.0, pass**; top-1 84.20%, pass; NLL gap 0.049.
+  - With the lean scan (`results/g2-attnbf16-lean-lightning-laptop.json`, 276 scan
+    calls): KL 0.1073, ratio **1.908, pass**; top-1 84.10%, pass.
+  - Self-checks: 0 dtype mismatches over 263 unquantized tensors (239 + the 24 attention
+    weights), embedding diff 0.0, isolated attention error exactly 0.0 (bf16 weights
+    are the reference's), mamba 0.127 and MoE 0.107 unchanged. Same Qwen yardstick
+    (`g2-qwen-laptop.json`, every linear layer NF4).
+  - The margin is thin: 5% under the line, on one text of 2,044 predicted tokens.
 
 ### G5: training step (Route 1, placement A)
 - **Setup:**
@@ -412,6 +434,24 @@ Every gate writes `results/<gate>-<label>.json` from a probe in `probes/`.
   - Step-0 loss 3.1787 (fp64-scan desktop 3.1876; see above).
   - Time at seq 1024: MoE 67%, mamba 28%, attention 3%.
   - Feasibility still needs G2 on the laptop (desktop debug failed the KL line).
+- **Result, Route 1 + lean scan + attention in bf16 (MEASURED, laptop, 2026-09-25):
+  PASS**, same CHOSEN lines; the configuration that passed G2 above.
+  `results/g5-attnbf16-lean-laptop.{json,log}` via `probes/attn_bf16.py g5_lean_scan.py`
+  (0 attention Linear4bit, 24 bf16, 92 Linear4bit in all; 3,381 scan calls). Max-power,
+  175 W enforced this time (150 W on 09-24), but the card drew at most 148.5 W in either run,
+  so the limit did not bind; 1.43 GiB NVML used by other apps before CUDA init; no abort.
+  - seq 1024: 20/20 steps, 856.6 tokens/s (-1.7%), device peak 22.10 GiB against 23.39
+    (1.30 GiB spare), torch peak allocated 19.88 GiB: +0.194 GiB, as the arithmetic said.
+    Epoch 0.30 h against 8 h.
+  - seq 512: 593.4 tokens/s, device peak 21.48 GiB. seq 2048: 1,066.8 tokens/s, device
+    peak 23.82 GiB, now 0.43 GiB over the line (was 0.14; not the gate length).
+  - Step-0 loss (seq 512, LoRA B = 0, the frozen model) 3.1403 against 3.1787 with 4-bit
+    attention. Lower, but no bf16 reference loss exists for these tokens, so "closer to
+    bf16" is not measured here; G2's KL is the measure.
+  - Time at seq 1024: MoE 66%, mamba 28%, attention 2%.
+  - G4's idle line (torch-allocated ≤ 18.0 GiB) holds for this configuration on this
+    run's own load: 16.39 GiB after PEFT, against 16.20 for the lean-scan run above.
+    `g4_route1_load.py` itself was not re-run.
 
 ### G7a: base Lightning on the lab's evals (cheap side check)
 - Serve `...-NVFP4` (20.1 GiB) with vLLM 0.29 on the laptop. Run the same eval sets that
@@ -454,7 +494,7 @@ Every gate writes `results/<gate>-<label>.json` from a probe in `probes/`.
 ## Hard stops and rules
 
 - No edits to `~/gpu-lab` until the feasibility verdict. Probes and results stay in this
-  repo.
+  repo. (Verdict given 2026-09-25: feasible; see the top.)
 - No new dependency or image change without David's OK. That includes Route 2's
   `mamba_ssm` and axolotl.
 - Every download beyond G0 needs David's go.
