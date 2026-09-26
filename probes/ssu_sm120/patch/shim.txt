@@ -1,0 +1,25 @@
+
+// sm_120 patch (local, not upstream). libcu++'s
+// cp_async_bulk_tensor_4d_global_to_shared emits the .shared::cluster form of
+// the TMA load, which ptxas (CUDA 13.0 and 13.3) lowers on sm_120 to a driver
+// syscall; its 14.6 KB/thread stack makes the first launch reserve ~1.6 GiB.
+// The .shared::cta form compiles to an inline instruction. The two are the
+// same here: these kernels never launch as clusters, so the destination and
+// the barrier are always in the issuing CTA.
+#ifndef FI_SM120_CTA_TMA_SHIM
+#define FI_SM120_CTA_TMA_SHIM
+namespace fi_sm120 {
+__device__ __forceinline__ void tma_load_4d_cta(void* dest, const CUtensorMap* map, int c0,
+                                                int c1, int c2, int c3,
+                                                cuda::barrier<cuda::thread_scope_block>& bar) {
+  asm volatile(
+      "cp.async.bulk.tensor.4d.shared::cta.global.tile.mbarrier::complete_tx::bytes"
+      " [%0], [%1, {%2, %3, %4, %5}], [%6];" ::"r"(
+          static_cast<unsigned>(__cvta_generic_to_shared(dest))),
+      "l"(map), "r"(c0), "r"(c1), "r"(c2), "r"(c3),
+      "r"(static_cast<unsigned>(
+          __cvta_generic_to_shared(cuda::device::barrier_native_handle(bar))))
+      : "memory");
+}
+}  // namespace fi_sm120
+#endif

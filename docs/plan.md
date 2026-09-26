@@ -696,9 +696,12 @@ not one per expert. AutoModel's Nemotron recipes put no LoRA on experts.
      kept for headroom; KV is still 1.5 GiB = 170,666 tokens.
   3. `--mamba-backend flashinfer` dropped: FlashInfer's
      `selective_state_update_kernel_producer_consumer_vertical<bf16,...>` fails
-     `cuLaunchKernel` with CUDA_ERROR_OUT_OF_MEMORY on sm_120 while 1.5 GiB of the card is
-     free (CUDA_LOG_FILE=stderr, attempt 6; nvidia-smi trace peak 23.01 of 23.89 GiB,
-     attempt 5); torch reports it one op later at `mamba_mixer2.py:116`. The default
+     `cuLaunchKernel` with CUDA_ERROR_OUT_OF_MEMORY on sm_120 (CUDA_LOG_FILE=stderr,
+     attempt 6; nvidia-smi trace peak 23.01 of 23.89 GiB, attempt 5); torch reports it
+     one op later at `mamba_mixer2.py:116`. CORRECTED 2026-09-26: this line used to say
+     "while 1.5 GiB of the card is free"; that 1.5 GiB is vLLM's "Available KV cache
+     memory" (attempt 6 log line 126), a budget, not free card memory. The launch needs
+     ~1.6 GiB free for a driver stack reservation; see "Side quest: FlashInfer SSU". The default
      Triton SSU backend works.
   - Result: NVFP4 **serves on sm_120 under vLLM 0.29** (MoE via MARLIN weight-only FP4:
     "Your GPU does not have native support for FP4 computation"). Weights 17.86 GiB; 79 s
@@ -739,7 +742,92 @@ not one per expert. AutoModel's Nemotron recipes put no LoRA on experts.
     on the base, so G6 must fix its thinking mode before its run; the v3 comparison
     rows were thinking off.
 
+### Side quest: FlashInfer SSU on sm_120 (David asked, 2026-09-26)
+Question: is G7a's `--mamba-backend flashinfer` crash a software gate we can get around,
+or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a local
+13-call-site header patch makes it serve. Harness `probes/ssu_sm120/`, logs
+`results/ssu_sm120/`.
+- **Cause (MEASURED unless tagged):** ptxas (CUDA 13.0.88 and 13.3.73) lowers the
+  `.shared::cluster` form of the TMA load `cp.async.bulk.tensor.4d...global.tile.mbarrier::
+  complete_tx::bytes` to a driver syscall (`__cuda_syscall_cp_async_bulk_tensor_4d_tile_
+  unicast`) on sm_120/120a/120f; on sm_90a/sm_100a it is inline. The syscall lifts the
+  per-thread stack 1,024 -> 14,608 B; the drop in free memory at the first launch of any
+  kernel containing it is 1,634 MiB (a control kernel whose load never runs costs the
+  same) = the 13,584 B increase x 82 SMs x 1,536 threads = 1,631.7 MiB (ARITHMETIC; the
+  full 14,608 B would be 1,754.7). Unpatched launch works at >= 1,689.7 MiB free, fails at
+  <= 1,679.1 MiB. That too little was free at that moment under vLLM (0.85 utilisation)
+  is inferred from the OOM, not measured.
+- The form comes from libcu++ `cuda::device::experimental::cp_async_bulk_tensor_4d_
+  global_to_shared`, which hardcodes the cluster space (SOURCED: the JIT compiles
+  FlashInfer's bundled CCCL 3.3.2, `flashinfer/data/cccl/libcudacxx/include/cuda/
+  barrier:164-182`, per its build.ninja; the CUDA 13.0 toolkit copy at :151-169 is the
+  same). libcu++ already ships the `.shared::cta` form of the load
+  (`cp_async_bulk_tensor.h:639`). FlashInfer 0.6.18 calls the helper 13 times in
+  `flashinfer/mamba/kernel_selective_state_update_{stp,mtp_vertical,mtp_horizontal}.cuh`.
+  The nightly image's SSU code is identical; v0.7.0 was compared for the stp header only.
+  Newer nvcc (13.3) does not fix it. Whether upstream has a fix or an issue: UNKNOWN
+  (not searched online).
+- Refuted: shared memory too big (25,728 of 101,376 B); the kernel's own stack (8 B);
+  duplicate kernel copies in the .so (real, harmless).
+- **Patch (local, image unchanged):** a guarded inline-asm shim issuing the `.shared::cta`
+  form, 13 call sites renamed; bind-mounted over the image's headers (FlashInfer JITs the
+  SSU module at each start). Equivalent here because no SSU kernel launches as a cluster.
+  Results: 0 syscall refs, STACK 0, first-launch drop 0 MiB (was 1,634); error vs an fp64
+  reference identical to Triton; 23-layer kernel speed within -7.8% to +4.4% of
+  unpatched (single-kernel timings at batch 16 swing far more, noise).
+- Kernel speed, 23 Mamba layers, us/token (MEASURED): batch 1 eager Triton 924 vs
+  FlashInfer 156-170; batch 1 graph Triton 67, FlashInfer 70-112; batch 16/64 all 137-153
+  (memory-bound). FlashInfer only helps eager at low batch, which is how we serve.
+  The batch-1 graph numbers imply ~1.43 TB/s vs ~0.70 at batch 16, so they are probably
+  flattered by L2 cache. At batch 1, `auto` picks the simple kernel (1 x 64 heads < 2 x 82
+  SMs), so fi-cta's c=1 row runs no patched kernel; the patch only runs at batch >= 3.
+- Flag-only alternative, no patch: `--mamba-ssu-algorithm simple` (no TMA at all).
+- **Serve A/B r1 (MEASURED, 1 run each, G7a flags):** c=1 decode p50 triton 31.86,
+  fi-cta 33.39, fi-simple 33.61 tok/s; c=16 per request 31.86 / 31.44 / 31.06; v1 eval
+  held_out hit&grounded 48 / 45 / 43 of 90, seen_tool 13 / 15 / 8 of 25, truncated
+  41 / 44 / 50 of 158; 0 errors each. By the G7a rule fi-simple's -5 is a LOSS on both
+  splits in r1, pending repeats: greedy decoding is not run-to-run repeatable here
+  (yesterday's triton and today's share 15/158 identical final answers; two triton runs
+  differ on 20 held_out items). Triton ran first, from a cold GPU.
+- **Repeats — CHOSEN before the runs, 2026-09-26 (David: "proceed with all recommended
+  steps"):**
+  - Two more runs per config, same script and flags (`probes/ssu_sm120/serve/run_all.sh`):
+    r2 in order fi-simple, fi-cta, triton; r3 in order triton, fi-cta, fi-simple (r1 was
+    triton, fi-cta, fi-simple). n = 3 per config.
+  - Metrics, 3-run mean per config: held_out and seen_tool hit_and_grounded items, c=1
+    decode tok/s p50, c=16 tok/s per request p50. Truncations: descriptive.
+  - Quality: a config loses (wins) against triton on a split only if its mean is more
+    than 4 items below (above) triton's (the G7a noise-floor rule); else tie.
+  - Speed: a difference counts only if it exceeds the larger of 5% and triton's own
+    min-max range across its 3 runs.
+  - Adopt for `--enforce-eager` serving: fi-simple if it has no quality loss and is faster
+    at c=1 (flag only, nothing to maintain); else fi-cta on the same test (needs the
+    patch); else keep Triton, the default. c=16 alone never decides it (memory-bound).
+  - `probes/ssu_sm120/serve/compare.py` applies this rule.
+- **Repeats RESULT (MEASURED 2026-09-26; `results/ssu_sm120/serve/r{1,2,3}/`, 18/18
+  steps exit 0, 0 eval errors):** 3-run means, triton / fi-cta / fi-simple: held_out
+  42.7 / 44.3 / 44.0 of 90; seen_tool 11.3 / 13.3 / 11.0 of 25; c=1 decode p50 30.88 /
+  32.93 / 33.46 tok/s; c=16 per request 30.17 / 31.79 / 31.73; truncated 44.3 / 47.0 /
+  48.0 of 158. By the rule: quality ties everywhere (fi-simple +1.3 / -0.3 items, fi-cta
+  +1.7 / +2.0); c=1 fi-simple +8.4% and fi-cta +6.7%, both past the 2.0 tok/s bar (triton's
+  range); c=16 ties. **Adopted: `--mamba-backend flashinfer --mamba-ssu-algorithm simple`
+  for `--enforce-eager` serving (no patch needed).** Not yet applied to any serve script.
+  - r1's fi-simple -5 was noise: triton's own held_out ranged 39-48 over its 3 runs.
+  - Caveats (descriptive): triton's c=1 fell each run (31.86, 30.91, 29.86) while the
+    FlashInfer runs did not, so part of the margin may be drift; the win clears the bar
+    by 0.6 tok/s. FlashInfer truncated ~3-4 more of 158. KV varied 1.41-1.54 GiB with
+    other apps on the card.
+- Upstream issue (FlashInfer / CCCL): drafted, not filed; outward-facing, needs David's go.
+
 ### G6: short training + held-out eval
+- **Thinking mode — CHOSEN 2026-09-26 (David: "proceed with all recommended steps"):**
+  evaluate the adapter and base Lightning in both modes; **thinking on is primary**
+  (`--thinking on --max-tokens 4096`, other settings as G7a's), thinking off (G7a's
+  exact settings) is secondary. Why: thinking moves base held_out by 33 points (G7a), and
+  thinking off at 512 tokens truncates 48/158 v1 answers, so thinking off measures the
+  cap as much as the model. The pass rule below compares like with like (same mode).
+  UNKNOWN before training: whether research_dataset_v3's examples carry think blocks;
+  check before the run.
 - Train placement A on research_dataset_v3 with the same epochs, rank and data as the
   Qwen3-8B v3 adapter, so the comparison is like for like.
 - Evaluate with `~/gpu-lab/bench/research_eval.py`. It talks to a vLLM server
