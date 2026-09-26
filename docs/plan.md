@@ -649,6 +649,95 @@ not one per expert. AutoModel's Nemotron recipes put no LoRA on experts.
     (`results/g7-nvfp4-verify.json`, `probes/g0_verify.py` run on the desktop host). 70/70 files at manifest size; 55 sha256 and 15 git-blob hashes
     match; every file is uid 1000, mode 0644, so it is readable over NFS. All 70 sizes
     were also checked from the laptop over NFS.
+- **G7a run — CHOSEN before the run, 2026-09-25 (David: "affirmative ... proceed").**
+  - Serve (laptop): `vllm/vllm-openai:v0.29.0`, NVFP4 rev `bee75962`, flags from the model
+    card's closest config (1x DGX Spark GB10, the card's only consumer-Blackwell entry,
+    validated there on v0.27.1): `--kv-cache-dtype fp8 --mamba-backend flashinfer
+    --mamba-cache-mode align --moe-backend marlin`, minus speculative decoding and MTP;
+    plus `--max-model-len 16384 --max-num-seqs 16` and a `--gpu-memory-utilization` set
+    from free memory at start. Any flag change needed to make it load is recorded here.
+  - Harness: `probes/g7a_eval.py` = `~/gpu-lab/bench/research_eval.py` as committed
+    (64919bd, repo HEAD 603c317) with two reading patches, scorer untouched: Lightning's
+    XML tool-call form, and "no `</think>`" = truncated when the prompt pre-opens
+    `<think>`. `--selfcheck` must PASS first. vLLM json-loads tool arguments before
+    templating (SOURCED: vllm 0.29.0 `entrypoints/chat_utils.py:2043`), so no patch there.
+  - Primary runs: the yardstick's exact settings (`--thinking off --max-tokens 512
+    --max-calls 3 --temperature 0 --window 4000 --seed 20260923`, concurrency 16) on all
+    seven sets: v1, v2, rocky, promql `--promql-catalog`, general, alert, trap3. Output
+    `results/research-eval-<set>-lightning-nothink.json`.
+  - Yardstick: Qwen3-8B base, thinking off (`bench/research-eval-{L,v2-L,rocky-L}-base-
+    nothink.json`, `-{promqlcat,general,alert,trap3}-8b-base-nothink.json`). Reference:
+    the v3 adapter, thinking off (`-L-adv3-nothink` of each set).
+  - Secondary (descriptive, no rule): v1 with `--thinking on --max-tokens 4096` against
+    `research-eval-8b-base-think-4k.json`.
+  - **Serving gate:** PASS = the server loads and all seven sets finish with 0 items in
+    status `error` and 0 turns whose text holds `<tool_call>` that the parser missed.
+    Anything else FAILS and is recorded with its output. This settles NVFP4 on sm_120.
+  - **Comparison rule:** headline metrics per split — `hit_and_grounded` on flag/task
+    splits; `denied_heuristic` on trap splits (higher is better) and on trap_control
+    splits (lower is better); `over_trigger` (lower) and `correct_where_scorable` on
+    no_tool/general; `correct` on alert and promql; `noticed` (higher) and `fabricated`
+    (lower) on trap3. A difference is a win or a loss only when it exceeds 4 items on that
+    split (the base noise floor, MEASURED 2026-09-23); otherwise it is a tie. Small splits
+    (alert 9, trap3 12, promql 18) therefore rarely show a win; that is accepted.
+  - **Reading (fixed now):**
+    (a) Lightning base ties or beats the v3 adapter on `held_out`, `held_out2` and
+    `rocky_held_out` -> the one job the 8B adapters won needs no adapter on Lightning;
+    G6's question narrows to the task rows (task, rocky_task, alert, promql) and traps.
+    (b) Lightning base loses to Qwen3-8B base on at least half the headline splits ->
+    tell David before G6: Lightning may be the weaker default base for this lab's evals.
+    (c) Otherwise G6 proceeds as planned.
+  - Also recorded: load time, GPU memory after load, and each set's elapsed seconds.
+- **G7a serving — flag changes needed to load (MEASURED, 2026-09-25; logs
+  `results/g7a-serve-attempt{1..6}*.log`):**
+  1. `--enforce-eager` added: with CUDA graphs, vLLM budgeted ~2.2 GiB for them and left
+     0.11 GiB of KV, under the 0.14 GiB one 16384-token request needs (attempt 1).
+  2. `--gpu-memory-utilization` 0.91 -> 0.85 (attempts 2-3): did not fix the crash below,
+     kept for headroom; KV is still 1.5 GiB = 170,666 tokens.
+  3. `--mamba-backend flashinfer` dropped: FlashInfer's
+     `selective_state_update_kernel_producer_consumer_vertical<bf16,...>` fails
+     `cuLaunchKernel` with CUDA_ERROR_OUT_OF_MEMORY on sm_120 while 1.5 GiB of the card is
+     free (CUDA_LOG_FILE=stderr, attempt 6; nvidia-smi trace peak 23.01 of 23.89 GiB,
+     attempt 5); torch reports it one op later at `mamba_mixer2.py:116`. The default
+     Triton SSU backend works.
+  - Result: NVFP4 **serves on sm_120 under vLLM 0.29** (MoE via MARLIN weight-only FP4:
+    "Your GPU does not have native support for FP4 computation"). Weights 17.86 GiB; 79 s
+    to ready with the files in page cache (76 s weight load alone over NFS, cold);
+    23.34 GiB used on the card after load, 0.62 GiB free.
+  - Harness smoke (2 per split, thinking off): 6/6 `<tool_call>` turns parsed as
+    `xml_function`; 4/10 answers hit the 512-token cap (Lightning answers long).
+  - Output name: the promql-with-catalog set is saved as `promqlcat` (bench's convention).
+- **G7a RESULT (MEASURED, 2026-09-25; `results/research-eval-*-lightning-*.{json,log}`):**
+  - **Serving gate: PASS.** 8 runs, 636 items, 0 in status `error`; 488 tool calls, all
+    in Lightning's XML form, 0 `<tool_call>` turns missed. Elapsed 6-116 s per set
+    thinking off, 207 s for v1 thinking on.
+  - **Comparison (thinking off, CHOSEN settings) vs Qwen3-8B base: 0 wins, 8 losses,
+    14 ties** over 22 headline metrics (19 splits). Losses, in items: held_out −18,
+    held_out2 −17, rocky_held_out −13, promql −11, seen_tool −5, trap2 −5 (denied 0/12
+    asserted fakes), rocky_trap −5, trap3 noticed −5. Ties include task +1, rocky_task −1,
+    alert −2, general −1, no_tool 0. vs the v3 adapter it WINS task, rocky_task, alert
+    (where v3 collapsed) and loses held_out, seen_tool, held_out2, two_flag,
+    rocky_held_out and all three trap splits (fix_cmd ties).
+  - **Reading, by the rule:** (a) not met (loses to v3 on all three held-out splits);
+    (b) not triggered (8 of 19 splits lost, under half); so **(c): G6 proceeds as
+    planned.**
+  - **What drives the thinking-off losses (MEASURED diagnostics, not part of the rule):**
+    - It rarely looks up: held_out lookups 8/90 vs Qwen 60/90.
+    - The 512-token cap cuts its long answers: truncated v1 48/158, v2 46/134, rocky
+      35/102 (Qwen base: 1/158, 1/134, 2/102). On held_out, the 58 untruncated items still lose
+      (36 vs Qwen 43); the 32 truncated ones lose more (10 vs 21).
+    - promql: 16 of 28 calls were `bash`, 14 of them refused by the harness's
+      `--help`/`man` allowlist (`cat /sys/class/power_supply/...`, the local machine); Qwen used `promql`
+      20/20. The bash tool's description invites "examine system status", so part of
+      this loss is the harness's contract, not only the model.
+  - **Secondary, thinking on, 4096 tokens (descriptive):** held_out 0.844 (lookups 67%)
+    vs Qwen3-8B thinking 0.656 and Qwen base thinking-off 0.711; seen_tool 0.600 vs
+    0.520; trap denied 0.533 vs 0.800; no_tool over-trigger 0.20 vs 0.35; 1/158
+    truncated. With thinking, Lightning is the better flag-looker of the two bases, still
+    under v3 (1.000), and weaker at denying fakes.
+  - For G6 (UNKNOWN until David decides): the thinking mode moves held_out by 33 points
+    on the base, so G6 must fix its thinking mode before its run; the v3 comparison
+    rows were thinking off.
 
 ### G6: short training + held-out eval
 - Train placement A on research_dataset_v3 with the same epochs, rank and data as the
