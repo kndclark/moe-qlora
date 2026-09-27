@@ -842,6 +842,32 @@ or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a 
     tasks, alert rules and live Prometheus + catalog (memory: research-eval-8b-results).
     Their harness is not located yet; find it in `~/gpu-lab/bench` before G6.
 
+- **Setup (2026-09-27; `probes/g6_train.py`, dry run `results/g6-dry.log`):**
+  - Data: v3 as it is (David: "train on V3 as is to keep comparison to qwen like for
+    like"). It carries **no reasoning text**: `thinking` is a mode flag (693 "default",
+    257 "off"), and no record holds a `<think>` block.
+  - Recipe: gpu-lab `training/qlora.py`'s, which trained v3 (r=16, alpha 32, dropout 0.05,
+    lr 1e-4, cosine with 3% warmup, paged AdamW 8-bit, clip 1.0, 2 epochs, 8 records per
+    step, max length 1024, assistant-only loss). Batch 1 x 8 with the loss normalised over
+    the step's assistant tokens is the same objective as qlora.py's 2 x 4 under
+    transformers 5.x's Trainer. Forced by the model: placement A, F1's configuration
+    (attention bf16, lean scan, chunked CE), no fp32 upcast (v3's flag is not recorded).
+  - Template: Lightning writes `<think></think>` before every assistant turn, and vLLM's
+    thinking-off generation prompt ends with exactly that (checked), so "off" records mask
+    it as prompt: 257 records, 402 blocks. qlora.py's Qwen-string insertion finds nothing
+    to insert here. "Default" records train it, as qlora.py trained Qwen's empty block.
+  - Truncation at 1024: 439 of 950 records here, 375 under Qwen3-8B's template (if v3 ran
+    at qlora.py's default). Neither template passes 2048 (max 1892 / 1712).
+  - Thermal guard (David, 2026-09-27): `GUARD=hw` = abort on hw_thermal or hw_power_brake,
+    or at 90 C. G5's guard aborts on sw_thermal or at 87 C, and v3 ran at 87 C for 36 min.
+- **Training (MEASURED, 2026-09-27; `results/g6-train.{json,log}`):** 238 steps, no abort,
+  2,048.5 s (v3: 2,171 s). Loss 1.001 first step, mean 0.488 epoch 1 and 0.158 epoch 2,
+  0.0025 last step. Torch peak 19.42 GiB; max 80 C and 154 W; 0 throttle flags in 4,036
+  samples, so G5's guard would not have tripped either. 11,359,232 trainable parameters
+  in 93 modules; chunked CE ran 1,900 times (950 x 2). Adapter `results/g6-train-adapter/`
+  (not in git; checkpoints 119 and 238). The log's gpu-lab stamp (5512534) was taken at
+  the end; the run started at c3e9a46, and `training/` is identical in both.
+
 ### G7: serving on vLLM 0.29 (laptop)
 - Base NVFP4, then base + LoRA, then merge if needed. UNKNOWN:
   - whether vLLM's nemotron_h supports LoRA on placement A's modules (read the vLLM
