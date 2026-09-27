@@ -217,6 +217,9 @@ Every gate writes `results/<gate>-<label>.json` from a probe in `probes/`.
     run. The re-run started straight after G1 had read every shard, with 55 GiB of page
     cache warm; more mapped shard pages counted in RSS is the likely cause (not verified).
     Its other-apps baseline read 2.404 GiB, probably because G1's process had just exited.
+  - From the laptop's local mirror (2026-09-27, `results/g4-route1-mirror-laptop.json`,
+    via `probes/gpurun.sh`, page cache dropped first): **load 17.3 s, not 224.8 s over
+    NFS**. Torch peak 17.564 GiB, NLL 2.0816 and top-1 identical; host peak RSS 38.5 GiB.
 
 ### G2: forward fidelity vs bf16
 - **Reference:** bf16 layer outputs computed one layer at a time on the GPU (one layer's
