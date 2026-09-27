@@ -868,6 +868,46 @@ or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a 
   (not in git; checkpoints 119 and 238). The log's gpu-lab stamp (5512534) was taken at
   the end; the run started at c3e9a46, and `training/` is identical in both.
 
+- **G6 RESULT (MEASURED, 2026-09-27; `probes/g6_eval.sh`, `probes/g6_compare.py`,
+  `results/g6-compare.json`, `results/research-eval-*-lightning-{g6-think-4k,think-4k,
+  g6-nothink}.*`): FAILS the rule in both modes, on one task row each; ties the Qwen3-8B
+  v3 adapter like for like (1 win, 0 losses, 21 ties).**
+  - Serving: one vLLM server for base and adapter (G7a's flags plus LoRA). 22 runs, 0 items
+    in status `error`, 0 unparsed `<tool_call>` turns; all 1,681 calls `xml_function`.
+    Harness `probes/g7a_eval.py`. The first attempt ran the bare `research_eval.py`, which
+    parses neither Lightning's XML calls nor its open `<think>`: v1 scored 0 with every call
+    missed. Stopped, outputs deleted; `results/g6-eval-attempt1-unpatched-harness.log`.
+  - **Rule, thinking on (primary): FAIL on `rocky_task`, 0.25 vs 0.65 (-8 items).**
+    `held_out` WINS, 0.889 vs 0.789 (+9); no loss on trap (+8, a win), trap_control,
+    no_tool, task (-1), alert (+1) or promql (-1). Also wins: held_out2 +8, two_flag +5,
+    trap2 +7, rocky_held_out +10, rocky_trap +5, general over_trigger +8. General
+    correct_where_scorable -6 (not in the rule; counted over n=45, so overstated).
+  - Thinking off (secondary, against G7a's base): the same rule FAILS on `task`, 0.55 vs
+    0.80 (-5); rocky_task -3 ties. Wins: held_out +44 (1.000 vs 0.511), held_out2 +43,
+    rocky_held_out +32, seen_tool +13, trap2 +11, trap +8, rocky_trap +8, two_flag +7,
+    trap3 noticed +5.
+  - **Like for like, both adapters thinking off, G6 vs the Qwen3-8B v3 adapter: 1 win,
+    0 losses, 21 ties.** The reflex is learned equally (held_out 1.000 each, rocky_held_out
+    1.000 each); the win is alert rules, 0.556 vs 0.000, where v3 collapsed and G6 kept
+    base's level. Task rows equal (task 0.55 each; rocky_task 0.40 vs 0.25, a tie).
+  - **Diagnostic, not part of the rule: with thinking on, 64 of 478 adapter answers end
+    inside the open think block** (finish `stop` after 50-273 tokens, never `</think>`), so
+    the harness sees no answer; base: 0 of 478. rocky_task 8 of 20; v1 17 of 158, where 14
+    of the 16 flag items hold the right flag in the hidden text. Cause (inference, matching
+    the template check above): training shows `<think></think>` then the answer, while the
+    thinking-on prompt ends inside an open `<think>\n`, so the adapter answers there and
+    stops. Most of the thinking-on rocky_task loss is this, not the model's knowledge.
+  - Server check, base v1 on this LoRA-enabled server vs G7a's: thinking off, all rows tie
+    (-3 to +2 items); thinking on, held_out -5 (0.789 vs 0.844), just past the 4-item
+    floor, the rest tie. Thinking-on base moves ~5 items run to run.
+  - Reading: like every 8B adapter, G6 wins the lookup reflex and the traps and loses a
+    real-task row to its own base; unlike v3 it keeps base's alert rules. Thinking on adds
+    a Lightning-specific defect that the training render causes. Open, each a new
+    configuration beside G6 rather than a rerun of it: (1) render "default" records as the
+    thinking-on prompt looks (`<think>\n` as prompt, then `</think>` and the answer trained);
+    (2) self-generated reasoning traces (v4; David asked 2026-09-27 whether traces help a
+    practical model). G7's merge path is not needed: vLLM serves the LoRA directly.
+
 ### G7: serving on vLLM 0.29 (laptop)
 - Base NVFP4, then base + LoRA, then merge if needed. UNKNOWN:
   - whether vLLM's nemotron_h supports LoRA on placement A's modules (read the vLLM
