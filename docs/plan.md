@@ -665,7 +665,7 @@ not one per expert. AutoModel's Nemotron recipes put no LoRA on experts.
     --max-calls 3 --temperature 0 --window 4000 --seed 20260923`, concurrency 16) on all
     seven sets: v1, v2, rocky, promql `--promql-catalog`, general, alert, trap3. Output
     `results/research-eval-<set>-lightning-nothink.json`.
-  - Yardstick: Qwen3-8B base, thinking off (`bench/research-eval-{L,v2-L,rocky-L}-base-
+  - Yardstick: Qwen3-8B base, thinking off (`bench/results/research-eval-{L,v2-L,rocky-L}-base-
     nothink.json`, `-{promqlcat,general,alert,trap3}-8b-base-nothink.json`). Reference:
     the v3 adapter, thinking off (`-L-adv3-nothink` of each set).
   - Secondary (descriptive, no rule): v1 with `--thinking on --max-tokens 4096` against
