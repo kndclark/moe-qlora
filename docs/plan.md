@@ -850,6 +850,19 @@ or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a 
     costs. G6 measures that cost, because its eval runs through the server.
 - Merge path (fallback): merge the LoRA into BF16, then re-quantize. Which tool does that
   for nemotron_h is UNKNOWN.
+- **LoRA smoke (MEASURED, 2026-09-27; `probes/g7_lora_adapters.py`, `g7_lora_smoke.sh`,
+  `g7_lora_smoke_client.py`; `results/g7-lora-smoke/`): vLLM 0.29 applies LoRA to every
+  placement-A family.** Untrained seeded adapters (r=16, alpha 32; PEFT's own key names,
+  `base_model.model.model.layers.N.mixer...`; 93 modules = 24 attention + 23 `in_proj` +
+  46 shared-expert) served beside base NVFP4 with G7a's flags plus `--enable-lora
+  --max-lora-rank 16 --max-loras 1`:
+  - base twice: bit-identical (noise 0); `zero` (lora_B = 0): identical to base, so it loads;
+  - `attn`, `inproj`, `shexp`, `full`: each changes the greedy tokens (max log-prob shift
+    0.25, 0.64, 0.24, 0.29), so none is skipped silently;
+  - no LoRA warnings in the log; NVFP4 weights loaded in 4.89 s from the laptop's mirror
+    (G7a: 76 s over NFS, cold); card 22.9 of 23.9 GiB used.
+  This settles the first UNKNOWN above. Still open: how closely a trained adapter served on
+  NVFP4 tracks the NF4 model it was trained on (G6 measures that through the server).
 
 ## Hard stops and rules
 
