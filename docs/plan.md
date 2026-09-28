@@ -1067,6 +1067,67 @@ or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a 
     G6p misses, classed mechanically as a false denial (research_eval's denial pattern
     matches the answer), else a single-flag answer (it cites exactly one flag), else
     other, then read by hand.
+  - Training (MEASURED, `results/g6p-train.{json,log}`): 288 steps, no abort, 2,449.3 s
+    (G6r 2,066.8 s for 238). Loss 1.182 first step, mean 0.515 epoch 1 and 0.200 epoch 2,
+    0.061 last (G6r 1.115, 0.491, 0.159, 0.0024). Torch peak 19.42 GiB, as G6r; max 79 C
+    and 153.8 W; no hw_thermal or hw_power_brake sample (sw_power_cap in 4,834 of 4,855).
+    Chunked CE ran 2,300 times (1,150 x 2). Adapter `results/g6p-train-adapter/` (not in
+    git).
+
+- **G6P RESULT (MEASURED, 2026-09-28; `LABEL=g6p probes/g6_eval.sh`, `LABEL=g6p
+  probes/g6_compare.py` with and without `COMPARE_TO=g6r`, `probes/g6p_analysis.py`,
+  `results/g6p-{compare,compare-vs-g6r,analysis}.json`,
+  `results/research-eval-*-lightning-g6p-*.*`): FAILS the rule thinking on, on a new row,
+  `promql` (-7 items); `rocky_task` no longer fails (-4, a tie; G6r -7). Thinking off,
+  the same rule PASSES, the first Lightning adapter to do so. Against G6r: 3 wins, 2
+  losses, 39 ties. The data moved the task rows; it also moved promql the wrong way.**
+  - Eval: 14 runs, all exit 0, 12 min 55 s (base outputs reused from G6). 956 items, 0 in
+    status `error`, 963 calls all `xml_function`, 0 unparsed `<tool_call>` turns. 39 items
+    hit the call limit (G6r 21, G6 15, base 124), 19 of them in promql.
+  - **Rule, thinking on (primary): FAIL on `promql`, 0.278 vs 0.667 (-7).** `held_out`
+    WINS, 0.967 vs 0.789 (+16); no loss on trap (+9, a win), trap_control (+2), no_tool
+    (over-trigger +5, a win; correct +0), task (+3, 0.75 vs 0.60), rocky_task (-4, 0.45
+    vs 0.65) or alert (-3, 2/9 vs 5/9, as G6r).
+  - Thinking off (secondary): the rule PASSES. held_out +40 (0.956 vs 0.511), trap +8;
+    task +1 (0.85 vs 0.80), rocky_task -2 (0.45 vs 0.55), promql -1, alert -3: ties.
+  - **G6p vs G6r:** thinking on, wins task (+5, 0.75 vs 0.50) and held_out2 (+6), loses
+    promql (-8, 0.278 vs 0.722); thinking off, wins task (+7, 0.85 vs 0.50), loses promql
+    (-7, 0.278 vs 0.667); rocky_task +3 in both, a tie. Like for like, thinking off, vs the
+    Qwen3-8B v3 adapter: 1 win (task, +6: 0.85 vs 0.55), 0 losses, 21 ties.
+  - **promql, why (MEASURED counts, thinking on):** G6p makes 36 bash calls and 6 promql
+    calls over the 18 items (G6r 9 and 17; base 1 bash, 22 promql), and 9 items hit the
+    call limit (G6r 1). Asked "What is the desktop GPU's temperature right now?", it runs
+    `nvidia-smi --help` and `man nvidia-smi` instead of querying Prometheus; asked whether
+    the laptop is on AC, it looks up `acpi` and answers with a flag "from memory".
+    INFERENCE: every one of the 200 new records answers a goal by reading bash help, and
+    none uses any other tool, so bash lookup became the reflex for live questions too.
+  - **The think trap, thinking on, all seven sets:** 1 of 959 turns never writes
+    `</think>` (base 0 of 1,206, G6 64 of 911, G6r 24 of 939). G6p does not think at all:
+    958 of 959 turns close `</think>` at once with empty reasoning (G6r 843 of 939).
+  - **rocky_task, thinking on, per item:** G6p loses 8 of base's 13 hits and gains 4
+    (exportfs-9, firewall-cmd-7, ipa-16, rpm-13); G6r lost 8 and gained 1. Mechanical
+    classes: 3 single-flag, 5 other, 0 false denial (G6r 2, 3, 3). By hand: 4 have the
+    new shape, a whole command or steps, but the wrong command (`dnf config-manager
+    --list-repos`, `exportfs -a` where `-r` is needed, `firewall-cmd
+    --runtime-to-permanent`, a 2-step squeue answer about a held job); 2 are v3's
+    one-flag template (`srun -I`; sbatch's option list with `--memory` for `--mem` and no
+    command); 2 hit the call limit (scontrol-1 and -2 look up a nonexistent `snode`). No
+    answer denies a feature; G6r's "`scontrol` does not have a `resume` command" is gone.
+  - task, thinking on: lost 3, gained 6 (G6r lost 5, gained 3). Thinking off: task lost 2,
+    gained 3; rocky_task lost 5, gained 3. All 5 losses open with "Based on \`": 3 give
+    one option as the answer, 2 a one-flag command in a code block.
+  - Shape, task and rocky_task together (40 items, MEASURED by regex): thinking on,
+    answers with a code block 13 (G6r 3, base 32), numbered steps 3 (G6r 0), "Based on \`"
+    27 (G6r 21, base 0); thinking off, code block 16 (G6r 1), "Based on \`" 29 (G6r 29).
+    Many are hybrids: "Based on \`x --help\`, the command is:" followed by a code block.
+  - Reading: the data is a lever. 200 records (17% of the set) turned rocky_task from a
+    loss into a tie, won task against G6r in both modes, and removed the denial answers.
+    The lever is partial: v3's template still writes most task answers, now often wrapped
+    around a whole command (INFERENCE: 544 v3 answers against 200). It is not free: an
+    all-bash data set cost promql. Open, David's call: add live-question records that
+    use the promql tool beside the new ones; rewrite or drop v3's "Based on" answers so
+    the new shape is not outnumbered; or option (2), v4 reasoning traces (G6p, like G6r,
+    leaves thinking-on mode empty).
 
 ### G7: serving on vLLM 0.29 (laptop)
 - Base NVFP4, then base + LoRA, then merge if needed. UNKNOWN:
