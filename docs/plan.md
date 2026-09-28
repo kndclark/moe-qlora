@@ -984,6 +984,90 @@ or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a 
     thinking-on mode something to do. The 24 remaining trapped turns matter only if G6r is
     served.
 
+- **G6p: the data lever, pre-registered 2026-09-28 before training (David approved "do both
+  recommended next steps"; design fixed by the lead).** G6r with v3 plus 200 task-shaped
+  records whose answers are full procedures. Everything else is G6r's: `RENDER=think`,
+  same recipe and guard, same eval, same pass rule.
+  - Why: G6 and G6r lose rocky_task (and task, thinking off) by answering with one flag
+    from `--help` or a false "does not have X" denial (G6R RESULT, read by hand). v3
+    teaches that shape: 544 of its 950 answers contain "Based on \`" (MEASURED). If the
+    data is the lever, records that ask for a goal and answer with a whole command should
+    move the task rows; if they do not move them, the data is not the lever.
+  - Context (MEASURED, `results/g6r-dry.log:8`): 439 of v3's 950 records exceed the
+    1024-token cap. Per record (`probes/g6p_fit.py`, `results/g6p-fit.json`): 436 lose
+    their final answer entirely, 3 keep part of it, 511 keep all of it. On 15 long-help
+    tools training saw almost no answers: none at all for git branch (0 of 20), git tag
+    (0/18), git fetch (0/16), docker compose (0/7), find (0/4); a few for tar (3 of 51),
+    journalctl (3/48), docker run (3/46), grep (2/43), systemctl (1/40), nvidia-smi
+    (3/39), git rebase (1/34), df (4/35), docker build (5/30), git commit (6/26). On each
+    of those ten the kept count equals its number of lookup-failed records, whose tool
+    message is a one-line error (MEASURED counts). INFERENCE from the equal counts: no
+    answer that follows real help text was trained on any of the 15, so G6 and G6r learned
+    the call there but not the answer. Four of them (tar, journalctl, grep, git rebase)
+    are exactly the tools of the eval's seen_tool split.
+  - The same cap shaped G6p's tools (MEASURED, Lightning's tokenizer, g6_train's render):
+    the prompt, tools schema and one call take about 500 tokens, a 3-step answer about
+    105, so only 13 of v3's tools leave room for an answer after their help text, and
+    `git log -h` followed by `man git-log` would need 291 tokens more than the cap allows.
+    The lead's decision (option a): also use other docker, git and cargo subcommands that
+    no eval list names, and let the second call be a sibling subcommand's help instead of
+    a man page; every new record must fit with its whole answer.
+  - Data (MEASURED, `probes/g6p_build.py`, `results/g6p-build.json`,
+    `results/research_dataset_g6p.json`): v3's 950 records unchanged (checked) plus 200
+    new ones = 1,150. 170 hand-written task specs (each spec's first phrasing, plus a
+    second phrasing for 30 drawn with the seed). Help captured on this host with gpu-lab's
+    own `run_cmd` and cut by its `get_observation_for_flag`, as v3's was.
+    - Tools: 69 answering tools: 13 of v3's (docker ps, images, exec, stop; git log,
+      show, status, reset, diff; cargo clean, clippy; free; curl) and 56 other
+      subcommands (27 docker, 20 git, 9 cargo). None is named by any eval list, and none
+      is the tool of any eval item.
+    - Shape: 157 answers are one complete command in a code block with a sentence of
+      reasons, 43 are 2-3 numbered steps with a reason each. 40 of 200 records (20.0%)
+      make a second call because the first help lacks the feature (the builder checks the
+      needed token is absent from the first output and present in the second); none of
+      those answers denies anything.
+    - Openers: 13 templates, the most common on 20 records (10.0%); "Based on \`" and
+      "I checked \`" on 0. Thinking: 67 "off", 133 "default" (v3's ratio, a third off).
+    - Grounded: 200 of 200. Every flag on every answer line is in the captured help text
+      (research_eval's `grounded_token`; stricter than the eval, which also grounds in the
+      man page). No answer line names a flag only to deny it, and research_eval's denial
+      pattern matches no answer.
+    - Contamination (all 478 items of the seven eval sets, as the base runs asked them):
+      0 new records share a tool and flag set with an eval item. Reported, not enforced:
+      on the binary alone, git notes, git revert and git stash records that use only `-m`
+      share that flag with seen_tool's git rebase `--merge`/`-m` item. Word-set Jaccard,
+      new prompt vs eval prompt, max 0.389 (free's committed-memory prompt vs promql's
+      "How much GPU memory is in use..."), under the 0.5 limit.
+    - Fit: new records 553-985 tokens, median 810; 0 over 1024. Final answers 23-98
+      tokens, median 49.
+  - Dry run (MEASURED, `results/g6p-dry.log`): 1,150 records, 439 over the cap (all v3),
+    924,522 tokens after the cap (the fit probe's total agrees), 68,992 trained tokens
+    (G6r 52,110). Parity guard `RENDER=think` PASS: 1,828 of 1,828 boundaries; 453 turns
+    see a longer history (design A's newline; G6r 293). Default path unchanged:
+    `RENDER=think DRY_RUN=1` with no `DATASET` reproduces `results/g6r-dry.log` byte for
+    byte (`results/g6p-dry-v3.log`), and `LABEL=g6r probes/g6_compare.py` rewrites
+    `results/g6r-compare.json` identically.
+  - Run: `DATASET=/out/research_dataset_g6p.json RENDER=think GUARD=hw probes/gpurun.sh
+    g6p-train /probes/attn_bf16.py g6_train.py g6p-train`, then `LABEL=g6p
+    probes/g6_eval.sh results/g6p-train-adapter` and `LABEL=g6p probes/g6_compare.py`
+    (and again with `COMPARE_TO=g6r`). 144 steps per epoch, 288 in all, 9 warmup
+    (ARITHMETIC); about 42 min at G6r's 8.7 s per step (ARITHMETIC, an upper bound since
+    the new records are shorter than v3's median).
+  - **Pass rule, copied from G6r:** WIN held_out, LOSE none of trap, trap_control,
+    no_tool, task, rocky_task, alert, promql; win/loss = hit_and_grounded differs by >4
+    items, else tie; thinking on primary, off secondary, like with like. (As in G6 and
+    G6r, `probes/g6_compare.py` scores each split by its headline metric:
+    hit_and_grounded on flag and task splits, the denial heuristic on traps, over-trigger
+    and correct-where-scorable on no_tool, correct on alert and promql.)
+  - Comparisons: vs base Lightning = the gate. vs G6r (`COMPARE_TO=g6r`) and vs the
+    Qwen3-8B v3 adapter = informative, same verdict rule.
+  - Diagnostics, fixed now: the think trap (thinking-on turns with no `</think>`, all
+    seven sets; base 0 of 1,206, G6 64 of 911, G6r 24 of 939); thinking-on turns with
+    empty reasoning (G6r 843 of 939); for task and rocky_task, each item base hits and
+    G6p misses, classed mechanically as a false denial (research_eval's denial pattern
+    matches the answer), else a single-flag answer (it cites exactly one flag), else
+    other, then read by hand.
+
 ### G7: serving on vLLM 0.29 (laptop)
 - Base NVFP4, then base + LoRA, then merge if needed. UNKNOWN:
   - whether vLLM's nemotron_h supports LoRA on placement A's modules (read the vLLM
