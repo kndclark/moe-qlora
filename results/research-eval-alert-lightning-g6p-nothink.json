@@ -1,0 +1,1016 @@
+{
+ "label": "alert-lightning-g6p-nothink",
+ "set": "alert",
+ "promql_catalog": false,
+ "model": "g6p",
+ "base": "http://127.0.0.1:8303",
+ "tools": true,
+ "thinking": "off",
+ "max_tokens": 512,
+ "max_calls": 3,
+ "temperature": 0.0,
+ "top_p": null,
+ "sample_seed": null,
+ "window": 4000,
+ "seed": 20260923,
+ "limit": 0,
+ "started": "2026-09-28T12:27:50-0600",
+ "elapsed_s": 17.5,
+ "tool_versions": {},
+ "provenance": {
+  "harness_sha256": "a56bfe79b0124860548bdf02f11b72bef3af0fc3ba7429c3fdc4e29e90d45ee5",
+  "server_version": "0.29.0",
+  "served": [
+   {
+    "id": "lightning-nvfp4",
+    "root": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4",
+    "parent": null,
+    "max_model_len": 16384
+   },
+   {
+    "id": "g6p",
+    "root": "/adapter",
+    "parent": "lightning-nvfp4",
+    "max_model_len": null
+   }
+  ]
+ },
+ "summary": {
+  "alert": {
+   "n": 9,
+   "any_call": 1.0,
+   "answered": 0.444,
+   "mean_calls": 3.0,
+   "status": {
+    "answered": 4,
+    "call_limit": 5
+   },
+   "calls_refused": 6,
+   "calls_web": 0,
+   "valid": 0.222,
+   "correct": 0.222,
+   "claims_unrun_lookup": 0.0
+  }
+ },
+ "results": [
+  {
+   "id": "alert-BatteryLowOnBattery",
+   "split": "alert",
+   "alertname": "BatteryLowOnBattery",
+   "question": "Write a Prometheus alerting rule named BatteryLowOnBattery that fires immediately when gpulab_battery_capacity_percent is below 20 and gpulab_ac_online is 0 on the same node.",
+   "series": [
+    [
+     "gpulab_battery_capacity_percent{node=\"laptop\"}",
+     "50x5 15x10"
+    ],
+    [
+     "gpulab_ac_online{node=\"laptop\"}",
+     "1x8 0x7"
+    ]
+   ],
+   "checks": [
+    [
+     "7m",
+     false
+    ],
+    [
+     "10m",
+     true
+    ]
+   ],
+   "run": {
+    "status": "answered",
+    "final": "I couldn't check the documentation: `man prometheus-alertmanager.yml` does not exist, and `man prometheus.yml` does not exist. So this is from memory and unverified; please confirm it with the man pages before relying on it.\n\nHere is the rule:\n\n```yaml\ngroups:\n  - name: gpu-power\n    rules:\n      - id: BatteryLowOnBattery\n        alert: BatteryLowOnBattery\n        expr: gpulab_battery_capacity_percent < 20 and gpulab_ac_online == 0\n        for: 0s\n```\n\n`for: 0s` makes it fire immediately on the first sample that matches.",
+    "calls": [
+     {
+      "outcome": "executed",
+      "argv": [
+       "man",
+       "prometheus-alertmanager.yml"
+      ],
+      "chars": 48,
+      "truncated": false,
+      "name": "bash",
+      "args": {
+       "command": "man prometheus-alertmanager.yml"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "executed",
+      "argv": [
+       "man",
+       "prometheus.yml"
+      ],
+      "chars": 35,
+      "truncated": false,
+      "name": "bash",
+      "args": {
+       "command": "man prometheus.yml"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "executed",
+      "argv": [
+       "man",
+       "promtool"
+      ],
+      "chars": 29,
+      "truncated": false,
+      "name": "bash",
+      "args": {
+       "command": "man promtool"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 449,
+      "completion_tokens": 30,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nman prometheus-alertmanager.yml\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 506,
+      "completion_tokens": 27,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nman prometheus.yml\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 557,
+      "completion_tokens": 26,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nman promtool\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 606,
+      "completion_tokens": 145,
+      "finish_reason": "stop",
+      "text": "I couldn't check the documentation: `man prometheus-alertmanager.yml` does not exist, and `man prometheus.yml` does not exist. So this is from memory and unverified; please confirm it with the man pages before relying on it.\n\nHere is the rule:\n\n```yaml\ngroups:\n  - name: gpu-power\n    rules:\n      - id: BatteryLowOnBattery\n        alert: BatteryLowOnBattery\n        expr: gpulab_battery_capacity_percent < 20 and gpulab_ac_online == 0\n        for: 0s\n```\n\n`for: 0s` makes it fire immediately on the first sample that matches."
+     }
+    ]
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 3,
+    "answered": true,
+    "valid": false,
+    "correct": false,
+    "checks": [],
+    "claims_unrun_lookup": false
+   }
+  },
+  {
+   "id": "alert-DataDiskAlmostFull",
+   "split": "alert",
+   "alertname": "DataDiskAlmostFull",
+   "question": "Write a Prometheus alerting rule named DataDiskAlmostFull that fires when node_filesystem_avail_bytes divided by node_filesystem_size_bytes is below 0.1 for the /data mountpoint only, for 5 minutes.",
+   "series": [
+    [
+     "node_filesystem_avail_bytes{mountpoint=\"/data\"}",
+     "500x5 50x15"
+    ],
+    [
+     "node_filesystem_size_bytes{mountpoint=\"/data\"}",
+     "1000x20"
+    ],
+    [
+     "node_filesystem_avail_bytes{mountpoint=\"/\"}",
+     "50x20"
+    ],
+    [
+     "node_filesystem_size_bytes{mountpoint=\"/\"}",
+     "1000x20"
+    ]
+   ],
+   "checks": [
+    [
+     "9m",
+     false
+    ],
+    [
+     "14m",
+     true
+    ]
+   ],
+   "run": {
+    "status": "answered",
+    "final": "I couldn't check the documentation: `man prometheus` has no entry, and `man promtool` has none either. So this is from memory and unverified; please confirm it with `promtool check rules --help` before relying on it.\n\nHere is the rule:\n\n```yaml\ngroups:\n  - name: disk\n    rules:\n      - alert: DataDiskAlmostFull\n        expr: (node_filesystem_avail_bytes{mountpoint=\"/data\"} / node_filesystem_size_bytes{mountpoint=\"/data\"}) < 0.1\n        for: 5m\n```\n\n`promtool check rules` will verify the syntax.",
+    "calls": [
+     {
+      "outcome": "executed",
+      "argv": [
+       "man",
+       "prometheus"
+      ],
+      "chars": 31,
+      "truncated": false,
+      "name": "bash",
+      "args": {
+       "command": "man prometheus"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "executed",
+      "argv": [
+       "man",
+       "alertmanager"
+      ],
+      "chars": 33,
+      "truncated": false,
+      "name": "bash",
+      "args": {
+       "command": "man alertmanager"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "executed",
+      "argv": [
+       "man",
+       "promtool"
+      ],
+      "chars": 29,
+      "truncated": false,
+      "name": "bash",
+      "args": {
+       "command": "man promtool"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 452,
+      "completion_tokens": 26,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nman prometheus\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 501,
+      "completion_tokens": 26,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nman alertmanager\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 550,
+      "completion_tokens": 26,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nman promtool\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 599,
+      "completion_tokens": 136,
+      "finish_reason": "stop",
+      "text": "I couldn't check the documentation: `man prometheus` has no entry, and `man promtool` has none either. So this is from memory and unverified; please confirm it with `promtool check rules --help` before relying on it.\n\nHere is the rule:\n\n```yaml\ngroups:\n  - name: disk\n    rules:\n      - alert: DataDiskAlmostFull\n        expr: (node_filesystem_avail_bytes{mountpoint=\"/data\"} / node_filesystem_size_bytes{mountpoint=\"/data\"}) < 0.1\n        for: 5m\n```\n\n`promtool check rules` will verify the syntax."
+     }
+    ]
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 3,
+    "answered": true,
+    "valid": true,
+    "correct": true,
+    "checks": [
+     {
+      "at": "9m",
+      "want": false,
+      "fired": false,
+      "error": false
+     },
+     {
+      "at": "14m",
+      "want": true,
+      "fired": true,
+      "error": false
+     }
+    ],
+    "claims_unrun_lookup": false
+   }
+  },
+  {
+   "id": "alert-GPUHot",
+   "split": "alert",
+   "alertname": "GPUHot",
+   "question": "Write a Prometheus alerting rule named GPUHot that fires when gpulab_gpu_temperature_celsius on any node stays above 85 for 5 minutes.",
+   "series": [
+    [
+     "gpulab_gpu_temperature_celsius{node=\"desktop\"}",
+     "70x10 90x20"
+    ]
+   ],
+   "checks": [
+    [
+     "14m",
+     false
+    ],
+    [
+     "20m",
+     true
+    ]
+   ],
+   "run": {
+    "status": "call_limit",
+    "final": null,
+    "calls": [
+     {
+      "outcome": "executed",
+      "argv": [
+       "man",
+       "prometheus"
+      ],
+      "chars": 31,
+      "truncated": false,
+      "name": "bash",
+      "args": {
+       "command": "man prometheus"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "promtool --help"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "executed",
+      "argv": [
+       "man",
+       "prometheus-alertmanager"
+      ],
+      "chars": 44,
+      "truncated": false,
+      "name": "bash",
+      "args": {
+       "command": "man prometheus-alertmanager"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 439,
+      "completion_tokens": 26,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nman prometheus\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 488,
+      "completion_tokens": 27,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\npromtool --help\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 569,
+      "completion_tokens": 29,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nman prometheus-alertmanager\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 624,
+      "completion_tokens": 27,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nman prometheus.yml\n</parameter>\n</function>\n</tool_call>\n"
+     }
+    ]
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 3,
+    "answered": false,
+    "valid": false,
+    "correct": false,
+    "checks": [],
+    "claims_unrun_lookup": false
+   }
+  },
+  {
+   "id": "alert-GPUMemoryNearlyFull",
+   "split": "alert",
+   "alertname": "GPUMemoryNearlyFull",
+   "question": "Write a Prometheus alerting rule named GPUMemoryNearlyFull that fires when gpulab_gpu_memory_used_mib divided by gpulab_gpu_memory_total_mib, per node, exceeds 0.95 for 10 minutes.",
+   "series": [
+    [
+     "gpulab_gpu_memory_used_mib{node=\"laptop\"}",
+     "20000x5 24000x20"
+    ],
+    [
+     "gpulab_gpu_memory_total_mib{node=\"laptop\"}",
+     "24576x25"
+    ]
+   ],
+   "checks": [
+    [
+     "14m",
+     false
+    ],
+    [
+     "18m",
+     true
+    ]
+   ],
+   "run": {
+    "status": "answered",
+    "final": "I couldn't check the documentation: `man prometheus-alert-rules` has no entry and `prometheus-alert-rules --help` was rejected. So this is from memory and unverified; please confirm it with `prometheus-alert-rules --help` before relying on it.\n\nHere is the rule based on the Prometheus alerting rule syntax:\n\n```yaml\ngroups:\n  - name: gpu\n    rules:\n      - alert: GPUMemoryNearlyFull\n        expr: (gpulab_gpu_memory_used_mib / gpulab_gpu_memory_total_mib) > 0.95\n        for: 10m\n```\n\nThe expression evaluates the ratio per node (the `by (node)` clause is implicit when both metrics share the same label set), and `for: 10m` requires the condition to hold continuously for ten minutes before firing.",
+    "calls": [
+     {
+      "outcome": "executed",
+      "argv": [
+       "man",
+       "prometheus-alert-rules"
+      ],
+      "chars": 43,
+      "truncated": false,
+      "name": "bash",
+      "args": {
+       "command": "man prometheus-alert-rules"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "prometheus-alert-rules --help"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "executed",
+      "argv": [
+       "man",
+       "prometheus.yml"
+      ],
+      "chars": 35,
+      "truncated": false,
+      "name": "bash",
+      "args": {
+       "command": "man prometheus.yml"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 457,
+      "completion_tokens": 30,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nman prometheus-alert-rules\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 514,
+      "completion_tokens": 31,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nprometheus-alert-rules --help\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 599,
+      "completion_tokens": 27,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nman prometheus.yml\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 650,
+      "completion_tokens": 189,
+      "finish_reason": "stop",
+      "text": "I couldn't check the documentation: `man prometheus-alert-rules` has no entry and `prometheus-alert-rules --help` was rejected. So this is from memory and unverified; please confirm it with `prometheus-alert-rules --help` before relying on it.\n\nHere is the rule based on the Prometheus alerting rule syntax:\n\n```yaml\ngroups:\n  - name: gpu\n    rules:\n      - alert: GPUMemoryNearlyFull\n        expr: (gpulab_gpu_memory_used_mib / gpulab_gpu_memory_total_mib) > 0.95\n        for: 10m\n```\n\nThe expression evaluates the ratio per node (the `by (node)` clause is implicit when both metrics share the same label set), and `for: 10m` requires the condition to hold continuously for ten minutes before firing."
+     }
+    ]
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 3,
+    "answered": true,
+    "valid": true,
+    "correct": true,
+    "checks": [
+     {
+      "at": "14m",
+      "want": false,
+      "fired": false,
+      "error": false
+     },
+     {
+      "at": "18m",
+      "want": true,
+      "fired": true,
+      "error": false
+     }
+    ],
+    "claims_unrun_lookup": false
+   }
+  },
+  {
+   "id": "alert-GPUMetricsAbsent",
+   "split": "alert",
+   "alertname": "GPUMetricsAbsent",
+   "question": "Write a Prometheus alerting rule named GPUMetricsAbsent that fires when no gpulab_gpu_temperature_celsius series exists at all for 5 minutes.",
+   "series": [
+    [
+     "gpulab_gpu_temperature_celsius{node=\"desktop\"}",
+     "70x5 _x25"
+    ]
+   ],
+   "checks": [
+    [
+     "8m",
+     false
+    ],
+    [
+     "22m",
+     true
+    ]
+   ],
+   "run": {
+    "status": "call_limit",
+    "final": null,
+    "calls": [
+     {
+      "outcome": "executed",
+      "argv": [
+       "man",
+       "prometheus-alertmanager.yml"
+      ],
+      "chars": 48,
+      "truncated": false,
+      "name": "bash",
+      "args": {
+       "command": "man prometheus-alertmanager.yml"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "executed",
+      "argv": [
+       "man",
+       "prometheus.yml"
+      ],
+      "chars": 35,
+      "truncated": false,
+      "name": "bash",
+      "args": {
+       "command": "man prometheus.yml"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "prometheus-alertmanager.yml --help"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 439,
+      "completion_tokens": 30,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nman prometheus-alertmanager.yml\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 496,
+      "completion_tokens": 27,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nman prometheus.yml\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 547,
+      "completion_tokens": 31,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nprometheus-alertmanager.yml --help\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 632,
+      "completion_tokens": 28,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nprometheus.yml --help\n</parameter>\n</function>\n</tool_call>\n"
+     }
+    ]
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 3,
+    "answered": false,
+    "valid": false,
+    "correct": false,
+    "checks": [],
+    "claims_unrun_lookup": false
+   }
+  },
+  {
+   "id": "alert-GPUThrottling",
+   "split": "alert",
+   "alertname": "GPUThrottling",
+   "question": "Write a Prometheus alerting rule named GPUThrottling that fires when gpulab_gpu_throttle_active is 1 for 3 minutes.",
+   "series": [
+    [
+     "gpulab_gpu_throttle_active{node=\"laptop\"}",
+     "0x5 1x10"
+    ]
+   ],
+   "checks": [
+    [
+     "7m",
+     false
+    ],
+    [
+     "10m",
+     true
+    ]
+   ],
+   "run": {
+    "status": "call_limit",
+    "final": null,
+    "calls": [
+     {
+      "outcome": "executed",
+      "argv": [
+       "man",
+       "prometheus-alertmanager.yml"
+      ],
+      "chars": 48,
+      "truncated": false,
+      "name": "bash",
+      "args": {
+       "command": "man prometheus-alertmanager.yml"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "executed",
+      "argv": [
+       "man",
+       "prometheus.yml"
+      ],
+      "chars": 35,
+      "truncated": false,
+      "name": "bash",
+      "args": {
+       "command": "man prometheus.yml"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "executed",
+      "argv": [
+       "man",
+       "prometheus"
+      ],
+      "chars": 31,
+      "truncated": false,
+      "name": "bash",
+      "args": {
+       "command": "man prometheus"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 436,
+      "completion_tokens": 30,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nman prometheus-alertmanager.yml\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 493,
+      "completion_tokens": 27,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nman prometheus.yml\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 544,
+      "completion_tokens": 26,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nman prometheus\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 593,
+      "completion_tokens": 27,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nprometheus --help\n</parameter>\n</function>\n</tool_call>\n"
+     }
+    ]
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 3,
+    "answered": false,
+    "valid": false,
+    "correct": false,
+    "checks": [],
+    "claims_unrun_lookup": false
+   }
+  },
+  {
+   "id": "alert-HighPowerDraw",
+   "split": "alert",
+   "alertname": "HighPowerDraw",
+   "question": "Write a Prometheus alerting rule named HighPowerDraw that fires as soon as the average of gpulab_gpu_power_watts over the last 5 minutes is above 300.",
+   "series": [
+    [
+     "gpulab_gpu_power_watts{node=\"desktop\"}",
+     "100x5 350x10"
+    ]
+   ],
+   "checks": [
+    [
+     "7m",
+     false
+    ],
+    [
+     "11m",
+     true
+    ]
+   ],
+   "run": {
+    "status": "answered",
+    "final": "I couldn't check the documentation: `man prometheus-alert-rules` has no entry and `prometheus-alert-rules --help` is not supported. So this is from memory and unverified; please confirm it with `prometheus-alert-rules --help` before relying on it.\n\nBased on the Prometheus alerting rules syntax, the rule is:\n\n```yaml\ngroups:\n  - name: gpu\n    rules:\n      - id: HighPowerDraw\n        expr: avg_over_time(gpulab_gpu_power_watts[5m]) > 300\n        for: 0s\n        labels:\n          severity: critical\n        annotations:\n          summary: \"GPU power draw is too high\"\n```\n\n`avg_over_time(gpulab_gpu_power_watts[5m])` averages the samples collected in the last 5 minutes, and `for: 0s` makes the alert fire immediately when that average exceeds 300.",
+    "calls": [
+     {
+      "outcome": "executed",
+      "argv": [
+       "man",
+       "prometheus-alert-rules"
+      ],
+      "chars": 43,
+      "truncated": false,
+      "name": "bash",
+      "args": {
+       "command": "man prometheus-alert-rules"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "prometheus-alert-rules --help"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "executed",
+      "argv": [
+       "man",
+       "prometheus.yml"
+      ],
+      "chars": 35,
+      "truncated": false,
+      "name": "bash",
+      "args": {
+       "command": "man prometheus.yml"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 445,
+      "completion_tokens": 30,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nman prometheus-alert-rules\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 502,
+      "completion_tokens": 31,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nprometheus-alert-rules --help\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 587,
+      "completion_tokens": 27,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nman prometheus.yml\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 638,
+      "completion_tokens": 207,
+      "finish_reason": "stop",
+      "text": "I couldn't check the documentation: `man prometheus-alert-rules` has no entry and `prometheus-alert-rules --help` is not supported. So this is from memory and unverified; please confirm it with `prometheus-alert-rules --help` before relying on it.\n\nBased on the Prometheus alerting rules syntax, the rule is:\n\n```yaml\ngroups:\n  - name: gpu\n    rules:\n      - id: HighPowerDraw\n        expr: avg_over_time(gpulab_gpu_power_watts[5m]) > 300\n        for: 0s\n        labels:\n          severity: critical\n        annotations:\n          summary: \"GPU power draw is too high\"\n```\n\n`avg_over_time(gpulab_gpu_power_watts[5m])` averages the samples collected in the last 5 minutes, and `for: 0s` makes the alert fire immediately when that average exceeds 300."
+     }
+    ]
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 3,
+    "answered": true,
+    "valid": false,
+    "correct": false,
+    "checks": [],
+    "claims_unrun_lookup": false
+   }
+  },
+  {
+   "id": "alert-ScrapeFlapping",
+   "split": "alert",
+   "alertname": "ScrapeFlapping",
+   "question": "Write a Prometheus alerting rule named ScrapeFlapping that fires as soon as any target's up metric has changed value more than 3 times in the last 10 minutes.",
+   "series": [
+    [
+     "up{job=\"gpu\",instance=\"b:9835\"}",
+     "1 0 1 0 1 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1"
+    ]
+   ],
+   "checks": [
+    [
+     "7m",
+     true
+    ],
+    [
+     "20m",
+     false
+    ]
+   ],
+   "run": {
+    "status": "call_limit",
+    "final": null,
+    "calls": [
+     {
+      "outcome": "executed",
+      "argv": [
+       "man",
+       "prometheus-alertmanager.yml"
+      ],
+      "chars": 48,
+      "truncated": false,
+      "name": "bash",
+      "args": {
+       "command": "man prometheus-alertmanager.yml"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "executed",
+      "argv": [
+       "man",
+       "prometheus.yml"
+      ],
+      "chars": 35,
+      "truncated": false,
+      "name": "bash",
+      "args": {
+       "command": "man prometheus.yml"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "prometheus.yml --help"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 442,
+      "completion_tokens": 30,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nman prometheus-alertmanager.yml\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 499,
+      "completion_tokens": 27,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nman prometheus.yml\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 550,
+      "completion_tokens": 28,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nprometheus.yml --help\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 632,
+      "completion_tokens": 31,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nprometheus-alertmanager.yml --help\n</parameter>\n</function>\n</tool_call>\n"
+     }
+    ]
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 3,
+    "answered": false,
+    "valid": false,
+    "correct": false,
+    "checks": [],
+    "claims_unrun_lookup": false
+   }
+  },
+  {
+   "id": "alert-TargetDown",
+   "split": "alert",
+   "alertname": "TargetDown",
+   "question": "Write a Prometheus alerting rule named TargetDown that fires when any scrape target's up metric has been 0 for 2 minutes.",
+   "series": [
+    [
+     "up{job=\"vllm\",instance=\"a:8000\"}",
+     "1x5 0x10"
+    ],
+    [
+     "up{job=\"gpu\",instance=\"b:9835\"}",
+     "1x15"
+    ]
+   ],
+   "checks": [
+    [
+     "7m",
+     false
+    ],
+    [
+     "10m",
+     true
+    ]
+   ],
+   "run": {
+    "status": "call_limit",
+    "final": null,
+    "calls": [
+     {
+      "outcome": "executed",
+      "argv": [
+       "man",
+       "prometheus.yml"
+      ],
+      "chars": 35,
+      "truncated": false,
+      "name": "bash",
+      "args": {
+       "command": "man prometheus.yml"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "executed",
+      "argv": [
+       "man",
+       "prometheus"
+      ],
+      "chars": 31,
+      "truncated": false,
+      "name": "bash",
+      "args": {
+       "command": "man prometheus"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "prometheus --help"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 432,
+      "completion_tokens": 27,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nman prometheus.yml\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 483,
+      "completion_tokens": 26,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nman prometheus\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 532,
+      "completion_tokens": 27,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nprometheus --help\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 613,
+      "completion_tokens": 26,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nman alerting\n</parameter>\n</function>\n</tool_call>\n"
+     }
+    ]
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 3,
+    "answered": false,
+    "valid": false,
+    "correct": false,
+    "checks": [],
+    "claims_unrun_lookup": false
+   }
+  }
+ ]
+}
