@@ -42,6 +42,8 @@ prints it for both renders, and RENDER=think will not train if it fails.
 Run (laptop):
   probes/gpurun.sh g6-train /probes/attn_bf16.py g6_train.py g6-train
   RENDER=think GUARD=hw probes/gpurun.sh g6r-train /probes/attn_bf16.py g6_train.py g6r-train
+  DATASET=/out/<file>.json trains on another file (a container path; /out is results/);
+  unset, it is v3, as G6 and G6r ran.
   DRY_RUN=1 renders and masks the data, prints samples and stops before loading the model.
 Output: /out/<label>-adapter/ (checkpoint-N per epoch, final adapter at the top),
 /out/<label>.json (rewritten every step).
@@ -71,7 +73,7 @@ GUARD = os.environ.get("GUARD", "g5")
 RENDER = os.environ.get("RENDER", "g6")
 if RENDER not in ("g6", "think"):
     sys.exit(f"RENDER must be g6 or think, not {RENDER}")
-DATASET = "/gpulab/training/research_dataset_v3.json"
+DATASET = os.environ.get("DATASET") or "/gpulab/training/research_dataset_v3.json"
 TARGETS = r".*\.mixer\.(q_proj|k_proj|v_proj|o_proj|in_proj)$|.*\.mixer\.shared_experts\.(up_proj|down_proj)$"
 EPOCHS, LR, PER_STEP, MAX_LEN, RANK, SEED = 2, 1e-4, 8, 1024, 16, 0
 OUT = f"/out/{label}-adapter"
