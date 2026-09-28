@@ -32,8 +32,16 @@ Thermal guard: route1.Sampler, as in G5 unless GUARD says otherwise:
             its own 87 C target) is counted, not fatal
 The guard stops the run between optimizer steps; the adapter so far is saved as -partial.
 
+Render: RENDER=g6 (default) is G6 as run. RENDER=think is G6r (plan.md "G6R"): default
+records start each assistant turn with "<think>\n" masked, as the thinking-on prompt ends,
+and train "</think>" + content; "off" records are unchanged. One sequence per record, so
+history turns read "<think>\n</think>" where the server sends "<think></think>" (design A,
+David 2026-09-27). parity() checks every trained turn against the server's prompt; DRY_RUN
+prints it for both renders, and RENDER=think will not train if it fails.
+
 Run (laptop):
   probes/gpurun.sh g6-train /probes/attn_bf16.py g6_train.py g6-train
+  RENDER=think GUARD=hw probes/gpurun.sh g6r-train /probes/attn_bf16.py g6_train.py g6r-train
   DRY_RUN=1 renders and masks the data, prints samples and stops before loading the model.
 Output: /out/<label>-adapter/ (checkpoint-N per epoch, final adapter at the top),
 /out/<label>.json (rewritten every step).
@@ -60,6 +68,9 @@ from transformers import AutoTokenizer, get_cosine_schedule_with_warmup  # noqa:
 label = sys.argv[1]
 DRY = os.environ.get("DRY_RUN") == "1"
 GUARD = os.environ.get("GUARD", "g5")
+RENDER = os.environ.get("RENDER", "g6")
+if RENDER not in ("g6", "think"):
+    sys.exit(f"RENDER must be g6 or think, not {RENDER}")
 DATASET = "/gpulab/training/research_dataset_v3.json"
 TARGETS = r".*\.mixer\.(q_proj|k_proj|v_proj|o_proj|in_proj)$|.*\.mixer\.shared_experts\.(up_proj|down_proj)$"
 EPOCHS, LR, PER_STEP, MAX_LEN, RANK, SEED = 2, 1e-4, 8, 1024, 16, 0
@@ -75,6 +86,12 @@ im_end = im_end[0]
 empty_think = "<think>\n\n</think>\n\n"
 empty_think_ids = tok.encode(empty_think, add_special_tokens=False)
 lightning_empty_think = tok.encode("<think></think>", add_special_tokens=False)
+# RENDER=think (G6r): the thinking-on generation prompt ends "<|im_start|>assistant\n<think>\n",
+# so default records get that opening masked as prompt and train "</think>" + content.
+# G6 trained "<think></think>" + content from "assistant\n", a point the server's prompt
+# has already passed.
+think_open = "<think>\n"
+think_open_ids = tok.encode(think_open, add_special_tokens=False)
 
 
 def lightning_messages(msgs):
@@ -95,7 +112,7 @@ def lightning_messages(msgs):
     return out
 
 
-def encode(record):
+def encode(record, how="g6"):
     text = tok.apply_chat_template(lightning_messages(record["messages"]), tools=TOOLS, tokenize=False)
     off = record.get("thinking") == "off"
     inserted = 0
@@ -104,20 +121,28 @@ def encode(record):
         text = text.replace("<|im_start|>assistant\n<tool_call>",
                             "<|im_start|>assistant\n" + empty_think + "<tool_call>")
         inserted = (len(text) - len(before)) // len(empty_think)
+    elif how == "think":
+        # Every turn, the history ones too: one sequence per record (design A), so earlier
+        # turns read "<think>\n</think>" where the server's history has "<think></think>".
+        text = text.replace("<|im_start|>assistant\n<think></think>",
+                            "<|im_start|>assistant\n" + think_open + "</think>")
     ids = tok(text, truncation=True, max_length=MAX_LEN, add_special_tokens=False)["input_ids"]
     full_len = len(tok(text, add_special_tokens=False)["input_ids"])
     labels = [-100] * len(ids)
     masked_think = 0
+    turns = []  # (assistant header position, first trained position) per turn
     i = 0
     while i < len(ids):
         if ids[i:i + len(assistant_header)] == assistant_header:
             start = i + len(assistant_header)
-            if off:
-                for pre in (empty_think_ids, lightning_empty_think):
-                    if ids[start:start + len(pre)] == pre:
-                        start += len(pre)
-                        masked_think += 1
-                        break
+            pres = ((empty_think_ids, lightning_empty_think) if off
+                    else (think_open_ids,) if how == "think" else ())
+            for pre in pres:
+                if ids[start:start + len(pre)] == pre:
+                    start += len(pre)
+                    masked_think += 1
+                    break
+            turns.append((i, start))
             end = start
             while end < len(ids) and ids[end] != im_end:
                 end += 1
@@ -129,10 +154,48 @@ def encode(record):
         else:
             i += 1
     return {"ids": ids, "labels": labels, "truncated": full_len > MAX_LEN, "inserted": inserted,
-            "masked_think": masked_think, "thinking": record.get("thinking")}
+            "masked_think": masked_think, "thinking": record.get("thinking"), "turns": turns}
 
 
-data = [encode(r) for r in records]
+def parity(recs, encoded):
+    """For every trained turn, the tokens before its trained span against the prompt the
+    eval server builds for that turn: bench/research_eval.py sends back the history (visible
+    text + tool call, never reasoning) and asks for add_generation_prompt with
+    enable_thinking on, or off for "off" records. The boundary (header to first trained
+    token) must match on every turn; history differences before it are counted.
+    """
+    st = {"turns": 0, "cut": 0, "boundary_ok": 0, "boundary_bad": 0, "exact": 0,
+          "history_diff_turns": 0, "history_diff_tokens": 0, "bad_examples": []}
+    for rec, d in zip(recs, encoded):
+        msgs = lightning_messages(rec["messages"])
+        ks = [j for j, m in enumerate(msgs) if m["role"] == "assistant"]
+        for k, (h, start) in zip(ks, d["turns"]):
+            st["turns"] += 1
+            if start >= len(d["ids"]):  # truncation cut the turn before anything is trained
+                st["cut"] += 1
+                continue
+            srv = tok(tok.apply_chat_template(msgs[:k], tools=TOOLS, tokenize=False, add_generation_prompt=True,
+                                              enable_thinking=rec.get("thinking") != "off"),
+                      add_special_tokens=False)["input_ids"]
+            pre = d["ids"][:start]
+            sh = max(j for j in range(len(srv)) if srv[j:j + len(assistant_header)] == assistant_header)
+            if srv[sh:] == pre[h:]:
+                st["boundary_ok"] += 1
+            else:
+                st["boundary_bad"] += 1
+                if len(st["bad_examples"]) < 3:
+                    st["bad_examples"].append({"record": rec.get("id", recs.index(rec)), "turn": k,
+                                               "server": tok.decode(srv[sh:]), "train": tok.decode(pre[h:])})
+            if srv == pre:
+                st["exact"] += 1
+            elif srv[:sh] != pre[:h]:
+                st["history_diff_turns"] += 1
+                st["history_diff_tokens"] += len(pre[:h]) - len(srv[:sh])
+    st["pass"] = st["boundary_bad"] == 0 and st["boundary_ok"] > 0
+    return st
+
+
+data = [encode(r, RENDER) for r in records]
 n_items = [sum(l != -100 for l in d["labels"]) for d in data]
 lens = sorted(len(d["ids"]) for d in data)
 res = {"label": label, "model": REPO, "revision": REV, "dataset": DATASET, "guard": GUARD,
@@ -146,8 +209,10 @@ res = {"label": label, "model": REPO, "revision": REV, "dataset": DATASET, "guar
                 "off_records": sum(d["thinking"] == "off" for d in data),
                 "off_records_with_insert": sum(d["thinking"] == "off" and d["inserted"] > 0 for d in data),
                 "off_records_think_masked": sum(d["masked_think"] > 0 for d in data if d["thinking"] == "off"),
-                "off_think_blocks_masked": sum(d["masked_think"] for d in data),
-                "empty_think_ids": empty_think_ids, "assistant_header_ids": assistant_header}}
+                "off_think_blocks_masked": sum(d["masked_think"] for d in data if d["thinking"] == "off"),
+                "default_think_open_masked": sum(d["masked_think"] for d in data if d["thinking"] != "off"),
+                "empty_think_ids": empty_think_ids, "assistant_header_ids": assistant_header},
+       "render": RENDER}
 
 
 def show(d, width=1600):
@@ -164,12 +229,22 @@ def show(d, width=1600):
     return "".join(out)[-width:]
 
 
+if RENDER == "think" or DRY:
+    res["parity"] = parity(records, data)
 if DRY:
     print(json.dumps(res["data"], indent=1))
     for mode in ("default", "off"):
         d = next(d for d in data if d["thinking"] == mode and not d["truncated"])
         print(f"\n===== thinking={mode} (last 1600 chars; [[masked]])\n{show(d)}")
+    # Trap fixture: the other render's guard too. G6's must FAIL (its default records train
+    # from "assistant\n"), the think render's must PASS.
+    other = "g6" if RENDER == "think" else "think"
+    for how, st in ((RENDER, res["parity"]), (other, parity(records, [encode(r, other) for r in records]))):
+        print(f"\n===== parity guard, RENDER={how}{' (this run)' if how == RENDER else ''}: "
+              f"{'PASS' if st['pass'] else 'FAIL'}\n{json.dumps(st, indent=1)}")
     sys.exit(0)
+if RENDER == "think" and not res["parity"]["pass"]:
+    sys.exit(f"parity guard FAILED, not training:\n{json.dumps(res['parity'], indent=1)}")
 
 lean_scan.install()
 chunked_ce.install(int(os.environ.get("CE_CHUNK", "256")))

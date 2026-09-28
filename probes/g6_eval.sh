@@ -9,16 +9,18 @@
 # (first attempt, results/g6-eval-attempt1-unpatched-harness.log). Its --selfcheck gates the run.
 # Existing outputs are skipped, so a rerun resumes. The promql set asks the desktop's
 # Prometheus over the direct link; it is skipped, and says so, if the link is down.
-# usage: g6_eval.sh ADAPTER_DIR
+# usage: [LABEL=g6r] g6_eval.sh ADAPTER_DIR   LABEL names the adapter and its outputs
+# (default g6, G6 as run); base outputs keep their names, so a new LABEL reuses them.
 set -u
 adapter=$(realpath "$1")
 here=$(cd "$(dirname "$0")/.." && pwd)
 out=$here/results
-name=g6-eval
+LABEL=${LABEL:-g6}
+name=$LABEL-eval
 B=http://127.0.0.1:8303
 python3 "$here/probes/g7a_eval.py" --selfcheck | tail -1 | grep -qx "selfcheck PASS" || { echo "g7a_eval.py --selfcheck failed"; exit 4; }
 restore() {
-  docker logs "$name" > "$out/g6-eval-serve.log" 2>&1 || true
+  docker logs "$name" > "$out/$LABEL-eval-serve.log" 2>&1 || true
   docker rm -f "$name" >/dev/null 2>&1
   echo performance | sudo -n tee /sys/firmware/acpi/platform_profile >/dev/null
   echo "profile: $(cat /sys/firmware/acpi/platform_profile)"
@@ -32,7 +34,7 @@ docker run -d --name "$name" --gpus all --ipc=host -p 127.0.0.1:8303:8000 \
   --revision bee7596271d1495f6992ae224aefde4410e816b8 --served-model-name lightning-nvfp4 \
   --kv-cache-dtype fp8 --mamba-cache-mode align --moe-backend marlin \
   --max-model-len 16384 --max-num-seqs 16 --gpu-memory-utilization 0.85 --enforce-eager \
-  --enable-lora --max-lora-rank 16 --max-loras 1 --lora-modules g6=/adapter >/dev/null || exit 1
+  --enable-lora --max-lora-rank 16 --max-loras 1 --lora-modules "$LABEL=/adapter" >/dev/null || exit 1
 t0=$(date +%s)
 until curl -sf $B/health >/dev/null; do
   if [ "$(docker inspect -f '{{.State.Running}}' "$name" 2>/dev/null)" != true ]; then
@@ -55,16 +57,16 @@ run() {  # label model thinking max_tokens set [extra...]
   echo "  $label: exit $?, $(( $(date +%s)-t ))s"
 }
 sets=(v1:v1 v2:v2 rocky:rocky promqlcat:promql general:general alert:alert trap3:trap3)
-for mode in g6-think base-think g6-nothink; do
+for mode in adapter-think base-think adapter-nothink; do
   echo "== $mode"
   for s in "${sets[@]}"; do
     tag=${s%%:*} set=${s##*:} extra=()
     [ "$tag" = promqlcat ] && extra=(--promql-catalog)
     case $mode in
-      g6-think)   run "$tag-lightning-g6-think-4k" g6 on 4096 "$set" "${extra[@]}" ;;
-      base-think) l="$tag-lightning-think-4k"; [ "$tag" = v1 ] && l=v1-lightning-think-4k-g6srv
-                  run "$l" lightning-nvfp4 on 4096 "$set" "${extra[@]}" ;;
-      g6-nothink) run "$tag-lightning-g6-nothink" g6 off 512 "$set" "${extra[@]}" ;;
+      adapter-think)   run "$tag-lightning-$LABEL-think-4k" "$LABEL" on 4096 "$set" "${extra[@]}" ;;
+      base-think)      l="$tag-lightning-think-4k"; [ "$tag" = v1 ] && l=v1-lightning-think-4k-g6srv
+                       run "$l" lightning-nvfp4 on 4096 "$set" "${extra[@]}" ;;
+      adapter-nothink) run "$tag-lightning-$LABEL-nothink" "$LABEL" off 512 "$set" "${extra[@]}" ;;
     esac
   done
 done

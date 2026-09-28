@@ -13,13 +13,16 @@ trap, trap_control, no_tool, task, rocky_task, alert, promql. Thinking off is re
 same way, descriptively. Also reported: base v1 on the G6 server (vLLM with LoRA enabled)
 against G7a's base v1, as a check that serving with LoRA on leaves base unchanged.
 
-usage: g6_compare.py [RESULTS_DIR]   writes RESULTS_DIR/g6-compare.json
+usage: [LABEL=g6r] g6_compare.py [RESULTS_DIR]   writes RESULTS_DIR/<LABEL>-compare.json
+LABEL is the adapter g6_eval.sh served (default g6). Any other label is also compared
+with G6 itself, both modes.
 """
 import json
 import os
 import sys
 
 R = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "results")
+L = os.environ.get("LABEL", "g6")
 TAGS = ["v1", "v2", "rocky", "promqlcat", "general", "alert", "trap3"]
 KIND = {"held_out": "flag", "seen_tool": "flag", "trap": "trap", "trap_control": "trap",
         "no_tool": "no_tool", "held_out2": "flag", "two_flag": "flag", "fix_cmd": "flag",
@@ -77,13 +80,13 @@ def mode(adapter_fmt, base_fmt):
     return rows
 
 
-think = mode("{tag}-lightning-g6-think-4k",
+think = mode("{tag}-lightning-" + L + "-think-4k",
              lambda t: "v1-lightning-think-4k-g6srv" if t == "v1" else f"{t}-lightning-think-4k")
-nothink = mode("{tag}-lightning-g6-nothink", lambda t: f"{t}-lightning-nothink")
+nothink = mode("{tag}-lightning-" + L + "-nothink", lambda t: f"{t}-lightning-nothink")
 # The like-for-like question itself: both adapters, same data and recipe, same eval
 # settings (thinking off, 512 tokens; G7a's yardstick runs of the Qwen3-8B v3 adapter).
 QWEN = os.path.expanduser("~/gpu-lab/bench/results/research-eval-")
-vs_qwen = mode("{tag}-lightning-g6-nothink",
+vs_qwen = mode("{tag}-lightning-" + L + "-nothink",
                lambda t: QWEN + ("L-adv3-nothink" if t == "v1" else f"{t}-L-adv3-nothink"))
 
 
@@ -107,12 +110,19 @@ def g6_pass(rows):
 check = {"think": compare("v1-lightning-think-4k-g6srv", "v1-lightning-think-4k"),
          "nothink": compare("v1-lightning-nothink-g6srv", "v1-lightning-nothink")}
 report = {"think": think, "nothink": nothink, "vs_qwen_v3_nothink": vs_qwen, "pass_think": g6_pass(think),
-          "nothink_rule_applied": g6_pass(nothink), "server_check_v1_base": check}
-with open(os.path.join(R, "g6-compare.json"), "w") as f:
+          "nothink_rule_applied": g6_pass(nothink), "server_check_v1_base": check, "label": L}
+vs_g6 = {}
+if L != "g6":  # same verdict rule, G6 in the "base" column
+    vs_g6 = {"think": mode("{tag}-lightning-" + L + "-think-4k", lambda t: f"{t}-lightning-g6-think-4k"),
+             "nothink": mode("{tag}-lightning-" + L + "-nothink", lambda t: f"{t}-lightning-g6-nothink")}
+    report["vs_g6"] = vs_g6
+with open(os.path.join(R, f"{L}-compare.json"), "w") as f:
     json.dump(report, f, indent=1)
 
 for name, rows in (("THINKING ON (primary)", think), ("THINKING OFF (secondary)", nothink),
-                   ("LIGHTNING G6 vs QWEN3-8B v3 ADAPTER, thinking off ('adapter' = Lightning)", vs_qwen),
+                   (f"LIGHTNING {L} vs QWEN3-8B v3 ADAPTER, thinking off ('adapter' = Lightning)", vs_qwen),
+                   *[(f"{L} vs G6 ('base' = G6), thinking {m}", r) for m, r in
+                     (("on", vs_g6.get("think")), ("off", vs_g6.get("nothink"))) if r],
                    ("CHECK: base v1, G6 server vs G7a, thinking on", {"v1": check["think"]}),
                    ("CHECK: base v1, G6 server vs G7a, thinking off", {"v1": check["nothink"]})):
     print(f"\n{name}")
@@ -123,7 +133,7 @@ for name, rows in (("THINKING ON (primary)", think), ("THINKING OFF (secondary)"
         for key, r in tag_rows.items():
             print(f"  {tag:10s} {key:36s} {r['adapter']:.3f} vs {r['base']:.3f}  n={r['n']:3d}  "
                   f"{r['items_better']:+4d} items  {r['verdict']}")
-print(f"\nG6 PASS (thinking on): {report['pass_think']}")
+print(f"\n{L} PASS (thinking on): {report['pass_think']}")
 print(f"same rule, thinking off: {report['nothink_rule_applied']}")
 v = verdicts(vs_qwen)
 print("vs Qwen v3 adapter: " + ", ".join(f"{k} {sum(x == k for vs in v.values() for x in vs)}" for k in ("win", "loss", "tie")))
