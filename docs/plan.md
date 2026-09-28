@@ -908,6 +908,82 @@ or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a 
     (2) self-generated reasoning traces (v4; David asked 2026-09-27 whether traces help a
     practical model). G7's merge path is not needed: vLLM serves the LoRA directly.
 
+- **G6r: option (1) above, trained beside G6 (David, 2026-09-27).** Same data, recipe and
+  guard as G6; only the render of "default" records changes (`probes/g6_train.py`, env
+  `RENDER=think`; `RENDER=g6`, the default, reproduces G6's data stats exactly).
+  - Render: each "default" assistant turn is `assistant\n<think>\n` as prompt, then
+    `</think>`, the answer and `<|im_end|>` trained (986 turns); the 257 "off" records are
+    G6's. **Design A (David's choice):** one sequence per record, as G6, so earlier turns in
+    a record carry `<think>\n</think>` where the server sends history as `<think></think>`.
+    Design B, one sequence per assistant turn (1,824 sequences, 1.92x), would remove that.
+    David: re-weigh A vs B if Lightning becomes the lab's default model.
+  - Parity guard (MEASURED, `results/g6r-dry.log`): per trained turn, the tokens before the
+    trained span vs `apply_chat_template(history, add_generation_prompt=True,
+    enable_thinking=...)`, the prompt the eval server builds. `RENDER=think` PASS: 1,388 of
+    1,388 boundaries exact, 1,095 whole prompts exact, 293 turns see a history 312 tokens
+    longer in all (the newline in earlier `<think>\n</think>` blocks). `RENDER=g6` FAIL:
+    986 bad boundaries, every "default" turn, i.e. G6's defect caught before training.
+    `RENDER=think` refuses to train on a FAIL.
+  - Training (MEASURED, `results/g6r-train.{json,log}`): 238 steps, no abort, 2,066.8 s
+    (G6 2,048.5 s). Loss 1.115 first step, mean 0.491 epoch 1 and 0.159 epoch 2, 0.0024
+    last (G6 1.001, 0.488, 0.158, 0.0025). Torch peak 19.42 GiB, as G6; max 80 C and
+    154.8 W; no hw_thermal or hw_power_brake sample (sw_power_cap, the power limit holding,
+    in 4,054 of 4,080, as G6's 4,011 of 4,036). 439 records truncated at 1024, as G6.
+    Adapter `results/g6r-train-adapter/` (not in git).
+
+- **G6R RESULT (MEASURED, 2026-09-28; `LABEL=g6r probes/g6_eval.sh`, `LABEL=g6r
+  probes/g6_compare.py`, `probes/g6r_analysis.py`, `results/g6r-{compare,analysis}.json`,
+  `results/research-eval-*-lightning-g6r-*.*`): FAILS the rule in both modes: thinking on
+  on `rocky_task` (-7 items; G6 -8), thinking off on `task` and `rocky_task`. Against G6:
+  4 wins, 0 losses, 40 ties. The render fix cut the think trap from 64 turns to 24 but
+  did not move the task rows: their loss is template collapse, not the trap.**
+  - Eval: 14 runs, all exit 0 (~15 min; base outputs reused from G6). 956 items, 0 in
+    status `error`, 938 calls all `xml_function`, 0 unparsed `<tool_call>` turns. 21 items
+    hit the call limit (G6 15, base 124).
+  - **Rule, thinking on (primary): FAIL on `rocky_task`, 0.30 vs 0.65 (-7).** `held_out`
+    WINS, 0.956 vs 0.789 (+15); no loss on trap (+9, a win), trap_control (+1), no_tool
+    (+5, a win), task (-2), alert (-3) or promql (+1).
+  - Thinking off (secondary): FAILS on `task`, 0.50 vs 0.80 (-6), and `rocky_task`, 0.30
+    vs 0.55 (-5; G6 -3, a tie). G6r vs G6 on thinking-off rocky_task is -2, a tie
+    (INFERENCE: run-to-run movement, as base moves ~5 items, rather than a new defect).
+  - **G6r vs G6:** thinking on, wins held_out (+6), seen_tool (+8) and general
+    correct_where_scorable (+6); thinking off, wins promql (+5). **Alert fell, 2/9 vs 6/9
+    thinking on (-4) and 3/9 vs 5/9 off**: ties by the 4-item rule only because the set
+    has 9 items. Like for like, thinking off, vs the Qwen3-8B v3 adapter: 0 wins, 0
+    losses, 22 ties (G6's one win, alert, is now +3, a tie).
+  - **The think trap, thinking on, all seven sets:** turns that never write `</think>`,
+    base 0 of 1,206, G6 64 of 911, G6r 24 of 939. Every one ends by choice (`stop`), none
+    at the token cap: G6r 20-100 tokens (median 47), G6 30-351 (median 65; a per-turn
+    count does not reproduce the G6 bullet's 50-273). The adapter writes its usual
+    answer inside the open think block and stops, so the harness sees none. 23 of G6r's 24
+    are the turn right after a tool result. None are in task or rocky_task: held_out 3,
+    held_out2 6, rocky_held_out 5, the trap and trap_control sets 7, fix_cmd, alert and
+    trap3 1 each. G6's 469 "Here's a thinking process" openers are gone (0).
+  - **G6r does not think.** It writes `</think>` at once, with empty reasoning, on 843 of
+    939 thinking-on turns (base 0 of 1,206; G6 0 of 911). That is what the render trains,
+    since v3 holds no reasoning text, so with thinking on G6r acts as a thinking-off model;
+    its task rows read the same in both modes (task 0.50, rocky_task 0.30).
+  - **rocky_task, thinking on, per item:** G6r loses 8 of base's 13 hits and gains 1; 0
+    trapped. 7 of the 8 are G6's lost items (dnf-14 recovered, xfs_repair-11 newly lost).
+    Read by hand, 7 of the 8 are template answers (scontrol-1 made four lookups, two
+    refused, and hit the call limit without answering): one flag from `--help` as the whole
+    answer (`xfs_growfs -r`, "grow realtime section", to fill a partition; `srun -I` for an
+    interactive shell; `sbatch -c` with no memory flag; `firewall-cmd
+    --runtime-to-permanent` for "apply permanent rules"), or the trap template denying a
+    real feature ("`scontrol` does not have a `resume` command"); squeue-3 looked up
+    `sbatch --help`. Base answered each with a full procedure. v3's answers carry the
+    shape: of 950 records, 544 hold an answer containing "Based on \`", 329 "Based on
+    \`...--help\`" and 108 "I checked \`" (regex counts, MEASURED 2026-09-28).
+  - This refutes G6 RESULT's reading that most of G6's thinking-on rocky_task loss was the
+    trap: with no trapped item in the split, the loss is -7 vs -8. The pre-run best case
+    (ARITHMETIC: remove the 4 trapped losses, -8 -> -4, a tie) did not happen.
+  - Reading: the render did what a render can (40 fewer trapped turns, 4 wins over G6, no
+    losses) and cannot reach the failing rows, which come from the data (INFERENCE,
+    supported by the per-item reads). Open, David's call: task-shaped examples with full
+    procedures in the data, or option (2), v4 reasoning traces, which would also give
+    thinking-on mode something to do. The 24 remaining trapped turns matter only if G6r is
+    served.
+
 ### G7: serving on vLLM 0.29 (laptop)
 - Base NVFP4, then base + LoRA, then merge if needed. UNKNOWN:
   - whether vLLM's nemotron_h supports LoRA on placement A's modules (read the vLLM
