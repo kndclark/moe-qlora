@@ -2,7 +2,8 @@
 # G6t step 1: serve base Lightning NVFP4 exactly as probes/g6_eval.sh does, minus the LoRA
 # flags, and run probes/g6t_collect.py against it. The promql records need the desktop's
 # Prometheus over the direct link; the run refuses to start without it.
-# usage: g6t_collect.sh OUT.jsonl [g6t_collect.py args...]
+# usage: [ADAPTER=dir LORA=name] g6t_collect.sh OUT.jsonl [g6t_collect.py args...]
+#   with ADAPTER, the adapter is served as g6_eval.sh serves it (pass --model NAME too).
 set -u
 here=$(cd "$(dirname "$0")/.." && pwd)
 out=$(realpath -m "$1"); shift
@@ -18,13 +19,18 @@ restore() {
 }
 trap restore EXIT
 echo max-power | sudo -n tee /sys/firmware/acpi/platform_profile >/dev/null
+lora=() mount=()
+if [ -n "${ADAPTER:-}" ]; then
+  mount=(-v "$(realpath "$ADAPTER")":/adapter:ro)
+  lora=(--enable-lora --max-lora-rank 16 --max-loras 1 --lora-modules "${LORA:?LORA name needed}=/adapter")
+fi
 docker run -d --name "$name" --gpus all --ipc=host -p 127.0.0.1:8303:8000 \
-  -v /srv/model-cache:/hf:ro -e HF_HOME=/hf -e HF_HUB_OFFLINE=1 \
+  -v /srv/model-cache:/hf:ro "${mount[@]}" -e HF_HOME=/hf -e HF_HUB_OFFLINE=1 \
   vllm/vllm-openai:v0.29.0 \
   --model nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4 \
   --revision bee7596271d1495f6992ae224aefde4410e816b8 --served-model-name lightning-nvfp4 \
   --kv-cache-dtype fp8 --mamba-cache-mode align --moe-backend marlin \
-  --max-model-len 16384 --max-num-seqs 16 --gpu-memory-utilization 0.85 --enforce-eager >/dev/null || exit 1
+  --max-model-len 16384 --max-num-seqs 16 --gpu-memory-utilization 0.85 --enforce-eager "${lora[@]}" >/dev/null || exit 1
 t0=$(date +%s)
 until curl -sf $B/health >/dev/null; do
   if [ "$(docker inspect -f '{{.State.Running}}' "$name" 2>/dev/null)" != true ]; then

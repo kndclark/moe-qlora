@@ -216,6 +216,8 @@ def encode_trace(record, st):
     tr = record["trace"]
     out = []
     for k, text in enumerate(tr["texts"]):
+        if "train_turns" in tr and k not in tr["train_turns"]:  # G6u: a turn with empty reasoning
+            continue
         hist = lightning_messages(tr["messages"][:1 + 2 * k])
         prompt = tok.apply_chat_template(hist, tools=tools_for(record), tokenize=False,
                                          add_generation_prompt=True, enable_thinking=True)
