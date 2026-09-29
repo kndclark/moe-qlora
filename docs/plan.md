@@ -1497,6 +1497,37 @@ or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a 
     trace machinery) is the candidate. Merging stays David's call.
   - Expectation (INFERENCE): ranges of 1-3 items on 12-20-item rows, larger on rows
     where answers hit the call limit; base the noisiest (124 call-limit items in G6).
+- **N1 RESULT (MEASURED, 2026-09-29; `results/noise/`, 40 runs all exit 0;
+  `results/n1-summary.json`, `results/n1-run.log`): G6u is the candidate under the
+  pre-registered rule: the only adapter with no row below base beyond the spread. Two
+  gate readings change once repeats are averaged: G6q's rocky_task is 4.67 items below
+  base (mean 8.00 vs 12.67, range 2), past the >4 line its single run sat on (-4); and
+  G6q's alert 7/9 was a high draw (7, 3, 5; mean 5.00, base 6.00).**
+  - Spread with nothing changed (range over 3 repeats, items): mostly 0-3 per row;
+    rocky_held_out 6 (base) and 7 (G6u); G6u rocky_task 5 (13, 15, 10); G6q alert 4.
+    Items with the same outcome in all 3 repeats: G6q the steadiest (task 19/20,
+    rocky_task 17/20); G6t and G6u far less (rocky_task 8/20 each): reasoning adds
+    run-to-run variation.
+  - Means, thinking on (base / G6q / G6t / G6u): task 13.00 / 14.67 / 16.67 / 17.67;
+    rocky_task 12.67 / 8.00 / 13.33 / 12.67; trap2 3.00 / 11.00 / 8.33 / 9.00; rocky_trap
+    1.00 / 10.67 / 7.67 / 6.00; promql 12.00 / 13.67 / 12.67 / 15.33; alert 6.00 / 5.00 /
+    7.00 / 7.00; trap3 noticed 3.67 / 5.00 / 4.33 / 8.00; trap3 fabricated 0 / 0 / 1.00 /
+    2.00.
+  - Rows below base beyond the spread: G6q rocky_task (-4.67, range 2); G6t
+    rocky_trap_control (+1 wrong denial, range 0); G6u none (trap3 fabricated +2 is
+    within its range 2).
+  - Between adapters beyond the spread: G6t and G6u beat G6q on rocky_task (G6t +5.33)
+    and task (G6u +3.00); G6q beats both on the trap rows (rocky_trap +3.00 vs G6t, +4.67
+    vs G6u) and held_out2 (+2.67, +3.67); G6u beats G6t on promql (+2.66) and trap3
+    noticed (+3.67).
+  - Why G6u's traps trail G6q's (3 repeats pooled, failures by kind): rocky_trap G6u 12
+    at the call limit, 5 think-trapped, 1 answered without denying (G6q: 0, 1, 3); trap2
+    G6u 3, 5, 1 (G6q 0, 3, 0). G6u keeps looking for a flag that is not there until the
+    calls run out, or writes the denial inside an unclosed `<think>`; it rarely answers
+    wrongly. trap3: G6u notices more (24 vs 15 of 36) and fabricates 6.
+  - Reading: the reasoning traces bought task and rocky_task and cost the traps through
+    call budget, not knowledge. G6u is the candidate for main (David's call). Its trap
+    weakness has a concrete lever: traces that deny after one lookup.
 
 ### G7: serving on vLLM 0.29 (laptop)
 - Base NVFP4, then base + LoRA, then merge if needed. UNKNOWN:

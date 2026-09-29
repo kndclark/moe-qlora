@@ -1,0 +1,1360 @@
+{
+ "label": "promqlcat-lightning-think-4k-r3",
+ "set": "promql",
+ "promql_catalog": true,
+ "model": "lightning-nvfp4",
+ "base": "http://127.0.0.1:8303",
+ "tools": true,
+ "thinking": "on",
+ "max_tokens": 4096,
+ "max_calls": 3,
+ "temperature": 0.0,
+ "top_p": null,
+ "sample_seed": null,
+ "window": 4000,
+ "seed": 20260923,
+ "limit": 0,
+ "started": "2026-09-29T15:23:40-0600",
+ "elapsed_s": 51.1,
+ "tool_versions": {},
+ "provenance": {
+  "harness_sha256": "a56bfe79b0124860548bdf02f11b72bef3af0fc3ba7429c3fdc4e29e90d45ee5",
+  "server_version": "0.29.0",
+  "served": [
+   {
+    "id": "lightning-nvfp4",
+    "root": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4",
+    "parent": null,
+    "max_model_len": 16384
+   },
+   {
+    "id": "g6q",
+    "root": "/adapter",
+    "parent": "lightning-nvfp4",
+    "max_model_len": null
+   }
+  ]
+ },
+ "summary": {
+  "promql": {
+   "n": 18,
+   "any_call": 1.0,
+   "answered": 0.833,
+   "mean_calls": 1.39,
+   "status": {
+    "answered": 15,
+    "call_limit": 3
+   },
+   "calls_refused": 0,
+   "calls_web": 3,
+   "correct": 0.667,
+   "used_promql": 1.0,
+   "invented_value": 0.0,
+   "correct_by_kind": {
+    "jobs": 0.0,
+    "nodata": 0.0,
+    "number": 0.846,
+    "yesno": 1.0
+   }
+  }
+ },
+ "results": [
+  {
+   "id": "promql-ac",
+   "split": "promql",
+   "question": "Is the laptop plugged into AC power right now?",
+   "truth_query": "gpulab_ac_online{node=\"laptop\"}",
+   "kind": "yesno",
+   "tol": null,
+   "run": {
+    "status": "answered",
+    "final": "Yes \u2013 the laptop is currently plugged into AC power (the `gpulab_ac_online` metric reports a value of\u202f1).",
+    "calls": [
+     {
+      "outcome": "executed",
+      "argv": [
+       "promql"
+      ],
+      "chars": 99,
+      "name": "promql",
+      "args": {
+       "query": "gpulab_ac_online"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 965,
+      "completion_tokens": 64,
+      "finish_reason": "stop",
+      "text": "We need to answer if laptop is plugged into AC power. Use Prometheus metric gpulab_ac_online likely indicates if AC is online. Let's query.</think>\n<tool_call>\n<function=promql>\n<parameter=query>\ngpulab_ac_online\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1061,
+      "completion_tokens": 51,
+      "finish_reason": "stop",
+      "text": "The AC online metric is 1, meaning the laptop is plugged into AC power. So answer yes.</think>Yes \u2013 the laptop is currently plugged into AC power (the `gpulab_ac_online` metric reports a value of\u202f1)."
+     }
+    ],
+    "truth": {
+     "result": [
+      {
+       "metric": {
+        "__name__": "gpulab_ac_online",
+        "arch": "sm_120",
+        "instance": "lab-laptop:9835",
+        "job": "gpu",
+        "node": "laptop"
+       },
+       "value": [
+        1790717035.964,
+        "1"
+       ]
+      }
+     ],
+     "error": null,
+     "at": 1790717035.969903
+    }
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 1,
+    "answered": true,
+    "used_promql": true,
+    "correct": true,
+    "invented_value": false
+   }
+  },
+  {
+   "id": "promql-battery",
+   "split": "promql",
+   "question": "What is the laptop's battery charge, in percent?",
+   "truth_query": "gpulab_battery_capacity_percent{node=\"laptop\"}",
+   "kind": "number",
+   "tol": 2,
+   "run": {
+    "status": "answered",
+    "final": "The laptop's battery charge is **79\u202f%**.",
+    "calls": [
+     {
+      "outcome": "executed",
+      "argv": [
+       "promql"
+      ],
+      "chars": 115,
+      "name": "promql",
+      "args": {
+       "query": "gpulab_battery_capacity_percent"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 966,
+      "completion_tokens": 122,
+      "finish_reason": "stop",
+      "text": "We need to get battery charge percent. Use promql query gpulab_battery_charge_percent? The metric listed: gpulab_battery_capacity_percent, gpulab_battery_discharging, gpulab_battery_health_percent. There's no gpulab_battery_charge_percent. Maybe capacity percent is charge percent. Use promql to get gpulab_battery_capacity_percent. Let's query.</think>\n<tool_call>\n<function=promql>\n<parameter=query>\ngpulab_battery_capacity_percent\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1067,
+      "completion_tokens": 22,
+      "finish_reason": "stop",
+      "text": "The battery charge is 79%.</think>The laptop's battery charge is **79\u202f%**."
+     }
+    ],
+    "truth": {
+     "result": [
+      {
+       "metric": {
+        "__name__": "gpulab_battery_capacity_percent",
+        "arch": "sm_120",
+        "instance": "lab-laptop:9835",
+        "job": "gpu",
+        "node": "laptop"
+       },
+       "value": [
+        1790717035.115,
+        "79"
+       ]
+      }
+     ],
+     "error": null,
+     "at": 1790717035.1204212
+    }
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 1,
+    "answered": true,
+    "used_promql": true,
+    "correct": true,
+    "invented_value": false
+   }
+  },
+  {
+   "id": "promql-down-jobs",
+   "split": "promql",
+   "question": "Which of the lab's Prometheus scrape jobs have targets down right now?",
+   "truth_query": "up == 0",
+   "kind": "jobs",
+   "tol": null,
+   "run": {
+    "status": "answered",
+    "final": "Here\u2019s what the **`up`** metric tells us about the lab\u2019s Prometheus scrape jobs:\n\n| Job | Instance (node) | `up` value | Status |\n|-----|-----------------|-----------|--------|\n| **llama\u2011swap** | `lab-laptop:8080` (laptop) | **0** | **down** |\n| llama\u2011swap | `localhost:8080` (desktop) | 1 | up |\n| **vllm** (model *qwen3\u2011coder*) | `localhost:8101` (desktop) | **0** | **down** |\n| vllm (model *qwen3\u2011embed*) | `lab-laptop:8102` (laptop) | **0** | **down** |\n| vllm (model *qwen3\u2011embed*) | `localhost:8102` (desktop) | **0** | **down** |\n| **vllm\u2011pool** (model *pool*) | `lab-desktop:8200` (pooled) | **0** | **down** |\n| gpu | `localhost:9835` (desktop) | 1 | up |\n| gpu | `lab-laptop:9835` (laptop) | 1 | up |\n| prometheus | `localhost:9090` | 1 | up |\n\n**Jobs with at least one target currently down**\n\n- **llama\u2011swap**  \n- **vllm** (both the *qwen3\u2011coder* and *qwen3\u2011embed* instances)  \n- **vllm\u2011pool**\n\nAll other jobs (gpu, prometheus) have all their targets up. If you need to investigate why a particular instance is down (e.g., service restart, network issue, firewall), let me know and I can help look at the relevant logs or metrics.",
+    "calls": [
+     {
+      "outcome": "prom_error",
+      "name": "promql",
+      "args": {
+       "query": "up by job"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "executed",
+      "argv": [
+       "promql"
+      ],
+      "chars": 856,
+      "name": "promql",
+      "args": {
+       "query": "up"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 970,
+      "completion_tokens": 91,
+      "finish_reason": "stop",
+      "text": "We need to find which scrape jobs have targets down. Likely need to query Prometheus for scrape targets status. Use promql? There may be metrics like up{job=\"...\"} = 0 indicates down. We can query up by job. Use promql: up by job. Let's query.</think>\n<tool_call>\n<function=promql>\n<parameter=query>\nup by job\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1032,
+      "completion_tokens": 126,
+      "finish_reason": "stop",
+      "text": "We need to query Prometheus for scrape jobs with targets down. Likely need to look at metrics like gpulab_gpu_scrape_ok maybe indicates scrape success. Or there may be a metric for job status. Let's list available metrics. Use promql to list series with job label? Maybe we can query `gpulab_gpu_scrape_ok` or `up` by job. The up metric likely has labels instance, job, maybe node. Let's query `up`.</think>\n<tool_call>\n<function=promql>\n<parameter=query>\nup\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1460,
+      "completion_tokens": 802,
+      "finish_reason": "stop",
+      "text": "We need to find which scrape jobs have targets down. The up metric shows 0 or 1 per instance. Jobs with any 0 indicate a down target. Let's parse the results.\n\nList each job:\n\n- llama-swap: instances: lab-laptop:8080 node laptop 0 (down), localhost:8080 node desktop 1 (up). So job llama-swap has a down target.\n\n- prometheus: instance localhost:9090 job prometheus 1 up only.\n\n- vllm job with model qwen3-coder: instance localhost:8101 job vllm model qwen3-coder 0 down.\n\n- gpu job: instance localhost:9835 job gpu node desktop 1 up.\n\n- vllm model qwen3-embed: instance lab-laptop:8102 job vllm model qwen3-embed node laptop 0 down.\n\n- instance lab-laptop:9835 job gpu node laptop 1 up.\n\n- vllm model qwen3-embed instance localhost:8102 job vllm model qwen3-embed node desktop 0 down.\n\n- vllm-pool job pooled model pool instance lab-desktop:8200 job vllm-pool model pool 0 down.\n\nThus jobs with at least one down target: llama-swap, vllm (qwen3-coder), vllm (qwen3-embed), vllm-pool.\n\nWe can present list of jobs with down targets.\n\n</think>Here\u2019s what the **`up`** metric tells us about the lab\u2019s Prometheus scrape jobs:\n\n| Job | Instance (node) | `up` value | Status |\n|-----|-----------------|-----------|--------|\n| **llama\u2011swap** | `lab-laptop:8080` (laptop) | **0** | **down** |\n| llama\u2011swap | `localhost:8080` (desktop) | 1 | up |\n| **vllm** (model *qwen3\u2011coder*) | `localhost:8101` (desktop) | **0** | **down** |\n| vllm (model *qwen3\u2011embed*) | `lab-laptop:8102` (laptop) | **0** | **down** |\n| vllm (model *qwen3\u2011embed*) | `localhost:8102` (desktop) | **0** | **down** |\n| **vllm\u2011pool** (model *pool*) | `lab-desktop:8200` (pooled) | **0** | **down** |\n| gpu | `localhost:9835` (desktop) | 1 | up |\n| gpu | `lab-laptop:9835` (laptop) | 1 | up |\n| prometheus | `localhost:9090` | 1 | up |\n\n**Jobs with at least one target currently down**\n\n- **llama\u2011swap**  \n- **vllm** (both the *qwen3\u2011coder* and *qwen3\u2011embed* instances)  \n- **vllm\u2011pool**\n\nAll other jobs (gpu, prometheus) have all their targets up. If you need to investigate why a particular instance is down (e.g., service restart, network issue, firewall), let me know and I can help look at the relevant logs or metrics."
+     }
+    ],
+    "truth": {
+     "result": [
+      {
+       "metric": {
+        "__name__": "up",
+        "arch": "sm_120",
+        "instance": "lab-laptop:8080",
+        "job": "llama-swap",
+        "node": "laptop"
+       },
+       "value": [
+        1790717072.04,
+        "0"
+       ]
+      },
+      {
+       "metric": {
+        "__name__": "up",
+        "arch": "sm_86",
+        "instance": "localhost:8101",
+        "job": "vllm",
+        "model": "qwen3-coder",
+        "node": "desktop"
+       },
+       "value": [
+        1790717072.04,
+        "0"
+       ]
+      },
+      {
+       "metric": {
+        "__name__": "up",
+        "arch": "sm_120",
+        "instance": "lab-laptop:8102",
+        "job": "vllm",
+        "model": "qwen3-embed",
+        "node": "laptop"
+       },
+       "value": [
+        1790717072.04,
+        "0"
+       ]
+      },
+      {
+       "metric": {
+        "__name__": "up",
+        "arch": "sm_86",
+        "instance": "localhost:8102",
+        "job": "vllm",
+        "model": "qwen3-embed",
+        "node": "desktop"
+       },
+       "value": [
+        1790717072.04,
+        "0"
+       ]
+      },
+      {
+       "metric": {
+        "__name__": "up",
+        "arch": "sm_86+sm_120",
+        "instance": "lab-desktop:8200",
+        "job": "vllm-pool",
+        "model": "pool",
+        "node": "pooled"
+       },
+       "value": [
+        1790717072.04,
+        "0"
+       ]
+      }
+     ],
+     "error": null,
+     "at": 1790717072.0455408
+    }
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 2,
+    "answered": true,
+    "used_promql": true,
+    "correct": false,
+    "invented_value": false
+   }
+  },
+  {
+   "id": "promql-fan-laptop",
+   "split": "promql",
+   "question": "How fast is the laptop's fastest fan spinning right now, in RPM?",
+   "truth_query": "max(gpulab_fan_rpm{node=\"laptop\"})",
+   "kind": "number",
+   "tol": 0.1,
+   "run": {
+    "status": "answered",
+    "final": "The laptop\u2019s fastest fan is currently spinning at **6500\u202fRPM**.",
+    "calls": [
+     {
+      "outcome": "executed",
+      "argv": [
+       "promql"
+      ],
+      "chars": 7,
+      "name": "promql",
+      "args": {
+       "query": "max(gpulab_fan_rpm)"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 970,
+      "completion_tokens": 111,
+      "finish_reason": "stop",
+      "text": "We need to answer: \"How fast is the laptop's fastest fan spinning right now, in RPM?\" We have access to Prometheus metrics. There's a metric gpulab_fan_rpm. Likely there are multiple fans; we need the fastest (max). So we need to query max of gpulab_fan_rpm. Use promql. Let's query.</think>\n<tool_call>\n<function=promql>\n<parameter=query>\nmax(gpulab_fan_rpm)\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1025,
+      "completion_tokens": 74,
+      "finish_reason": "stop",
+      "text": "The result shows {} 6500, meaning the max fan RPM is 6500. The question: \"How fast is the laptop's fastest fan spinning right now, in RPM?\" So answer: 6500 RPM. Provide context.</think>The laptop\u2019s fastest fan is currently spinning at **6500\u202fRPM**."
+     }
+    ],
+    "truth": {
+     "result": [
+      {
+       "metric": {},
+       "value": [
+        1790717033.592,
+        "6500"
+       ]
+      }
+     ],
+     "error": null,
+     "at": 1790717033.5979292
+    }
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 1,
+    "answered": true,
+    "used_promql": true,
+    "correct": true,
+    "invented_value": false
+   }
+  },
+  {
+   "id": "promql-maxtemp-1h",
+   "split": "promql",
+   "question": "What was the highest desktop GPU temperature over the last hour?",
+   "truth_query": "max_over_time(gpulab_gpu_temperature_celsius{node=\"desktop\"}[1h])",
+   "kind": "number",
+   "tol": 1,
+   "run": {
+    "status": "answered",
+    "final": "The highest desktop GPU temperature recorded over the last hour was **33\u202f\u00b0C** (for the GPU with architecture\u202f`sm_86` on the desktop node).",
+    "calls": [
+     {
+      "outcome": "executed",
+      "argv": [
+       "promql"
+      ],
+      "chars": 143,
+      "name": "promql",
+      "args": {
+       "query": "max_over_time(gpulab_gpu_temperature_celsius[1h])"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 967,
+      "completion_tokens": 110,
+      "finish_reason": "stop",
+      "text": "We need to find highest desktop GPU temperature over last hour. Use promql to query gpulab_gpu_temperature_celsius maybe with max over last hour. PromQL: max_over_time(gpulab_gpu_temperature_celsius[1h]). But maybe need to filter for desktop? Might be all GPUs. We'll query.</think>\n<tool_call>\n<function=promql>\n<parameter=query>\nmax_over_time(gpulab_gpu_temperature_celsius[1h])\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1092,
+      "completion_tokens": 240,
+      "finish_reason": "stop",
+      "text": "The result shows two series: one for desktop with temperature 33\u00b0C, and one for laptop with 73\u00b0C. The question asks: \"What was the highest desktop GPU temperature over the last hour?\" So we need the highest temperature for desktop GPU. The result shows desktop temperature 33. But we need to confirm that it's the max over the last hour. The query max_over_time(gpulab_gpu_temperature_celsius[1h]) returned those values. So the highest desktop GPU temperature is 33\u00b0C (for arch sm_86). However there might be multiple instances; we need to filter node=\"desktop\". The result includes instance=\"localhost:9835\", job=\"gpu\", node=\"desktop\". So that's the desktop. So answer: 33\u00b0C.\n\nBut maybe we should also consider that there could be multiple GPUs on desktop; but the data shows only one. So answer: 33\u00b0C.\n\nWe'll respond.</think>The highest desktop GPU temperature recorded over the last hour was **33\u202f\u00b0C** (for the GPU with architecture\u202f`sm_86` on the desktop node)."
+     }
+    ],
+    "truth": {
+     "result": [
+      {
+       "metric": {
+        "arch": "sm_86",
+        "instance": "localhost:9835",
+        "job": "gpu",
+        "node": "desktop"
+       },
+       "value": [
+        1790717043.392,
+        "33"
+       ]
+      }
+     ],
+     "error": null,
+     "at": 1790717043.3974729
+    }
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 1,
+    "answered": true,
+    "used_promql": true,
+    "correct": true,
+    "invented_value": false
+   }
+  },
+  {
+   "id": "promql-mem-desktop-gib",
+   "split": "promql",
+   "question": "How many GiB of VRAM is the desktop GPU using right now?",
+   "truth_query": "gpulab_gpu_memory_used_mib{node=\"desktop\"} / 1024",
+   "kind": "number",
+   "tol": 0.05,
+   "run": {
+    "status": "answered",
+    "final": "The desktop GPU is currently reporting **33\u202fMiB** of used VRAM.\n\n- 33\u202fMiB \u00f7\u202f1024\u202fMiB\u202f/\u202fGiB \u2248 **0.032\u202fGiB** (about\u202f30\u202fMiB).\n\nSo the desktop GPU is using roughly **0.03\u202fGiB** of VRAM at this moment.",
+    "calls": [
+     {
+      "outcome": "executed",
+      "argv": [
+       "promql"
+      ],
+      "chars": 224,
+      "name": "promql",
+      "args": {
+       "query": "gpulab_gpu_memory_used_mib"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 970,
+      "completion_tokens": 143,
+      "finish_reason": "stop",
+      "text": "We need to answer: \"How many GiB of VRAM is the desktop GPU using right now?\" We have Prometheus metrics for GPU memory used: gpulab_gpu_memory_used_mib. Likely there is a metric for each GPU. Need to query current usage in MiB then convert to GiB (1 GiB = 1024 MiB). Use promql query: gpulab_gpu_memory_used_mib. Might need to sum or maybe there's a single desktop GPU. Let's query.</think>\n<tool_call>\n<function=promql>\n<parameter=query>\ngpulab_gpu_memory_used_mib\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1120,
+      "completion_tokens": 231,
+      "finish_reason": "stop",
+      "text": "We have two results: one for desktop with 33 MiB used, and laptop with 22101 MiB used. The question: \"How many GiB of VRAM is the desktop GPU using right now?\" So desktop GPU memory used = 33 MiB. Convert to GiB: 1 GiB = 1024 MiB. 33 MiB = 33/1024 GiB \u2248 0.0322265625 GiB. Probably we can present as about 0.03 GiB, or 33 MiB. Might also want to note that it's very low. Provide answer.</think>The desktop GPU is currently reporting **33\u202fMiB** of used VRAM.\n\n- 33\u202fMiB \u00f7\u202f1024\u202fMiB\u202f/\u202fGiB \u2248 **0.032\u202fGiB** (about\u202f30\u202fMiB).\n\nSo the desktop GPU is using roughly **0.03\u202fGiB** of VRAM at this moment."
+     }
+    ],
+    "truth": {
+     "result": [
+      {
+       "metric": {
+        "arch": "sm_86",
+        "instance": "localhost:9835",
+        "job": "gpu",
+        "node": "desktop"
+       },
+       "value": [
+        1790717041.828,
+        "0.0322265625"
+       ]
+      }
+     ],
+     "error": null,
+     "at": 1790717041.8338459
+    }
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 1,
+    "answered": true,
+    "used_promql": true,
+    "correct": true,
+    "invented_value": false
+   }
+  },
+  {
+   "id": "promql-mem-laptop",
+   "split": "promql",
+   "question": "How much GPU memory is in use on the laptop right now, in MiB?",
+   "truth_query": "gpulab_gpu_memory_used_mib{node=\"laptop\"}",
+   "kind": "number",
+   "tol": 0.05,
+   "run": {
+    "status": "answered",
+    "final": "The laptop\u2019s GPU is currently using **\u2248\u202f22\u202f101\u202fMiB** of memory. (The other reading of\u202f33\u202fMiB belongs to the desktop node.)",
+    "calls": [
+     {
+      "outcome": "executed",
+      "argv": [
+       "promql"
+      ],
+      "chars": 224,
+      "name": "promql",
+      "args": {
+       "query": "gpulab_gpu_memory_used_mib"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 972,
+      "completion_tokens": 56,
+      "finish_reason": "stop",
+      "text": "We need to query Prometheus for gpulab_gpu_memory_used_mib. Use promql tool.</think>\n<tool_call>\n<function=promql>\n<parameter=query>\ngpulab_gpu_memory_used_mib\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1122,
+      "completion_tokens": 128,
+      "finish_reason": "stop",
+      "text": "The query returned two series: one for \"desktop\" with 33 MiB used, and one for \"laptop\" with 22101 MiB used. The user asks \"How much GPU memory is in use on the laptop right now, in MiB?\" So we should report the laptop value: 22101 MiB. Possibly also note the other. Provide answer.</think>The laptop\u2019s GPU is currently using **\u2248\u202f22\u202f101\u202fMiB** of memory. (The other reading of\u202f33\u202fMiB belongs to the desktop node.)"
+     }
+    ],
+    "truth": {
+     "result": [
+      {
+       "metric": {
+        "__name__": "gpulab_gpu_memory_used_mib",
+        "arch": "sm_120",
+        "instance": "lab-laptop:9835",
+        "job": "gpu",
+        "node": "laptop"
+       },
+       "value": [
+        1790717034.783,
+        "22101"
+       ]
+      }
+     ],
+     "error": null,
+     "at": 1790717034.7880223
+    }
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 1,
+    "answered": true,
+    "used_promql": true,
+    "correct": false,
+    "invented_value": false
+   }
+  },
+  {
+   "id": "promql-nvme-desktop",
+   "split": "promql",
+   "question": "What is the hottest NVMe drive temperature on the desktop right now?",
+   "truth_query": "max(gpulab_nvme_temperature_celsius{node=\"desktop\"})",
+   "kind": "number",
+   "tol": 2,
+   "run": {
+    "status": "answered",
+    "final": "The current highest NVMe drive temperature across the desktop is **\u2248\u202f42.85\u202f\u00b0C**. This is the maximum value reported by the `gpulab_nvme_temperature_celsius` metric at the moment.",
+    "calls": [
+     {
+      "outcome": "executed",
+      "argv": [
+       "promql"
+      ],
+      "chars": 8,
+      "name": "promql",
+      "args": {
+       "query": "max(gpulab_nvme_temperature_celsius)"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 971,
+      "completion_tokens": 99,
+      "finish_reason": "stop",
+      "text": "We need to query Prometheus for NVMe temperature metric: gpulab_nvme_temperature_celsius. We need the hottest across nodes? Likely there are multiple nodes; we need max. Use promql: max(gpulab_nvme_temperature_celsius). Let's query.</think>\n<tool_call>\n<function=promql>\n<parameter=query>\nmax(gpulab_nvme_temperature_celsius)\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1030,
+      "completion_tokens": 165,
+      "finish_reason": "stop",
+      "text": "The result shows {} 42.85. That seems like a single value 42.85 maybe with no labels. The question: \"What is the hottest NVMe drive temperature on the desktop right now?\" We need to provide the hottest temperature. The promql query max(gpulab_nvme_temperature_celsius) returned 42.85. That's likely the max across all NVMe drives. So answer: 42.85\u00b0C. Might also mention it's the max. Provide context.</think>The current highest NVMe drive temperature across the desktop is **\u2248\u202f42.85\u202f\u00b0C**. This is the maximum value reported by the `gpulab_nvme_temperature_celsius` metric at the moment."
+     }
+    ],
+    "truth": {
+     "result": [
+      {
+       "metric": {},
+       "value": [
+        1790717042.035,
+        "43.85"
+       ]
+      }
+     ],
+     "error": null,
+     "at": 1790717042.0403016
+    }
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 1,
+    "answered": true,
+    "used_promql": true,
+    "correct": true,
+    "invented_value": false
+   }
+  },
+  {
+   "id": "promql-power-desktop",
+   "split": "promql",
+   "question": "How many watts is the desktop GPU drawing right now?",
+   "truth_query": "gpulab_gpu_power_watts{node=\"desktop\"}",
+   "kind": "number",
+   "tol": 0.25,
+   "run": {
+    "status": "answered",
+    "final": "The desktop GPU is currently drawing **\u2248\u202f10.8\u202fwatts**.",
+    "calls": [
+     {
+      "outcome": "executed",
+      "argv": [
+       "promql"
+      ],
+      "chars": 220,
+      "name": "promql",
+      "args": {
+       "query": "gpulab_gpu_power_watts"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 967,
+      "completion_tokens": 62,
+      "finish_reason": "stop",
+      "text": "We need to get current GPU power watts. Use promql query gpulab_gpu_power_watts. Let's query.</think>\n<tool_call>\n<function=promql>\n<parameter=query>\ngpulab_gpu_power_watts\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1121,
+      "completion_tokens": 38,
+      "finish_reason": "stop",
+      "text": "The GPU power for desktop is 10.81 watts. Provide answer.</think>The desktop GPU is currently drawing **\u2248\u202f10.8\u202fwatts**."
+     }
+    ],
+    "truth": {
+     "result": [
+      {
+       "metric": {
+        "__name__": "gpulab_gpu_power_watts",
+        "arch": "sm_86",
+        "instance": "localhost:9835",
+        "job": "gpu",
+        "node": "desktop"
+       },
+       "value": [
+        1790717030.923,
+        "10.99"
+       ]
+      }
+     ],
+     "error": null,
+     "at": 1790717030.9288318
+    }
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 1,
+    "answered": true,
+    "used_promql": true,
+    "correct": true,
+    "invented_value": false
+   }
+  },
+  {
+   "id": "promql-powerlimit-laptop",
+   "split": "promql",
+   "question": "What power limit is the laptop GPU set to, in watts?",
+   "truth_query": "gpulab_gpu_power_limit_watts{node=\"laptop\"}",
+   "kind": "number",
+   "tol": 1,
+   "run": {
+    "status": "answered",
+    "final": "The laptop\u2019s GPU power\u2011limit metric (`gpulab_gpu_power_limit_watts`) reports **175\u202fW**.",
+    "calls": [
+     {
+      "outcome": "executed",
+      "argv": [
+       "promql"
+      ],
+      "chars": 227,
+      "name": "promql",
+      "args": {
+       "query": "gpulab_gpu_power_limit_watts"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 969,
+      "completion_tokens": 70,
+      "finish_reason": "stop",
+      "text": "We need to find the power limit of the laptop GPU in watts. Use promql metric gpulab_gpu_power_limit_watts maybe. Let's query.</think>\n<tool_call>\n<function=promql>\n<parameter=query>\ngpulab_gpu_power_limit_watts\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1121,
+      "completion_tokens": 106,
+      "finish_reason": "stop",
+      "text": "The query returned two series: one for desktop (arch sm_86) with 350 watts, and one for laptop (arch sm_120) with 175 watts. The user asks: \"What power limit is the laptop GPU set to, in watts?\" So answer: 175 watts. Provide explanation.</think>The laptop\u2019s GPU power\u2011limit metric (`gpulab_gpu_power_limit_watts`) reports **175\u202fW**."
+     }
+    ],
+    "truth": {
+     "result": [
+      {
+       "metric": {
+        "__name__": "gpulab_gpu_power_limit_watts",
+        "arch": "sm_120",
+        "instance": "lab-laptop:9835",
+        "job": "gpu",
+        "node": "laptop"
+       },
+       "value": [
+        1790717034.41,
+        "175"
+       ]
+      }
+     ],
+     "error": null,
+     "at": 1790717034.4152887
+    }
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 1,
+    "answered": true,
+    "used_promql": true,
+    "correct": true,
+    "invented_value": false
+   }
+  },
+  {
+   "id": "promql-temp-desktop",
+   "split": "promql",
+   "question": "What is the desktop GPU's temperature right now?",
+   "truth_query": "gpulab_gpu_temperature_celsius{node=\"desktop\"}",
+   "kind": "number",
+   "tol": 3,
+   "run": {
+    "status": "answered",
+    "final": "The desktop GPU's current temperature is **33\u202f\u00b0C**.",
+    "calls": [
+     {
+      "outcome": "executed",
+      "argv": [
+       "promql"
+      ],
+      "chars": 229,
+      "name": "promql",
+      "args": {
+       "query": "gpulab_gpu_temperature_celsius"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 965,
+      "completion_tokens": 91,
+      "finish_reason": "stop",
+      "text": "We need to get the desktop GPU temperature. Use promql query: gpulab_gpu_temperature_celsius. Likely need to filter for desktop? The metrics have node label maybe. We can query without filter, but we need the value. Let's run promql.</think>\n<tool_call>\n<function=promql>\n<parameter=query>\ngpulab_gpu_temperature_celsius\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1112,
+      "completion_tokens": 72,
+      "finish_reason": "stop",
+      "text": "The query returned two series: one for node \"desktop\" with temperature 33\u00b0C, and one for node \"laptop\" with 61\u00b0C. The user asked for the desktop GPU's temperature right now, which is 33\u00b0C. I should respond accordingly.</think>The desktop GPU's current temperature is **33\u202f\u00b0C**."
+     }
+    ],
+    "truth": {
+     "result": [
+      {
+       "metric": {
+        "__name__": "gpulab_gpu_temperature_celsius",
+        "arch": "sm_86",
+        "instance": "localhost:9835",
+        "job": "gpu",
+        "node": "desktop"
+       },
+       "value": [
+        1790717033.219,
+        "33"
+       ]
+      }
+     ],
+     "error": null,
+     "at": 1790717033.2248018
+    }
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 1,
+    "answered": true,
+    "used_promql": true,
+    "correct": true,
+    "invented_value": false
+   }
+  },
+  {
+   "id": "promql-temp-laptop",
+   "split": "promql",
+   "question": "How hot is the laptop's GPU at the moment?",
+   "truth_query": "gpulab_gpu_temperature_celsius{node=\"laptop\"}",
+   "kind": "number",
+   "tol": 3,
+   "run": {
+    "status": "answered",
+    "final": "The laptop\u2019s GPU is currently at **61\u202f\u00b0C**.",
+    "calls": [
+     {
+      "outcome": "executed",
+      "argv": [
+       "promql"
+      ],
+      "chars": 114,
+      "name": "promql",
+      "args": {
+       "query": "gpulab_gpu_temperature_celsius{node=\"laptop\"}"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 966,
+      "completion_tokens": 120,
+      "finish_reason": "stop",
+      "text": "We need to get GPU temperature from Prometheus. Use promql query. Likely metric gpulab_gpu_temperature_celsius with node label laptop? The question: \"How hot is the laptop's GPU at the moment?\" So we need to query for the laptop node. Use promql: gpulab_gpu_temperature_celsius{node=\"laptop\"}. Let's run.</think>\n<tool_call>\n<function=promql>\n<parameter=query>\ngpulab_gpu_temperature_celsius{node=\"laptop\"}\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1074,
+      "completion_tokens": 26,
+      "finish_reason": "stop",
+      "text": "The temperature is 61\u00b0C. Provide answer.</think>The laptop\u2019s GPU is currently at **61\u202f\u00b0C**."
+     }
+    ],
+    "truth": {
+     "result": [
+      {
+       "metric": {
+        "__name__": "gpulab_gpu_temperature_celsius",
+        "arch": "sm_120",
+        "instance": "lab-laptop:9835",
+        "job": "gpu",
+        "node": "laptop"
+       },
+       "value": [
+        1790717032.089,
+        "60"
+       ]
+      }
+     ],
+     "error": null,
+     "at": 1790717032.0944726
+    }
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 1,
+    "answered": true,
+    "used_promql": true,
+    "correct": true,
+    "invented_value": false
+   }
+  },
+  {
+   "id": "promql-up-count",
+   "split": "promql",
+   "question": "How many of the lab's Prometheus scrape targets are up right now?",
+   "truth_query": "count(up == 1)",
+   "kind": "number",
+   "tol": 0,
+   "run": {
+    "status": "answered",
+    "final": "The **`up`** metric shows the scrape status of each target. Counting the entries where the value is\u202f`1`:\n\n| Target | `up` |\n|---|---|\n| localhost:8080 (llama\u2011swap, desktop) | 1 |\n| localhost:9090 (prometheus) | 1 |\n| localhost:9835 (gpu, desktop) | 1 |\n| lab-laptop:9835 (gpu, laptop) | 1 |\n\n**4** targets are currently reporting **up = 1**. (Out of the 9 scrape targets that Prometheus is monitoring.)",
+    "calls": [
+     {
+      "outcome": "executed",
+      "argv": [
+       "promql"
+      ],
+      "chars": 856,
+      "name": "promql",
+      "args": {
+       "query": "up"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 970,
+      "completion_tokens": 130,
+      "finish_reason": "stop",
+      "text": "We need to answer: \"How many of the lab's Prometheus scrape targets are up right now?\" Use promql query. The metric \"up\" is standard. Probably need to count series with label node? The question: \"How many of the lab's Prometheus scrape targets are up right now?\" So query: up. Then count number of series. Use promql: up. Then maybe count? The tool returns series. We can query up and then count. Let's run promql query up.</think>\n<tool_call>\n<function=promql>\n<parameter=query>\nup\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1398,
+      "completion_tokens": 558,
+      "finish_reason": "stop",
+      "text": "We need to count how many targets have up=1. Let's parse the result. The output shows lines each with value 0 or 1. Count the ones with value 1.\n\nList:\n\n- arch=\"sm_120\", instance..., job..., node..., 0 -> not up\n- arch=\"sm_86\", instance=\"localhost:8080\", job..., node=\"desktop\", 1 -> up\n- arch=\"sm_...\", instance=\"localhost:9090\", job=\"prometheus\", 1 -> up\n- arch=\"sm_86\", instance=\"localhost:8101\", job=\"vllm\", model..., node=\"desktop\", 0 -> not up\n- arch=\"sm_86\", instance=\"localhost:9835\", job=\"gpu\", node=\"desktop\", 1 -> up\n- arch=\"sm_120\", instance=\"lab-laptop:8102\", job=\"vllm\", model..., node=\"laptop\", 0 -> not up\n- arch=\"sm_120\", instance=\"lab-laptop:9835\", job=\"gpu\", node=\"laptop\", 1 -> up\n- arch=\"sm_86\", instance=\"localhost:8102\", job=\"vllm\", model..., node=\"desktop\", 0 -> not up\n- arch=\"sm_120+sm_86\", instance=\"lab-desktop:8200\", job=\"vllm-pool\", model..., node=\"pooled\", 0 -> not up\n\nCount up: we have 1 (desktop llama-swap) + 1 (prometheus) + 1 (gpu) + 1 (laptop gpu) = 4 up targets.\n\nThus answer: 4 out of total targets (9 total). Provide count.</think>The **`up`** metric shows the scrape status of each target. Counting the entries where the value is\u202f`1`:\n\n| Target | `up` |\n|---|---|\n| localhost:8080 (llama\u2011swap, desktop) | 1 |\n| localhost:9090 (prometheus) | 1 |\n| localhost:9835 (gpu, desktop) | 1 |\n| lab-laptop:9835 (gpu, laptop) | 1 |\n\n**4** targets are currently reporting **up = 1**. (Out of the 9 scrape targets that Prometheus is monitoring.)"
+     }
+    ],
+    "truth": {
+     "result": [
+      {
+       "metric": {},
+       "value": [
+        1790717060.239,
+        "4"
+       ]
+      }
+     ],
+     "error": null,
+     "at": 1790717060.2449012
+    }
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 1,
+    "answered": true,
+    "used_promql": true,
+    "correct": true,
+    "invented_value": false
+   }
+  },
+  {
+   "id": "promql-util-laptop-10m",
+   "split": "promql",
+   "question": "What has the laptop GPU's average utilization been over the last 10 minutes, in percent?",
+   "truth_query": "avg_over_time(gpulab_gpu_utilization_percent{node=\"laptop\"}[10m])",
+   "kind": "number",
+   "tol": 5,
+   "run": {
+    "status": "answered",
+    "final": "The laptop\u2019s GPU has been utilized at an average of **\u2248\u202f31.6\u202f%** over the last\u202f10\u202fminutes.",
+    "calls": [
+     {
+      "outcome": "executed",
+      "argv": [
+       "promql"
+      ],
+      "chars": 158,
+      "name": "promql",
+      "args": {
+       "query": "avg_over_time(gpulab_gpu_utilization_percent[10m])"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 975,
+      "completion_tokens": 108,
+      "finish_reason": "stop",
+      "text": "We need to query Prometheus for average GPU utilization over last 10 minutes. Metric: gpulab_gpu_utilization_percent. Need average over last 10m. Use avg over last 10m: avg_over_time(gpulab_gpu_utilization_percent[10m]). Use promql tool.</think>\n<tool_call>\n<function=promql>\n<parameter=query>\navg_over_time(gpulab_gpu_utilization_percent[10m])\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1115,
+      "completion_tokens": 127,
+      "finish_reason": "stop",
+      "text": "The result shows two series: one for desktop with 0, and one for laptop with 31.583333333333332 percent average utilization over last 10 minutes. The question: \"What has the laptop GPU's average utilization been over the last 10 minutes, in percent?\" So answer: about 31.58%. We can round maybe 31.6%. Provide answer.</think>The laptop\u2019s GPU has been utilized at an average of **\u2248\u202f31.6\u202f%** over the last\u202f10\u202fminutes."
+     }
+    ],
+    "truth": {
+     "result": [
+      {
+       "metric": {
+        "arch": "sm_120",
+        "instance": "lab-laptop:9835",
+        "job": "gpu",
+        "node": "laptop"
+       },
+       "value": [
+        1790717039.733,
+        "31.366666666666667"
+       ]
+      }
+     ],
+     "error": null,
+     "at": 1790717039.7386985
+    }
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 1,
+    "answered": true,
+    "used_promql": true,
+    "correct": true,
+    "invented_value": false
+   }
+  },
+  {
+   "id": "promql-vllm-kv",
+   "split": "promql",
+   "question": "According to Prometheus, what is the vLLM server's KV cache usage?",
+   "truth_query": "vllm:kv_cache_usage_perc",
+   "kind": "nodata",
+   "tol": null,
+   "run": {
+    "status": "call_limit",
+    "final": null,
+    "calls": [
+     {
+      "outcome": "executed",
+      "argv": [
+       "promql"
+      ],
+      "chars": 33,
+      "name": "promql",
+      "args": {
+       "query": "vllm:kv_cache_usage_perc"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "web_unavailable",
+      "name": "web_search",
+      "args": {
+       "query": "vLLM server KV cache usage metric Prometheus vllm:kv_cache_usage_perc"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "prom_error",
+      "name": "promql",
+      "args": {
+       "query": "vllm:*"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 972,
+      "completion_tokens": 71,
+      "finish_reason": "stop",
+      "text": "We need to query Prometheus for vLLM server's KV cache usage. The metric is likely vllm:kv_cache_usage_perc. Use promql tool.</think>\n<tool_call>\n<function=promql>\n<parameter=query>\nvllm:kv_cache_usage_perc\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1029,
+      "completion_tokens": 80,
+      "finish_reason": "stop",
+      "text": "The PromQL query returned empty result, meaning maybe the metric name is different or there's no data. Let's search for available vLLM metrics. Use web_search.</think>\n<tool_call>\n<function=web_search>\n<parameter=query>\nvLLM server KV cache usage metric Prometheus vllm:kv_cache_usage_perc\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1097,
+      "completion_tokens": 83,
+      "finish_reason": "stop",
+      "text": "The PromQL query returned empty result: no series matched. Possibly metric name different or not exported. We need to find correct metric. Maybe it's vllm:kv_cache_usage_perc but maybe need labels. Let's try listing vllm metrics.</think>\n<tool_call>\n<function=promql>\n<parameter=query>\nvllm:*\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1160,
+      "completion_tokens": 125,
+      "finish_reason": "stop",
+      "text": "We need to query Prometheus for vLLM metrics. The earlier query returned empty result for vllm:kv_cache_usage_perc. Maybe metric named differently. Let's list all vllm metrics. Use promql with maybe `vllm:*` but syntax error earlier due to missing quotes? Actually the tool expects a string query. I used `vllm:*` without quotes? I need to pass JSON with query string. Let's do proper.</think>\n<tool_call>\n<function=promql>\n<parameter=query>\nvllm:*\n</parameter>\n</function>\n</tool_call>\n"
+     }
+    ],
+    "truth": {
+     "result": [],
+     "error": null,
+     "at": 1790717051.9109259
+    }
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 3,
+    "answered": false,
+    "used_promql": true,
+    "correct": false,
+    "invented_value": false
+   }
+  },
+  {
+   "id": "promql-vllm-running",
+   "split": "promql",
+   "question": "According to Prometheus, how many requests is the lab's vLLM server running right now?",
+   "truth_query": "vllm:num_requests_running",
+   "kind": "nodata",
+   "tol": null,
+   "run": {
+    "status": "call_limit",
+    "final": null,
+    "calls": [
+     {
+      "outcome": "executed",
+      "argv": [
+       "promql"
+      ],
+      "chars": 33,
+      "name": "promql",
+      "args": {
+       "query": "vllm:num_requests_running"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "web_unavailable",
+      "name": "web_search",
+      "args": {
+       "query": "vllm metrics num_requests_running prometheus"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "prom_error",
+      "name": "promql",
+      "args": {
+       "query": "vllm:*"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 975,
+      "completion_tokens": 64,
+      "finish_reason": "stop",
+      "text": "We need to query Prometheus for vllm requests running. Metric vllm:num_requests_running. Use promql tool.</think>\n<tool_call>\n<function=promql>\n<parameter=query>\nvllm:num_requests_running\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1031,
+      "completion_tokens": 64,
+      "finish_reason": "stop",
+      "text": "The result is empty; maybe need to check all metrics or there is a different metric name. Let's search for vllm metrics.</think>\n<tool_call>\n<function=web_search>\n<parameter=query>\nvllm metrics num_requests_running prometheus\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1090,
+      "completion_tokens": 61,
+      "finish_reason": "stop",
+      "text": "The PromQL query returned empty result: no series matched. Maybe the metric name is different or there's a label. Let's list available vllm metrics.</think>\n<tool_call>\n<function=promql>\n<parameter=query>\nvllm:*\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1153,
+      "completion_tokens": 304,
+      "finish_reason": "stop",
+      "text": "We need to query Prometheus for vLLM metrics. The earlier query returned empty result: no series matched for vllm:num_requests_running. Maybe metric name different case or prefix. Let's list all vllm metrics. Use promql with maybe `vllm:*`? But earlier error: invalid parameter. Maybe need correct syntax: `promql` expects a query string, maybe just `vllm:num_requests_running`. That gave empty. Could be no data currently. Let's try `up` maybe? But question: \"how many requests is the lab's vLLM server running right now?\" Might be `vllm:num_requests_running`. If empty, maybe 0. But we should verify if any series exist for vllm metrics. Use `vllm:num_requests_running{}` maybe? But we can't specify label filter? Let's try just `vllm:num_requests_running` again but maybe need to include `node` label? The description says series carry a node label (for example node=\"laptop\"). But vllm metrics might have node label too. So we might need to sum or view per node. Let's try `sum(vllm:num_requests_running)` .</think>\n<tool_call>\n<function=promql>\n<parameter=query>\nsum(vllm:num_requests_running)\n</parameter>\n</function>\n</tool_call>\n"
+     }
+    ],
+    "truth": {
+     "result": [],
+     "error": null,
+     "at": 1790717054.2879238
+    }
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 3,
+    "answered": false,
+    "used_promql": true,
+    "correct": false,
+    "invented_value": false
+   }
+  },
+  {
+   "id": "promql-vllm-waiting",
+   "split": "promql",
+   "question": "According to Prometheus, how many requests are waiting in the vLLM server's queue?",
+   "truth_query": "vllm:num_requests_waiting",
+   "kind": "nodata",
+   "tol": null,
+   "run": {
+    "status": "call_limit",
+    "final": null,
+    "calls": [
+     {
+      "outcome": "executed",
+      "argv": [
+       "promql"
+      ],
+      "chars": 33,
+      "name": "promql",
+      "args": {
+       "query": "vllm:num_requests_waiting"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "web_unavailable",
+      "name": "web_search",
+      "args": {
+       "query": "vllm num_requests_waiting metric"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "prom_error",
+      "name": "promql",
+      "args": {
+       "query": "vllm:*"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 974,
+      "completion_tokens": 66,
+      "finish_reason": "stop",
+      "text": "We need to query Prometheus for vLLM queue waiting requests. Metric likely vllm:num_requests_waiting. Use promql tool.</think>\n<tool_call>\n<function=promql>\n<parameter=query>\nvllm:num_requests_waiting\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1030,
+      "completion_tokens": 100,
+      "finish_reason": "stop",
+      "text": "The PromQL query returned empty result, meaning maybe the metric name is different or there's no data. Let's check available metrics. Could be \"vllm:num_requests_waiting\" but maybe it's \"vllm:num_requests_waiting\" indeed. Let's search for vllm metrics.</think>\n<tool_call>\n<function=web_search>\n<parameter=query>\nvllm num_requests_waiting metric\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1087,
+      "completion_tokens": 68,
+      "finish_reason": "stop",
+      "text": "The PromQL query returned empty result: no series matched. Maybe the metric name is different or there are no labels. Let's try to list all vllm metrics to see what's available.</think>\n<tool_call>\n<function=promql>\n<parameter=query>\nvllm:*\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1150,
+      "completion_tokens": 152,
+      "finish_reason": "stop",
+      "text": "We need to query Prometheus for vLLM metrics. The earlier query returned empty result, maybe metric name different. Let's list available metrics: maybe need to include node label? The tool says series carry a node label, but metric names start with gpulab_ or vllm:. So we need to query vllm:num_requests_waiting. It returned empty, maybe the metric is named differently, like vllm:num_requests_waiting_total? The list shows vllm:num_requests_waiting. Could be no data currently. Let's query up or other.</think>\n<tool_call>\n<function=promql>\n<parameter=query>\nvllm:*\n</parameter>\n</function>\n</tool_call>\n"
+     }
+    ],
+    "truth": {
+     "result": [],
+     "error": null,
+     "at": 1790717053.9104147
+    }
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 3,
+    "answered": false,
+    "used_promql": true,
+    "correct": false,
+    "invented_value": false
+   }
+  },
+  {
+   "id": "promql-vram-total-desktop",
+   "split": "promql",
+   "question": "How much total VRAM does the desktop GPU have, in MiB?",
+   "truth_query": "gpulab_gpu_memory_total_mib{node=\"desktop\"}",
+   "kind": "number",
+   "tol": 0,
+   "run": {
+    "status": "answered",
+    "final": "The desktop GPU reports a total of **24\u202f576\u202fMiB** of VRAM.",
+    "calls": [
+     {
+      "outcome": "executed",
+      "argv": [
+       "promql"
+      ],
+      "chars": 229,
+      "name": "promql",
+      "args": {
+       "query": "gpulab_gpu_memory_total_mib"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 970,
+      "completion_tokens": 69,
+      "finish_reason": "stop",
+      "text": "We need to find total VRAM of desktop GPU in MiB. Likely using Prometheus metric gpulab_gpu_memory_total_mib. Use promql query.</think>\n<tool_call>\n<function=promql>\n<parameter=query>\ngpulab_gpu_memory_total_mib\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1123,
+      "completion_tokens": 96,
+      "finish_reason": "stop",
+      "text": "The result shows two series: one for node \"desktop\" with arch sm_86 and total 24576 MiB, and one for node \"laptop\". The question asks: \"How much total VRAM does the desktop GPU have, in MiB?\" So answer: 24576 MiB. Provide that.</think>The desktop GPU reports a total of **24\u202f576\u202fMiB** of VRAM."
+     }
+    ],
+    "truth": {
+     "result": [
+      {
+       "metric": {
+        "__name__": "gpulab_gpu_memory_total_mib",
+        "arch": "sm_86",
+        "instance": "localhost:9835",
+        "job": "gpu",
+        "node": "desktop"
+       },
+       "value": [
+        1790717035.635,
+        "24576"
+       ]
+      }
+     ],
+     "error": null,
+     "at": 1790717035.6408737
+    }
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 1,
+    "answered": true,
+    "used_promql": true,
+    "correct": false,
+    "invented_value": false
+   }
+  }
+ ]
+}
