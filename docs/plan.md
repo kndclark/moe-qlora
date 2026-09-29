@@ -1544,6 +1544,58 @@ or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a 
   trained; the dataset (`LABEL=g6v PARTIAL=1 probes/g6t_build.py` over the three trace
   files) is not kept. Self-generated traces cannot fix G6u's traps at this scale; the
   habit to break is web_search after a lookup that does not show the flag.
+- **G6w: web_search fails in the training data, pre-registered 2026-09-29 before training
+  (David: "proceed with web_research training"; G6u merged to main fa7a944 the same day).**
+  G6u's data and recipe; one variable: the 60 web_research records.
+  - Why (MEASURED, `probes/trap_web_calls.py`, `results/g6w-web-baseline.json`, N1's three
+    thinking-on repeats pooled): G6u calls web_search on 167 of 983 items and 72 of 123
+    trap items; it fails 27 of those 72 against 13 of the 51 without a search. After a
+    search, the failures are truncated_in_think 11 (the denial written inside the unclosed
+    think, e.g. "I checked `sed --help` and `sed` has no `--atomic` option"), trap3
+    fabricated 6, call_limit 5, answered without denying 5. G6t: 56 trap items searched,
+    14 truncated_in_think after. G6q, same web_research records and no traces: 16 items,
+    0 traps. Base: 79 trap items, all 61 failures after a search at the call limit.
+  - The data's search semantics: no lab service implements web_search and the eval always
+    answers "unavailable", but in the training data it succeeds 60 times of 108 (web_research:
+    6 questions x 10, each answered from the returned snippet, "Based on the PyTorch
+    tensor documentation, ...") and fails only in web_fallback's 48, which then run
+    --help. No record shows a failed search followed by an answer.
+  - Data (MEASURED, `probes/g6w_build.py`, `results/research_dataset_g6w.json`,
+    `results/g6w-build.json`): each web_research tool result becomes one of
+    augment_research.WEB_FAILURES (seeded: unreachable 24, timeout 20, HTTP 503 16; the
+    eval's string appears 0 times, as augment_research requires), and the answer keeps
+    its content without the claimed source: "I couldn't search the documentation (the
+    network is unreachable), so this is from memory and unverified: you pass
+    `tensor.to(device, non_blocking=True)`. ... Check the PyTorch documentation for
+    `Tensor.to` before relying on it." (lookup_failed's shape). 60 records changed
+    (default 40, off 20, none traced), 1,188 identical; web_search successes 60 -> 0.
+  - Dry run (MEASURED, `results/g6w-dry.log`): 1,347 sequences as G6u, 0 truncated (max
+    2,047), 1,372,409 tokens (G6u 1,373,015), 224,663 trained (G6u 223,029); trace guard
+    and `RENDER=think` parity PASS. The log differs from `results/g6u-dry.log` in those
+    two counts only (plus attn_bf16's config line, which G6u's dry log lacks).
+  - Time: 338 steps, about 56 min at G6u's 3,338 s (ARITHMETIC).
+  - Run: `DATASET=/out/research_dataset_g6w.json RENDER=trace GUARD=hw MAX_LEN=2048
+    probes/gpurun.sh g6w-train /probes/attn_bf16.py g6_train.py g6w-train`; eval and
+    compare (gate, and `COMPARE_TO=g6u`) as G6u; then N1's repeats for G6w
+    (`LABEL=g6w probes/noise_eval.sh results/g6w-train-adapter "r2 r3"`),
+    `probes/noise_summary.py results/n1w-summary.json "r2 r3" base g6u g6w`,
+    `probes/trap_failures.py` and `probes/trap_web_calls.py` over "r1 r2 r3" for g6u g6w.
+  - **Pass rule, unchanged.** "Beyond the spread" is N1's: |mean difference| > the larger
+    of the two ranges (noise_summary.py).
+  - What it decides: G6w replaces G6u as the candidate if it passes both modes, has no row
+    below base beyond the spread, is above G6u beyond the spread on at least one trap row
+    (trap2, rocky_trap, trap3 noticed) and below it on none. Trap rows tie and web_search
+    on trap items falls to 36 of 123 or fewer -> the search was not what held the traps;
+    read the failures per item. web_search on trap items stays above 36 -> the habit
+    comes with the traces' reasoning (base's), not the data's search results, and the
+    data lever is spent. Any row below G6u beyond the spread and none above -> G6w is
+    dropped, G6u stays.
+  - Expectations (INFERENCE, written before the run so they can be wrong): web_search
+    falls on every set, not only traps; truncated_in_think after a search falls, since
+    60 records now close the think and answer after a failed search; trap rows rise 1-3
+    items each, which may sit inside the spread. Risk: "I couldn't search ..., so this is
+    from memory" opens trap answers without a denial in the first sentence (answered
+    without denying rises), or appears after lookups that worked.
 
 ### G7: serving on vLLM 0.29 (laptop)
 - Base NVFP4, then base + LoRA, then merge if needed. UNKNOWN:
