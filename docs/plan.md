@@ -1129,6 +1129,47 @@ or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a 
     the new shape is not outnumbered; or option (2), v4 reasoning traces (G6p, like G6r,
     leaves thinking-on mode empty).
 
+- **G6P2048: G6p at the length Qwen v3 was trained at, pre-registered 2026-09-28 before
+  training (David: "proceed with your best judgement, i'm putting you in control"; design
+  fixed by the lead).** G6p with one change, `MAX_LEN=2048`. Same data
+  (`results/research_dataset_g6p.json`), `RENDER=think`, recipe, guard, eval and pass rule.
+  - Why: G6's recipe line above ("max length 1024, qlora.py's default") was wrong about
+    v3. The command that trained the Qwen3-8B v3 adapter (MEASURED, Claude session
+    09256598, tool call at 2026-09-24T03:58Z, the only v3 training call there) was
+    `qlora.py --model Qwen/Qwen3-8B --out /adapters/qwen3-8b-research-v3 --dataset
+    /training/research_dataset_v3.json --max-len 2048 --save-strategy epoch`. No v3 record
+    passes 2048 under Qwen's template (max 1712, above), so Qwen trained every answer; G6,
+    G6r and G6p never trained 436 of them (G6p's context note). Every "like for like vs
+    the Qwen3-8B v3 adapter" tally so far carries that handicap. It also clears lever (b)'s
+    blocker: G6p's new records are 553-985 tokens before any reasoning text is added.
+  - Change: `probes/g6_train.py` reads `MAX_LEN` (unset = 1024, as G6, G6r and G6p ran);
+    `probes/gpurun.sh` passes it into the container.
+  - Dry run (MEASURED, `results/g6p2048-dry.log`): 1,150 records, 0 over the cap (max
+    1,892 tokens, p90 1,507), 1,092,595 tokens, 91,823 trained tokens (G6p 68,992, +33%).
+    Parity guard `RENDER=think` PASS: 2,264 of 2,264 boundaries; 748 turns see a longer
+    history (design A's newline; G6p 453). Default path unchanged: the same dry run
+    without `MAX_LEN` (`results/g6p-dry-recheck.log`) equals `results/g6p-dry.log` except
+    the one `attn_bf16 {...}` line, which that run printed because it ran through the
+    wrapper and the recheck did not.
+  - Memory: F1 measured 22.09 GiB device peak at seq 2048 against the 23.39 line; the
+    longest record here is 1,892. Time: G6p trained 2 x 924,522 tokens in 2,449 s (755
+    tokens/s), so 2 x 1,092,595 takes about 48 min (ARITHMETIC).
+  - Run: `DATASET=/out/research_dataset_g6p.json RENDER=think GUARD=hw MAX_LEN=2048
+    probes/gpurun.sh g6p2048-train /probes/attn_bf16.py g6_train.py g6p2048-train`, then
+    `LABEL=g6p2048 probes/g6_eval.sh results/g6p2048-train-adapter`, `LABEL=g6p2048
+    probes/g6_compare.py` (vs base, the gate) and again with `COMPARE_TO=g6p`.
+  - **Pass rule, copied from G6p:** WIN held_out, LOSE none of trap, trap_control,
+    no_tool, task, rocky_task, alert, promql; win/loss = hit_and_grounded differs by >4
+    items, else tie; thinking on primary, off secondary, like with like.
+  - Expectations (INFERENCE, written before the run so they can be wrong): the 436 newly
+    trained answers are mostly v3's one-flag "Based on \`" shape, so task rows may lose
+    some of G6p's gain; seen_tool (tar, journalctl, grep, git rebase) may gain, since
+    those tools' answers are trained for the first time; promql should not move, since
+    its cause (bash-only new records) is unchanged.
+  - What it decides: no worse than G6p on the rule (thinking on and off) -> 2048 becomes
+    the cap for lever (b). Worse on task rows -> v3's template answers are the harm, and
+    rewriting them comes before lever (b).
+
 ### G7: serving on vLLM 0.29 (laptop)
 - Base NVFP4, then base + LoRA, then merge if needed. UNKNOWN:
   - whether vLLM's nemotron_h supports LoRA on placement A's modules (read the vLLM
