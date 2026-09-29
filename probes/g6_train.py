@@ -44,6 +44,8 @@ Run (laptop):
   RENDER=think GUARD=hw probes/gpurun.sh g6r-train /probes/attn_bf16.py g6_train.py g6r-train
   DATASET=/out/<file>.json trains on another file (a container path; /out is results/);
   unset, it is v3, as G6 and G6r ran.
+  MAX_LEN=2048 caps at the length Qwen v3 actually trained at (qlora.py --max-len 2048,
+  plan.md "G6P2048"); unset, it is 1024, as G6, G6r and G6p ran.
   DRY_RUN=1 renders and masks the data, prints samples and stops before loading the model.
 Output: /out/<label>-adapter/ (checkpoint-N per epoch, final adapter at the top),
 /out/<label>.json (rewritten every step).
@@ -75,7 +77,8 @@ if RENDER not in ("g6", "think"):
     sys.exit(f"RENDER must be g6 or think, not {RENDER}")
 DATASET = os.environ.get("DATASET") or "/gpulab/training/research_dataset_v3.json"
 TARGETS = r".*\.mixer\.(q_proj|k_proj|v_proj|o_proj|in_proj)$|.*\.mixer\.shared_experts\.(up_proj|down_proj)$"
-EPOCHS, LR, PER_STEP, MAX_LEN, RANK, SEED = 2, 1e-4, 8, 1024, 16, 0
+EPOCHS, LR, PER_STEP, RANK, SEED = 2, 1e-4, 8, 16, 0
+MAX_LEN = int(os.environ.get("MAX_LEN") or 1024)
 OUT = f"/out/{label}-adapter"
 
 # ---- data (qlora.py's encode, with Lightning's tokenizer)
