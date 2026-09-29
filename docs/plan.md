@@ -1449,6 +1449,34 @@ or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a 
     task traces are the lever; ties again -> the trace lever has given what it gives at
     this scale, and the next variable is the template (rewrite v3's "Based on" answers);
     any new loss vs base -> G6u is dropped.
+- **G6U RESULT (MEASURED, 2026-09-29; `results/g6u-{train,compare,compare-vs-g6t,
+  tool-choice,think-counts}.json`, `results/research-eval-*-lightning-g6u-*.*`): PASSES
+  both modes. Thinking on vs base: task WINS 0.95 vs 0.60 (+7), trap3 noticed WINS 0.75
+  vs 0.25 (+6, new), promql 0.889 (16/18, the best of any run; +4, a tie), rocky_task
+  0.65 vs 0.65 (a tie again). Reasoning on 555 of 994 thinking-on turns (G6t 447 of
+  970); promqlcat 37 of 39. vs G6t: every row a tie in both modes. vs the Qwen3-8B v3
+  adapter, thinking off: 3 wins, 0 losses, 19 ties.**
+  - Train: 338/338 steps, 3,338 s, no guard abort, exit 0; loss 0.597 first step, mean
+    0.436 epoch 1 and 0.214 epoch 2, 0.066 last. Torch peak 19.94 GiB; max 79 C, 152.8 W;
+    sw_power_cap only. Trace guard and parity PASS in the run. Adapter
+    `results/g6u-train-adapter/` (not in git).
+  - Eval: 14 runs, exit 0; 956 items, 0 turn errors, 981 calls all `xml_function`, 0
+    unparsed; 12 at the call limit, 6 think-trapped, 2 truncated.
+  - vs G6t, thinking on (ties): trap3 noticed +4, promql +3, task +2, rocky_held_out +2;
+    rocky_trap -3, alert -2 (6/9; answers now mostly start with a web_search, 6 calls).
+  - **By the rule, a tie means the next variable is the template. The per-item read
+    refutes that rule's premise (MEASURED):** none of G6u's 7 rocky_task misses is a
+    "Based on" answer. 3 hit the call limit (exportfs-10, firewall-cmd-7, rpm-13); 4 name
+    the right command and add a flag the docs do not have (scontrol-1 `--dry-run`,
+    squeue-4 and xfs_repair-11 `-N`, ipa-16 four). Base misses 7 too, 4 of them the same
+    items, by the same two failures (call limit; ipa-16 with 13 invented flags). 19 of
+    the 20 items are solved by at least one of base, G6q, G6t, G6u; only rpm-13 by none.
+    Rewriting v3's template would touch none of the 7, so it is not run.
+  - Reading: the traces carried base's reasoning and with it base's failure modes;
+    rocky_task sits at base's level. The item sets that pass differ from run to run
+    more than the scores do, and G6's server check found thinking-on base moving ~5
+    items between identical runs. Every adapter-vs-adapter comparison since G6q is "all
+    ties", so the eval cannot yet rank G6q, G6t and G6u. Next: measure that noise.
 
 ### G7: serving on vLLM 0.29 (laptop)
 - Base NVFP4, then base + LoRA, then merge if needed. UNKNOWN:
