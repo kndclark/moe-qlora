@@ -117,8 +117,14 @@ def lightning_messages(msgs):
     return out
 
 
+def tools_for(record):
+    # G6q: a record may carry tools the eval offers beside training's two (the promql
+    # set's promql tool); records without "extra_tools" render exactly as before.
+    return TOOLS + record.get("extra_tools", [])
+
+
 def encode(record, how="g6"):
-    text = tok.apply_chat_template(lightning_messages(record["messages"]), tools=TOOLS, tokenize=False)
+    text = tok.apply_chat_template(lightning_messages(record["messages"]), tools=tools_for(record), tokenize=False)
     off = record.get("thinking") == "off"
     inserted = 0
     if off:
@@ -179,7 +185,7 @@ def parity(recs, encoded):
             if start >= len(d["ids"]):  # truncation cut the turn before anything is trained
                 st["cut"] += 1
                 continue
-            srv = tok(tok.apply_chat_template(msgs[:k], tools=TOOLS, tokenize=False, add_generation_prompt=True,
+            srv = tok(tok.apply_chat_template(msgs[:k], tools=tools_for(rec), tokenize=False, add_generation_prompt=True,
                                               enable_thinking=rec.get("thinking") != "off"),
                       add_special_tokens=False)["input_ids"]
             pre = d["ids"][:start]

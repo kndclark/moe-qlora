@@ -1181,7 +1181,79 @@ or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a 
     Alert 0/9 vs G6p's 2/9 is 2 items, a tie with G6p, but crosses the >4 line vs base.
   - Expectations: task rows did not lose (the INFERENCE above was wrong); promql did not
     move (+1 vs G6p), as expected. Per the decision above, 2048 is the cap for lever (b).
-  - Not yet done: per-item reads of the alert and promql rows, a fable-judge pass.
+  - fable-judge (2026-09-29): VERIFIED. `git archive 7152188 probes results` into a scratch
+    directory, both compare commands rerun there: `g6p2048-compare.json` and
+    `g6p2048-compare-vs-g6p.json` byte-identical to the committed ones; every number above
+    matches the printout; the vs-G6p blocks have no win or loss row in either mode.
+  - **Per item, thinking on (MEASURED, `probes/tool_choice_items.py`,
+    `results/g6p2048-tool-choice.json`): the loss is tool choice, not knowledge.**
+    - Alert: base answers all 9 with no tool call (5 correct). G6p and G6P2048 call bash on
+      every item (27 calls each, `man prometheus-alerting-rules`, `man prometheus`, ...),
+      hit the 3-call limit on 7 and 6 items, and answer 2 and 3.
+    - promql: base calls promql 22 times and bash once. G6P2048 calls bash 33 times and
+      promql 7; the 7 items where it called promql are 6 correct, the 11 where it called
+      bash are all wrong (`nvidia-smi --help` for a Prometheus question). G6p: the same.
+    - Every adapter turn on both sets opens with an empty `</think>` (alert 36 of 36,
+      promql 58 of 58; base 0): neither adapter reasons before choosing a tool.
+    - Training never showed the promql tool: `g6_train.py` rendered every record with
+      TOOLS (bash, web_search) only, while the eval's promql set adds a third tool.
+
+- **G6q: G6P2048 plus tool-choice records, pre-registered 2026-09-29 before training
+  (David: "you are go to proceed with all next steps"; design fixed by the lead).** G6p's
+  1,150 records unchanged plus 98 new ones, `MAX_LEN=2048`; `RENDER=think`, recipe, guard,
+  eval and pass rule as G6P2048.
+  - Why: G6P2048's per-item read above. Both failing rows lose on tool choice: bash for
+    live questions, bash lookups instead of an answer for rule writing. All 200 of G6p's
+    records answer via bash help, and no record ever showed the promql tool.
+  - Change to the trainer: `probes/g6_train.py`'s `tools_for(record)` renders `TOOLS` plus
+    the record's `extra_tools`, in the encode and in the parity guard. Default path
+    unchanged (MEASURED): the G6P2048 dry run rerun with this code,
+    `results/g6q-defaultpath-dry.log`, equals `results/g6p2048-dry.log` byte for byte.
+  - Data (MEASURED, `probes/g6q_build.py`, `results/g6q-build.json`,
+    `results/research_dataset_g6q.json`):
+    - 58 promql records (29 specs x 2 phrasings; 4 make two calls). Each carries the
+      promql tool in `extra_tools` with the description the eval's promqlcat set builds
+      (metric catalog appended, read from the same Prometheus). Tool outputs are real:
+      research_eval's own `execute()` against lab-desktop:9090 at build time; answers are
+      computed from the returned values. Metrics: CPU temperatures, GPU clocks, battery
+      health/cycles/discharging/power, power-limit default and max, throttle reasons,
+      scrape_ok, memory-controller utilization, scrape duration and samples, llama-swap
+      load/RAM/swap; 3 "no data" answers (empty `vllm:` counters, `node_load1`), each
+      matching research_eval's NODATA pattern.
+    - 40 alert records (20 specs x 2 phrasings), answered with no tool call: an opener
+      (6, none on more than 7), a `groups:` YAML block and one sentence. Every rule scores
+      valid and correct under research_eval's own `score_alert` (promtool check and unit
+      tests in prom/prometheus:v3.14.0) on series written for it: 20 of 20.
+    - Thinking: 33 "off", 65 "default", seeded (G6p's third).
+    - Contamination: no promql query names a metric that any promql eval truth query
+      names (14 excluded, `up` among them); no rule names a metric any alert eval item
+      names (10 excluded) or shares an alertname; word-set Jaccard vs all 478 eval
+      prompts max 0.467 (limit 0.5; four phrasings were rewritten to get under it).
+    - Not reproducible byte for byte: a rebuild reads Prometheus again, so values move.
+      The committed dataset is the record.
+  - Dry run (MEASURED, `results/g6q-dry.log`): 1,248 records, 0 over 2,048 (max 1,892,
+    p90 1,503), 1,178,797 tokens, 99,387 trained tokens (G6P2048 91,823). Parity guard
+    `RENDER=think` PASS, 2,424 of 2,424 boundaries (G6P2048 2,264; +160 = 54 x 2 + 4 x 3 +
+    40, ARITHMETIC); 785 turns see a longer history (design A's newline; G6P2048 748).
+  - Time: 156 steps per epoch, 312 in all, warmup 9; about 50 min at G6P2048's 781
+    tokens/s (ARITHMETIC).
+  - Run: `DATASET=/out/research_dataset_g6q.json RENDER=think GUARD=hw MAX_LEN=2048
+    probes/gpurun.sh g6q-train /probes/attn_bf16.py g6_train.py g6q-train`, then
+    `LABEL=g6q probes/g6_eval.sh results/g6q-train-adapter`, `LABEL=g6q
+    probes/g6_compare.py` (vs base, the gate) and again with `COMPARE_TO=g6p2048`; then
+    `probes/tool_choice_items.py results/g6q-tool-choice.json base g6p2048 g6q`.
+  - **Pass rule, unchanged:** WIN held_out, LOSE none of trap, trap_control, no_tool,
+    task, rocky_task, alert, promql; win/loss = the headline metric differs by >4 items,
+    else tie; thinking on primary, off secondary, like with like.
+  - Expectations (INFERENCE, written before the run so they can be wrong): promql stops
+    losing, since every training record that shows the promql tool uses it (a cue the
+    eval also carries); alert is less sure, since its prompt has no such cue and 1,150
+    bash records say "look it up first"; no other row moves against G6P2048. Diagnostics:
+    promql calls vs bash calls on promqlcat, zero-call alert items, empty-think turns.
+  - What it decides: passes thinking on -> the first Lightning adapter to pass the gate in
+    both modes, and the base for lever (b). promql fixed, alert not -> the schema cue is
+    the lever and alert needs more records or a cue; neither -> a tool-choice share of 8%
+    is not enough, and lever (b) (reasoning before the call) is next.
 
 ### G7: serving on vLLM 0.29 (laptop)
 - Base NVFP4, then base + LoRA, then merge if needed. UNKNOWN:
