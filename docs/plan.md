@@ -1478,6 +1478,26 @@ or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a 
     items between identical runs. Every adapter-vs-adapter comparison since G6q is "all
     ties", so the eval cannot yet rank G6q, G6t and G6u. Next: measure that noise.
 
+- **N1: run-to-run noise of the thinking-on eval, pre-registered 2026-09-29 before any
+  repeat ran (design fixed by the lead).** No training. The contested thinking-on sets
+  (v2, rocky, promqlcat, alert, trap3) run twice more for base, G6q, G6t and G6u, on a
+  server started exactly as `probes/g6_eval.sh` starts it (one LoRA; base runs on G6q's
+  server, as base ran on G6's), same harness settings (temperature 0, concurrency 16,
+  4,096 tokens, 3 calls). Repeat r1 is the gate's own run.
+  - Run: `LABEL=g6q probes/noise_eval.sh results/g6q-train-adapter "r2 r3" base`, then
+    the same for g6t and g6u without `base`; outputs in `results/noise/`.
+  - Summary: `probes/noise_summary.py results/n1-summary.json "r2 r3" base g6q g6t g6u`:
+    per model and row, items per repeat, mean, range, and items with the same outcome in
+    all three repeats; per model pair, mean difference against the larger range.
+  - What it decides: (1) the spread each row has with nothing changed, so later
+    decisions can be read against it; (2) which of G6q, G6t, G6u differ beyond it, on
+    which rows. The candidate for main is the adapter with no row below base beyond the
+    spread and the best means on the contested rows (task, rocky_task, trap2, rocky_trap,
+    promql, alert, trap3); if no pair differs beyond the spread, the simplest (G6q, no
+    trace machinery) is the candidate. Merging stays David's call.
+  - Expectation (INFERENCE): ranges of 1-3 items on 12-20-item rows, larger on rows
+    where answers hit the call limit; base the noisiest (124 call-limit items in G6).
+
 ### G7: serving on vLLM 0.29 (laptop)
 - Base NVFP4, then base + LoRA, then merge if needed. UNKNOWN:
   - whether vLLM's nemotron_h supports LoRA on placement A's modules (read the vLLM
