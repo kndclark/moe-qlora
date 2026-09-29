@@ -32,6 +32,9 @@ usage: python3 probes/g6t_collect.py --base URL --out FILE [--limit N] [--seed S
        [--clean]        also reject a trace with any call not executed (refused, web
                         search), so later attempts keep looking for a clean one.
        [--skip-traced DATASET]  skip records that already carry a trace there.
+       [--types T,T]    only these record types (G6v: trap_refusal,asserted_trap).
+       [--max-trace-calls N]  also reject a trace with more than N calls (G6v: 1, a
+                        denial after a single lookup).
 Resumes: records already in --out are skipped.
 Also rejected (G6u on): reasoning that says the docs could not be checked although every
 call ran; G6t's reasoning leaked v3's lookup-failed template that way.
@@ -161,6 +164,8 @@ def collect(a, i, r, docs, bins, attempt):
             why.append("reasoning claims a failed lookup")
     if a.clean and any(c["outcome"] != "executed" for c in run["calls"]):
         why.append("unclean: a call not executed")
+    if a.max_trace_calls is not None and len(run["calls"]) > a.max_trace_calls:
+        why.append(f"more than {a.max_trace_calls} calls")
     final = run["final"] or ""
     if r["type"] == "promql_live":
         ok, note = promql_ok(r, run, final)
@@ -216,9 +221,13 @@ def main():
     ap.add_argument("--concurrency", type=int, default=16)
     ap.add_argument("--clean", action="store_true")
     ap.add_argument("--skip-traced", default=None)
+    ap.add_argument("--types", default=None)
+    ap.add_argument("--max-trace-calls", type=int, default=None)
     a = ap.parse_args()
     records = json.load(open(DATASET))
     elig = [i for i, r in enumerate(records) if r.get("thinking") == "default" and r.get("type") in ELIGIBLE]
+    if a.types:
+        elig = [i for i in elig if records[i]["type"] in a.types.split(",")]
     if a.skip_traced:
         traced = {i for i, r in enumerate(json.load(open(a.skip_traced))) if "trace" in r}
         elig = [i for i in elig if i not in traced]

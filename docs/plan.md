@@ -1528,6 +1528,22 @@ or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a 
   - Reading: the reasoning traces bought task and rocky_task and cost the traps through
     call budget, not knowledge. G6u is the candidate for main (David's call). Its trap
     weakness has a concrete lever: traces that deny after one lookup.
+- **G6v (not trained): trap traces from G6u, collected 2026-09-29, a negative result
+  (MEASURED; `results/g6v-traces.jsonl`, `results/g6v-collect.log`,
+  `results/g6v-build.json`).** The 53 "default" trap_refusal and asserted_trap records
+  with no trace, generator G6u (`ADAPTER=results/g6u-train-adapter LORA=g6u
+  probes/g6t_collect.sh ... --model g6u --attempts 8 --clean --max-trace-calls 1 --types
+  trap_refusal,asserted_trap --skip-traced results/research_dataset_g6u.json`), 424
+  attempts, 2,546 s: **0 accepted.** 368 attempts made more than one call, 368 had a
+  call not executed (338 web_search, 132 refused); the habit is to look the tool up, not
+  find the flag, then web_search to double-check. Allowing two calls adds none. 21
+  records have a clean one-lookup denial whose only fault is an empty-reasoning lookup
+  turn; under the partial rule they would add 21 trained turns (the denial turn, e.g.
+  "the output does not list `--show-diff-inline-always`, so it isn't a standard git log
+  option"), 1.6% of the sequences, below what N1 shows the eval can resolve. Not
+  trained; the dataset (`LABEL=g6v PARTIAL=1 probes/g6t_build.py` over the three trace
+  files) is not kept. Self-generated traces cannot fix G6u's traps at this scale; the
+  habit to break is web_search after a lookup that does not show the flag.
 
 ### G7: serving on vLLM 0.29 (laptop)
 - Base NVFP4, then base + LoRA, then merge if needed. UNKNOWN:
