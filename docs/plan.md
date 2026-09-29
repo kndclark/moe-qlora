@@ -1254,6 +1254,44 @@ or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a 
     both modes, and the base for lever (b). promql fixed, alert not -> the schema cue is
     the lever and alert needs more records or a cue; neither -> a tool-choice share of 8%
     is not enough, and lever (b) (reasoning before the call) is next.
+- **G6Q RESULT (MEASURED, 2026-09-29; `results/g6q-{train,compare,compare-vs-g6p2048,
+  tool-choice}.json`, `results/research-eval-*-lightning-g6q-*.*`): PASSES the rule in
+  both modes, the first Lightning adapter to pass thinking on. Thinking on: promql 0.833
+  vs base 0.667 (+3), alert 7/9 vs 5/9 (+2), both ties now instead of losses; held_out
+  +18 wins; no row loses. vs G6P2048: promql +9 and alert +7 thinking on (+10, +6 off),
+  all other rows ties. Like for like, thinking off, vs the Qwen3-8B v3 adapter: 2 wins
+  (promql 0.833 vs 0.500, alert 7/9 vs 0/9), 0 losses, 20 ties.**
+  - Train: 312/312 steps, 2,970 s, no guard abort, exit 0; loss 1.713 first step, mean
+    0.474 epoch 1 and 0.170 epoch 2, 0.074 last. Torch peak 19.86 GiB; max 77 C and
+    151.6 W; sw_power_cap only. Parity in the run: 2,424 of 2,424. Adapter
+    `results/g6q-train-adapter/` (not in git).
+  - Eval: 14 runs, exit 0. 956 items, 0 in status `error`; 886 calls, all `xml_function`;
+    9 items hit the call limit (G6p 39).
+  - Tool choice, thinking on (`probes/tool_choice_items.py`): promqlcat 19 promql calls,
+    0 bash, 18 of 18 answered (G6P2048: 33 bash, 7 promql, 9 at the call limit). Alert: 6
+    of 9 answered with no call, all 6 correct; 3 still look things up (bash 7 calls,
+    web_search 2), of which ScrapeFlapping passes and the two with two metrics
+    (BatteryLowOnBattery, DataDiskAlmostFull) do not.
+  - Expectations: promql, as predicted; alert did better than predicted (INFERENCE was
+    "less sure").
+  - Read by hand: alert answers are rules for the eval's own metrics in the trained shape
+    (opener, `groups:` YAML, one sentence), e.g. TargetDown `up == 0` for 2m. ScrapeFlapping
+    is correct, but its text claims a basis in "`promtool rule --help` output" that no
+    call returned. The three promql misses are new errors: `up{job="scrape"} == 0` and
+    `up{job="gpulab"}`, both invented job labels, empty results reported as "none down" and
+    "none up"; and the desktop's VRAM given as 33 MiB when GiB was asked. INFERENCE: the
+    3 "no data" records taught "empty -> none" without teaching a label check first.
+  - rocky_task drifts: 0.45 thinking on (G6P2048 0.60, base 0.65; -4 vs base, one item
+    from a loss), 0.40 off (-3). The 4 items lost vs G6P2048 (dnf-14, firewall-cmd-7,
+    sbatch-5, squeue-4) are all v3's "Based on \`x --help\`, the option is" template,
+    the known template collapse, not tool choice.
+  - Think: 4 of 919 thinking-on turns never close `</think>` (rocky_trap-sinfo,
+    held_out2-rsync-2, trap2-strace, two_flag-strace; G6p 1); 915 of 919 have empty
+    reasoning. G6q still does not think, so lever (b) still has its target.
+  - What it decides (per the pre-registration): G6q is the base for lever (b), at 2048.
+    Merging to main is David's call. Open, in order: the template collapse on rocky_task
+    (v3's 464 "Based on" answers, the largest remaining risk: one more item is a loss);
+    empty reasoning (lever b); label checking before trusting an empty promql result.
 
 ### G7: serving on vLLM 0.29 (laptop)
 - Base NVFP4, then base + LoRA, then merge if needed. UNKNOWN:
