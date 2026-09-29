@@ -73,8 +73,8 @@ label = sys.argv[1]
 DRY = os.environ.get("DRY_RUN") == "1"
 GUARD = os.environ.get("GUARD", "g5")
 RENDER = os.environ.get("RENDER", "g6")
-if RENDER not in ("g6", "think"):
-    sys.exit(f"RENDER must be g6 or think, not {RENDER}")
+if RENDER not in ("g6", "think", "trace"):
+    sys.exit(f"RENDER must be g6, think or trace, not {RENDER}")
 DATASET = os.environ.get("DATASET") or "/gpulab/training/research_dataset_v3.json"
 TARGETS = r".*\.mixer\.(q_proj|k_proj|v_proj|o_proj|in_proj)$|.*\.mixer\.shared_experts\.(up_proj|down_proj)$"
 EPOCHS, LR, PER_STEP, RANK, SEED = 2, 1e-4, 8, 16, 0
@@ -206,7 +206,50 @@ def parity(recs, encoded):
     return st
 
 
-data = [encode(r, RENDER) for r in records]
+def encode_trace(record, st):
+    """RENDER=trace (G6t): a record with an accepted base-Lightning trace becomes one
+    sequence per assistant turn. Prompt: the template's thinking-on generation prompt over
+    the history exactly as the eval harness sends it (visible text + call, no reasoning),
+    masked. Trained: base's own completion text for that turn, reasoning included, then
+    <|im_end|>. The guard: the prompt must have the token count vLLM's /tokenize gave
+    for that turn when the trace was collected; completion counts are reported."""
+    tr = record["trace"]
+    out = []
+    for k, text in enumerate(tr["texts"]):
+        hist = lightning_messages(tr["messages"][:1 + 2 * k])
+        prompt = tok.apply_chat_template(hist, tools=tools_for(record), tokenize=False,
+                                         add_generation_prompt=True, enable_thinking=True)
+        p_ids = tok(prompt, add_special_tokens=False)["input_ids"]
+        c_ids = tok(text, add_special_tokens=False)["input_ids"] + [im_end]
+        st["turns"] += 1
+        if len(p_ids) == tr["prompt_tokens"][k]:
+            st["prompt_count_ok"] += 1
+        else:
+            st["prompt_count_bad"] += 1
+            if len(st["bad_examples"]) < 3:
+                st["bad_examples"].append({"index": tr["index"], "turn": k, "train": len(p_ids),
+                                           "server": tr["prompt_tokens"][k]})
+        st["completion_count_equal"] += len(c_ids) == tr["completion_tokens"][k]
+        ids = p_ids + c_ids
+        out.append({"ids": ids[:MAX_LEN], "labels": ([-100] * len(p_ids) + c_ids)[:MAX_LEN],
+                    "truncated": len(ids) > MAX_LEN, "inserted": 0, "masked_think": 0,
+                    "thinking": "trace", "turns": []})
+    return out
+
+
+trace_parity = {"turns": 0, "prompt_count_ok": 0, "prompt_count_bad": 0, "completion_count_equal": 0,
+                "bad_examples": []}
+if RENDER == "trace":
+    plain = [r for r in records if not r.get("trace")]
+    data = [encode(r, "think") for r in plain]
+    for r in records:
+        if r.get("trace"):
+            data.extend(encode_trace(r, trace_parity))
+    trace_parity["records_with_trace"] = len(records) - len(plain)
+    trace_parity["pass"] = trace_parity["prompt_count_bad"] == 0 and trace_parity["turns"] > 0
+else:
+    plain = records
+    data = [encode(r, RENDER) for r in records]
 n_items = [sum(l != -100 for l in d["labels"]) for d in data]
 lens = sorted(len(d["ids"]) for d in data)
 res = {"label": label, "model": REPO, "revision": REV, "dataset": DATASET, "guard": GUARD,
@@ -240,22 +283,31 @@ def show(d, width=1600):
     return "".join(out)[-width:]
 
 
-if RENDER == "think" or DRY:
-    res["parity"] = parity(records, data)
+if RENDER in ("think", "trace") or DRY:
+    res["parity"] = parity(plain, data[:len(plain)])
+if RENDER == "trace":
+    res["trace_parity"] = trace_parity
+    res["data"]["trace_sequences"] = trace_parity["turns"]
 if DRY:
     print(json.dumps(res["data"], indent=1))
-    for mode in ("default", "off"):
+    for mode in ("default", "off") + (("trace",) if RENDER == "trace" else ()):
         d = next(d for d in data if d["thinking"] == mode and not d["truncated"])
         print(f"\n===== thinking={mode} (last 1600 chars; [[masked]])\n{show(d)}")
     # Trap fixture: the other render's guard too. G6's must FAIL (its default records train
     # from "assistant\n"), the think render's must PASS.
-    other = "g6" if RENDER == "think" else "think"
-    for how, st in ((RENDER, res["parity"]), (other, parity(records, [encode(r, other) for r in records]))):
+    if RENDER == "trace":
+        print(f"\n===== trace guard (vLLM prompt token counts): {'PASS' if trace_parity['pass'] else 'FAIL'}\n"
+              f"{json.dumps(trace_parity, indent=1)}")
+    this = "think" if RENDER == "trace" else RENDER
+    other = "g6" if this == "think" else "think"
+    for how, st in ((this, res["parity"]), (other, parity(plain, [encode(r, other) for r in plain]))):
         print(f"\n===== parity guard, RENDER={how}{' (this run)' if how == RENDER else ''}: "
               f"{'PASS' if st['pass'] else 'FAIL'}\n{json.dumps(st, indent=1)}")
     sys.exit(0)
-if RENDER == "think" and not res["parity"]["pass"]:
+if RENDER in ("think", "trace") and not res["parity"]["pass"]:
     sys.exit(f"parity guard FAILED, not training:\n{json.dumps(res['parity'], indent=1)}")
+if RENDER == "trace" and not trace_parity["pass"]:
+    sys.exit(f"trace guard FAILED, not training:\n{json.dumps(trace_parity, indent=1)}")
 
 lean_scan.install()
 chunked_ce.install(int(os.environ.get("CE_CHUNK", "256")))

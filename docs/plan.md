@@ -1293,6 +1293,79 @@ or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a 
     (v3's 464 "Based on" answers, the largest remaining risk: one more item is a loss);
     empty reasoning (lever b); label checking before trusting an empty promql result.
 
+- **G6t: lever (b), base Lightning's own reasoning traces on G6q, pre-registered
+  2026-09-29 before training (David: "you are go to proceed with all next steps"; design
+  fixed by the lead).** G6q's data and recipe (`MAX_LEN=2048`, guard, eval, pass rule);
+  131 of G6q's "default" records have their thinking-on turns replaced by base Lightning's
+  own completions, reasoning included, where the eval's own scorer accepts the answer.
+  - Why: G6q passes but writes empty reasoning on 915 of 919 thinking-on turns. Base
+    reasons on every turn and still wins rocky_task (0.65 vs 0.45). The question: does
+    training base's own reasoning break the empty-think reflex, and what does it cost?
+  - Collection (MEASURED, `probes/g6t_collect.{py,sh}`, `results/g6t-traces.jsonl`,
+    `results/g6t-collect.log`): base Lightning NVFP4 served as `probes/g6_eval.sh` does,
+    minus LoRA. Each of the 605 "default" records of eight mechanically checkable types
+    ran through research_eval's own `run_item` with g7a_eval's two patches, thinking on,
+    G6q's tools (promql records carry `extra_tools`), 3 calls, window 4000, real tools;
+    a wrapper on research_eval's `execute` records each tool output so the history is
+    rebuilt exactly as `run_item` sent it (every call re-parses from its turn's text).
+    Scored by research_eval's own `score()` on an eval-shaped item per record type
+    (cli_grounded -> held_out, compose -> two_flag, task_procedure -> task, both trap
+    types -> trap, alert_direct -> alert with G6q's series, arithmetic -> no_tool);
+    promql_live: promql calls only and every number of G6q's reference answer, recomputed
+    from Prometheus, within 5% or 1. Accepted only if answered, every turn `stop` with a
+    closed, non-empty `</think>`, <= 3 calls, no claimed unrun lookup, the tool looked
+    up (flag and trap kinds), and prompt + completion <= 2,047 tokens per turn. Attempt
+    0 greedy, as the eval; attempts 1-3 sample (0.6, top-p 0.95), until one is accepted.
+    1,779 attempts in 3,108 s; 266 of 605 records accepted.
+  - Pilot first (`results/g6t-pilot.{jsonl,log}`, 40 records, greedy): 11 accepted. Read
+    by hand: rejections are base's real habits under the eval's rules, not a harness
+    fault: it opens with web_search (unavailable), tries `--help | grep` pipes (refused)
+    and spends its 3 calls (base: 124 call-limit items in G6's eval), or answers from
+    memory without looking the tool up.
+  - **Clean traces only (the lead's decision):** of the 266, 135 carry 112 refused calls
+    and 69 web_search calls. Training them would import the call-spending habit that is
+    base's main eval failure and not G6q's (9 call-limit items). `probes/g6t_build.py`
+    attaches only traces whose every call executed: 131 records, 216 turns (arithmetic
+    30, promql 18, alert 16, cli_grounded 60, compose 5, trap_refusal 1, asserted_trap 1,
+    task_procedure 0); 46 answer with no call, 85 with one (67 bash, 18 promql).
+    Reasoning 26-2,134 characters, median 311. Output `results/research_dataset_g6t.json`,
+    audit `results/g6t-build.json`; G6q's fields unchanged on every record (checked).
+  - Change to the trainer: `RENDER=trace` in `probes/g6_train.py`. A record with a trace
+    becomes one sequence per turn (design B, forced: the eval sends history without
+    reasoning, while Lightning's template keeps reasoning in history after the last user
+    message, so one sequence per record would show later turns a history the server
+    never sends). Prompt: `apply_chat_template(history, tools, add_generation_prompt,
+    enable_thinking=True)`, masked; trained: base's completion text + `<|im_end|>`.
+    Other records encode exactly as `RENDER=think`. Guard: every trace prompt must have
+    the token count vLLM's `/tokenize` gave that turn at collection.
+  - Dry run (MEASURED, `results/g6t-dry.log`): 1,333 sequences (1,117 records + 216 trace
+    turns), 0 over 2,048 (max 2,045), 1,276,477 tokens, 143,335 trained (G6q 99,387).
+    Trace guard PASS, 216 of 216 prompt counts equal (completion counts equal 212 of 216:
+    re-tokenizing the text differs on 4); `RENDER=think` parity on the other records PASS.
+    Default path unchanged: `RENDER=think` on G6q's data with this code
+    (`results/g6t-defaultpath-dry.log`) equals `results/g6q-dry.log` byte for byte.
+  - Time: 167 steps per epoch, 334 in all, warmup 10; about 55 min at 781 tokens/s
+    (ARITHMETIC).
+  - Run: `DATASET=/out/research_dataset_g6t.json RENDER=trace GUARD=hw MAX_LEN=2048
+    probes/gpurun.sh g6t-train /probes/attn_bf16.py g6_train.py g6t-train`, then
+    `LABEL=g6t probes/g6_eval.sh results/g6t-train-adapter`, `LABEL=g6t probes/g6_compare.py`
+    (the gate) and with `COMPARE_TO=g6q`; `probes/tool_choice_items.py
+    results/g6t-tool-choice.json base g6q g6t`; empty-reasoning and think-trap counts on
+    all thinking-on turns.
+  - **Pass rule, unchanged** (G6q's). Primary question beside it: thinking-on turns with
+    non-empty reasoning, G6q 4 of 919.
+  - Expectations (INFERENCE, written before the run so they can be wrong): reasoning
+    appears on some thinking-on turns, most on arithmetic-, alert- and promql-like items,
+    little on task rows, since 216 reasoning turns sit beside about 1,300 empty ones;
+    answers get longer and more Markdown-heavy (base's style); rows mostly tie G6q. Risks:
+    longer turns reach the call limit or 4,096-token cap more often; the think trap
+    (no `</think>`) could return.
+  - What it decides: reasoning on task rows and rocky_task up -> scale clean traces
+    (more attempts, task records). Reasoning appears only on the traced kinds -> the
+    share is too small or the reflex is per-kind; rocky_task no better -> base's reasoning
+    alone is not the missing piece there, and the template collapse (v3's "Based on"
+    answers) is next. A new loss vs base -> G6t is dropped, G6q stays the candidate.
+
 ### G7: serving on vLLM 0.29 (laptop)
 - Base NVFP4, then base + LoRA, then merge if needed. UNKNOWN:
   - whether vLLM's nemotron_h supports LoRA on placement A's modules (read the vLLM
