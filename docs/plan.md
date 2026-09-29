@@ -1169,6 +1169,19 @@ or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a 
   - What it decides: no worse than G6p on the rule (thinking on and off) -> 2048 becomes
     the cap for lever (b). Worse on task rows -> v3's template answers are the harm, and
     rewriting them comes before lever (b).
+- **G6P2048 RESULT (MEASURED, 2026-09-28; `results/g6p2048-{train,compare,
+  compare-vs-g6p}.json`, `results/research-eval-*-lightning-g6p2048-*.*`): same verdict as
+  G6p. Thinking on FAILS, on promql (0.333 vs 0.667, -6) and alert (0/9 vs 5/9, -5);
+  thinking off PASSES. Against G6p: every row a tie in both modes. Like for like and now
+  at equal length, thinking off, vs the Qwen3-8B v3 adapter: 1 win (rocky_task, 0.60 vs
+  0.25), 0 losses, 21 ties.**
+  - Train: 288/288 steps, 2,796 s, no guard abort, exit 0; loss 1.485 -> 0.058. Eval: 14
+    runs, exit 0. (Exclude the CHECK row, base v1 G6 server vs G7a, when tallying.)
+  - Thinking on: task 0.80 (G6p 0.75), rocky_task 0.60 (G6p 0.45), both ties vs base.
+    Alert 0/9 vs G6p's 2/9 is 2 items, a tie with G6p, but crosses the >4 line vs base.
+  - Expectations: task rows did not lose (the INFERENCE above was wrong); promql did not
+    move (+1 vs G6p), as expected. Per the decision above, 2048 is the cap for lever (b).
+  - Not yet done: per-item reads of the alert and promql rows, a fable-judge pass.
 
 ### G7: serving on vLLM 0.29 (laptop)
 - Base NVFP4, then base + LoRA, then merge if needed. UNKNOWN:
