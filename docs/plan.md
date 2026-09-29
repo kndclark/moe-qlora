@@ -1365,6 +1365,43 @@ or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a 
     share is too small or the reflex is per-kind; rocky_task no better -> base's reasoning
     alone is not the missing piece there, and the template collapse (v3's "Based on"
     answers) is next. A new loss vs base -> G6t is dropped, G6q stays the candidate.
+- **G6T RESULT (MEASURED, 2026-09-29; `results/g6t-{train,compare,compare-vs-g6q,
+  tool-choice}.json`, `results/research-eval-*-lightning-g6t-*.*`): PASSES the rule in
+  both modes, and it reasons: 447 of 970 thinking-on turns carry non-empty reasoning
+  (median 261 characters; G6q 0 of 919). Thinking on, task WINS vs base (0.85 vs 0.60,
+  +5) and rocky_task reaches base (0.65 vs 0.65; G6q 0.45). vs G6q: every row a tie in
+  both modes. vs the Qwen3-8B v3 adapter, thinking off: 3 wins (rocky_task 0.55 vs 0.25,
+  promql 0.778 vs 0.500, alert 5/9 vs 0/9), 0 losses, 19 ties.**
+  - Train: 334/334 steps, 3,189 s, no guard abort, exit 0; loss 1.344 first step, mean
+    0.472 epoch 1 and 0.208 epoch 2 (G6q 0.474, 0.170), 0.036 last. Torch peak 19.94
+    GiB; max 78 C and 153.0 W; sw_power_cap only. Trace guard and parity PASS in the run.
+    Adapter `results/g6t-train-adapter/` (not in git).
+  - Eval: 14 runs, exit 0. 956 items, 0 turn errors; 952 calls, all `xml_function`, 0
+    unparsed; 9 at the call limit (G6q 9), 2 truncated, 8 think-trapped (G6q 4).
+  - Reasoning by set, thinking on (turns with reasoning): v1 151/309, v2 139/283, rocky
+    105/235, promqlcat 20/39, general 19/45, trap3 10/30, alert 3/29. The expectation
+    ("little on task rows") was wrong: reasoning spread to every set, though almost no
+    task trace was trained.
+  - vs G6q, thinking on (all ties): rocky_task +4, task +3, alert +1; trap2 -4 (0.583 vs
+    0.917), held_out -3, rocky_trap -2, held_out2 -2, rocky_held_out -2, promql -2.
+  - Read by hand: the 6 rocky_task items gained vs G6q (dnf-14, firewall-cmd-7, -8,
+    sbatch-5, squeue-4, srun-6) include all 4 that G6q lost to v3's "Based on \`x
+    --help\`, the option is" template; the reasoning now picks the whole command (`dnf
+    repolist`). The 4 trap2 items lost vs G6q reach the right conclusion and fail on
+    mechanics: 2 at the call limit (chronyc, rsync), 1 denial written inside an
+    unclosed `<think>` (nfsstat), 1 scorer artifact (lsblk: "does **not** include any
+    `--health`", but the heuristic judges only the first sentence naming the flag,
+    which here says it checked). Twice the reasoning opens with v3's lookup-failed
+    template ("I couldn't check the help...") although the help ran.
+  - Tool choice: promqlcat 19 promql calls, 2 web_search, 0 bash (13/18 correct). Alert
+    8/9 correct, all 9 answered, but every item now looks something up first (20 bash
+    calls, 0 zero-call answers; G6q 6 zero-call): G6q's direct answering partly reverted.
+  - What it decides (per the pre-registration): reasoning reached the task rows and
+    rocky_task rose, so the next step is to scale clean traces, task records above all.
+    Base gave 0 clean task traces (it spends its calls), so the generator for more should
+    be one that looks up efficiently; G6t itself is the candidate (INFERENCE). Both G6q
+    and G6t pass; G6t is the stronger on task rows, G6q on traps and promql. Merging
+    either to main is David's call.
 
 ### G7: serving on vLLM 0.29 (laptop)
 - Base NVFP4, then base + LoRA, then merge if needed. UNKNOWN:
