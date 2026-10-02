@@ -1690,6 +1690,10 @@ or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a 
   - Spread, thinking off: Qwen v3 0-1 items on every row (as expected); G6u 0-2 except
     rocky_task 4 (11, 7, 9: the gate's 0.55 was a high draw; mean 0.45). trap3 noticed is
     12/12 in all three G6u repeats.
+  - held_out per item (r1-r3): G6u misses `held_out-patch-5` in all three (it answers
+    `--backup-if-mismatch`, grounded in `patch --help`, the wrong flag for the
+    question) and `held_out-file-5` in two; Qwen v3 misses only `held_out-file-3`, once,
+    after its lookup failed. The gap is one item G6u gets wrong every time.
   - Reading: on what it was trained for (flag lookup) G6u sits a point below Qwen v3,
     which is at its ceiling (89.67 of 90); on the task, tool and trap rows it is
     clearly ahead. Whether "below on none" was the right bar for a 90-item row at a
@@ -1800,6 +1804,21 @@ or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a 
 - Expectations (INFERENCE): it serves; KV well above one card's (most of each card is
   free once the weights split); single-stream decode slower than one card (one link
   crossing per token, ~0.24 ms, plus the pipeline bubble), c=16 aggregate higher.
+- **G7C RESULT (MEASURED, 2026-10-02 00:46-01:01; `results/g7c.log`, `results/g7c/`):
+  OOM on the laptop's stage; not retried (hard stops).** Ray placed both stages and both
+  loaded through Marlin (FP4, FP8 and MoE): weights 9.01 GiB on the desktop (PP0) and
+  9.71 GiB on the laptop (PP1); profiling gave 12.34 and 11.28 GiB of KV. Then the
+  laptop's worker died in a forward pass, in the Mamba chunk scan's state passing
+  (`ssd_state_passing.py` `_state_passing_fwd`, from `mamba_chunk_scan_combined_varlen`):
+  "Tried to allocate 512.00 MiB ... this process has 22.74 GiB memory in use ... 402.75
+  MiB is free". The endpoint never answered (900 s), `lab pool down` exit 0, desktop
+  `lab up` exit 0, llama-swap active again.
+  - Reading: the pool ran bin/lab's settings, not the gate's: gpu util 0.92 (bin/lab's
+    note: "about as high as the laptop can go") and vLLM's default max_num_seqs (256),
+    where the single-card server runs 0.85 and `--max-num-seqs 16`. The SSD state buffer
+    grows with the number of sequences, and profiling did not leave room for it.
+  - Proposed next (David's call, since it moves thresholds after an OOM): the same run
+    with `--max-num-seqs 16` in `POOL_EXTRA_FLAGS` and `POOL_GPU_UTIL=0.85`.
 
 ## Hard stops and rules
 
