@@ -3,8 +3,9 @@
 # started exactly as probes/g6_eval.sh starts it (same image, flags, one LoRA), to measure
 # run-to-run spread at the eval's own settings (temperature 0, concurrency 16).
 # Outputs go to results/noise/, never over the gate's files.
-# usage: LABEL=g6q noise_eval.sh ADAPTER_DIR "r2 r3" [base]
+# usage: [THINK=off] LABEL=g6q noise_eval.sh ADAPTER_DIR "r2 r3" [base]
 #   "base" also repeats base Lightning on this server, as g6_eval.sh ran base.
+#   THINK=off (N2): g6_eval.sh's thinking-off settings on all seven sets, labels ...-nothink-rN.
 set -u
 adapter=$(realpath "$1"); reps=$2; with_base=${3:-}
 here=$(cd "$(dirname "$0")/.." && pwd)
@@ -39,6 +40,13 @@ until curl -sf $B/health >/dev/null; do
 done
 echo "ready in $(( $(date +%s)-t0 ))s"
 common=(--max-calls 3 --temperature 0 --window 4000 --seed 20260923 --concurrency 16 --thinking on --max-tokens 4096)
+mode=think-4k
+sets=(v2:v2 rocky:rocky promqlcat:promql alert:alert trap3:trap3)
+if [ "${THINK:-on}" = off ]; then
+  common=(--max-calls 3 --temperature 0 --window 4000 --seed 20260923 --concurrency 16 --thinking off --max-tokens 512)
+  mode=nothink
+  sets=(v1:v1 v2:v2 rocky:rocky promqlcat:promql general:general alert:alert trap3:trap3)
+fi
 run() {  # label model set [extra...]
   local label=$1 model=$2 set=$3; shift 3
   if [ -f "$out/research-eval-$label.json" ]; then echo "  $label: exists, skipped"; return; fi
@@ -49,13 +57,12 @@ run() {  # label model set [extra...]
     "${common[@]}" "$@" --out "$out/research-eval-$label.json" > "$out/research-eval-$label.log" 2>&1
   echo "  $label: exit $?, $(( $(date +%s)-t ))s"
 }
-sets=(v2:v2 rocky:rocky promqlcat:promql alert:alert trap3:trap3)
 for rep in $reps; do
   echo "== $rep"
   for s in "${sets[@]}"; do
     tag=${s%%:*} set=${s##*:} extra=()
     [ "$tag" = promqlcat ] && extra=(--promql-catalog)
-    run "$tag-lightning-$LABEL-think-4k-$rep" "$LABEL" "$set" "${extra[@]}"
-    [ "$with_base" = base ] && run "$tag-lightning-think-4k-$rep" lightning-nvfp4 "$set" "${extra[@]}"
+    run "$tag-lightning-$LABEL-$mode-$rep" "$LABEL" "$set" "${extra[@]}"
+    [ "$with_base" = base ] && run "$tag-lightning-$mode-$rep" lightning-nvfp4 "$set" "${extra[@]}"
   done
 done

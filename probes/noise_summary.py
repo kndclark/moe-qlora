@@ -8,6 +8,9 @@ outcome in every repeat). Then each pair of models: the difference of means, aga
 larger of the two ranges.
 
 usage: python3 probes/noise_summary.py OUT.json "r2 r3" base g6q g6t g6u
+       MODE=nothink python3 probes/noise_summary.py OUT.json "r2 r3" g6u qwenv3
+MODE=nothink (N2): the thinking-off runs, all seven sets; label qwenv3 is the Qwen3-8B v3
+adapter, r1 = g6_compare.py's yardstick files in gpu-lab, rN = probes/n2_qwen.sh's.
 """
 import itertools
 import json
@@ -36,14 +39,23 @@ def headline(split):
     if kind in ("live", "alert"):
         return [("correct", 1)]
     return [("noticed", 1), ("fabricated", -1)]
-TAGS = ["v2", "rocky", "promqlcat", "alert", "trap3"]
+MODE = os.environ.get("MODE", "think")
+TAGS = (["v2", "rocky", "promqlcat", "alert", "trap3"] if MODE == "think"
+        else ["v1", "v2", "rocky", "promqlcat", "general", "alert", "trap3"])
+SUFFIX = "think-4k" if MODE == "think" else "nothink"
+QWEN = os.path.expanduser("~/gpu-lab/bench/results/research-eval-")
 
 
 def path(tag, label, rep):
+    if label == "qwenv3":  # g6_compare.py's names: v1's file has no tag
+        name = "L-adv3-nothink" if tag == "v1" else f"{tag}-L-adv3-nothink"
+        if rep == "r1":
+            return QWEN + name + ".json"
+        return os.path.join(REPO, "results", "noise", f"research-eval-{name}-{rep}.json")
     lab = "" if label == "base" else f"-{label}"
     if rep == "r1":
-        return os.path.join(REPO, "results", f"research-eval-{tag}-lightning{lab}-think-4k.json")
-    return os.path.join(REPO, "results", "noise", f"research-eval-{tag}-lightning{lab}-think-4k-{rep}.json")
+        return os.path.join(REPO, "results", f"research-eval-{tag}-lightning{lab}-{SUFFIX}.json")
+    return os.path.join(REPO, "results", "noise", f"research-eval-{tag}-lightning{lab}-{SUFFIX}-{rep}.json")
 
 
 def main():

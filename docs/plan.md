@@ -1651,6 +1651,33 @@ or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a 
     rise (0, +1.33, -0.33); the risk partly happened (fabrication up, answered without
     denying 5 -> 7 on the trap rows).
 
+- **N2: thinking-off noise of the yardstick comparison, pre-registered 2026-10-01 before
+  any repeat ran.** No training. The goal's second clause ("beats the Qwen3-8B v3
+  adapter") rests on single thinking-off runs: G6u vs Qwen v3, 3 wins (rocky_task +6,
+  alert +7, trap3 noticed +7), 0 losses, 19 ties. N1 measured thinking on only.
+  - Runs: G6u thinking off, all seven sets, r2 and r3, on the gate's server (`THINK=off
+    LABEL=g6u probes/noise_eval.sh results/g6u-train-adapter "r2 r3"`); Qwen v3 thinking
+    off, all seven sets, r2 and r3 (`probes/n2_qwen.sh "r2 r3"`), on the server the
+    yardstick ran on (session 09256598's docker command; adapters as r1's provenance
+    lists them; the v3 file's sha256 matches r1's, 5b574180513c). Settings as the gate's
+    thinking-off runs: 512 tokens, 3 calls, temperature 0, concurrency 16, window 4000,
+    seed 20260923. r1 is the existing runs. Laptop only; the pool is not touched.
+  - Pre-check (MEASURED): Qwen's r1 was scored by harness d5ce5b2f (uncommitted,
+    2026-09-23), every Lightning run by a56bfe79. Rescoring copies of the seven r1 files
+    with the current scorer changes 0 headline rows. The run loop may still differ:
+    r1 against r2-r3 shows it.
+  - Summary: `MODE=nothink probes/noise_summary.py results/n2-summary.json "r2 r3" g6u
+    qwenv3` (the default, thinking-on path reproduces n1-summary.json and
+    n1w-summary.json exactly).
+  - What it decides: G6u beats Qwen v3 thinking off at the noise level if it is above
+    Qwen beyond the spread on at least one row and below it on none. Any row below
+    beyond the spread -> the clause does not hold as stated for thinking off; name the
+    row. If Qwen's r1 sits outside its r2-r3 range on several rows, the rebuilt server or
+    harness differs from r1's; then the verdict uses r2-r3 only and says so.
+  - Expectations (INFERENCE): Qwen v3 is steady (memory: ~1 of 158 items between
+    repeats); G6u's thinking-off ranges are 0-2 items; the three wins (6-7 items each)
+    survive.
+
 ### G7: serving on vLLM 0.29 (laptop)
 - Base NVFP4, then base + LoRA, then merge if needed. UNKNOWN:
   - whether vLLM's nemotron_h supports LoRA on placement A's modules (read the vLLM
