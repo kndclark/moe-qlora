@@ -1792,6 +1792,16 @@ or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a 
   of tokens, where weight-only FP8 (desktop) against W8A8 (laptop) may drift more than
   in 512-token thinking-off answers. Expectation (INFERENCE): equivalent; the laptop's
   thinking-on ranges are wider (up to 7 items), so the line is easier to meet.
+- **G7B-THINK RESULT (MEASURED, 2026-10-02; `results/g7b-think-compare.json`,
+  `results/g7b-think-g6u.log`, `results/g7b/*-think-4k-desk.*`): equivalent thinking on
+  too: 0 of 14 rows more than 2 items outside the laptop's N1 range.** Ready in 112 s;
+  5 sets exit 0; 275 items, 355 calls all `xml_function`, 0 finals holding an unparsed
+  `<tool_call>`; 13 at the call limit, 3 truncated, 3 think-trapped. One item outside:
+  held_out2 64 vs 65-66, promql 14 vs 15-16, alert 5 vs 6-8 (each one worse), trap3
+  fabricated 0 vs 1-3 (one better); the other 10 rows inside. Slower per set: v2 622 s
+  vs 457-511, trap3 150 vs 87-118, alert 100 vs 67-83; rocky and promqlcat about equal.
+  With G7b, the candidate serves from the desktop in both modes at the eval's
+  resolution.
 
 ### G7c: base Lightning pooled across both cards, pre-registered 2026-10-02
 - Why: the lab exists to pool VRAM; the pool has served only Qwen3-14B and Llama-70B.
