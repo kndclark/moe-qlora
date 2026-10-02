@@ -7,6 +7,7 @@
 # usage: LABEL=g6u [DROP="--kv-cache-dtype fp8"] [EXTRA="--linear-backend marlin"] g7b_desktop.sh ADAPTER_DIR
 #   DROP removes one flag the server refuses on sm_86 (plan.md: at most one, and said so).
 #   EXTRA adds server flags (plan.md "G7b" amendment: --linear-backend marlin).
+#   THINK=on (G7b-think): the gate's thinking-on settings on N1's five sets, labels ...-think-4k-desk.
 set -u
 adapter=$(realpath "$1")
 LABEL=${LABEL:?LABEL names the adapter}
@@ -21,8 +22,10 @@ ssh llm "mkdir -p $remote" && scp -q -r "$adapter"/adapter_config.json "$adapter
 flags="--kv-cache-dtype fp8 --mamba-cache-mode align --moe-backend marlin"
 [ -n "${DROP:-}" ] && flags=${flags/$DROP/}
 flags="$flags ${EXTRA:-}"
+slog=$out/$LABEL-desk-serve.log
+[ "${THINK:-off}" = on ] && slog=$out/$LABEL-desk-think-serve.log  # never over the thinking-off log
 restore() {
-  ssh llm "sudo docker logs $name" > "$out/$LABEL-desk-serve.log" 2>&1 || true
+  ssh llm "sudo docker logs $name" > "$slog" 2>&1 || true
   ssh llm "sudo docker rm -f $name" >/dev/null 2>&1
 }
 trap restore EXIT
@@ -45,10 +48,16 @@ echo "ready in $(( $(date +%s)-t0 ))s; models: $(curl -s $B/v1/models | python3 
 echo "desktop GPU: $(ssh llm 'nvidia-smi --query-gpu=memory.used,temperature.gpu,power.draw --format=csv,noheader')"
 common=(--max-calls 3 --temperature 0 --window 4000 --seed 20260923 --concurrency 16 --thinking off --max-tokens 512)
 sets=(v1:v1 v2:v2 rocky:rocky promqlcat:promql general:general alert:alert trap3:trap3)
+mode=nothink
+if [ "${THINK:-off}" = on ]; then
+  common=(--max-calls 3 --temperature 0 --window 4000 --seed 20260923 --concurrency 16 --thinking on --max-tokens 4096)
+  sets=(v2:v2 rocky:rocky promqlcat:promql alert:alert trap3:trap3)
+  mode=think-4k
+fi
 for s in "${sets[@]}"; do
   tag=${s%%:*} set=${s##*:} extra=()
   [ "$tag" = promqlcat ] && extra=(--promql-catalog)
-  label=$tag-lightning-$LABEL-nothink-desk
+  label=$tag-lightning-$LABEL-$mode-desk
   t=$(date +%s)
   python3 "$here/probes/g7a_eval.py" --base $B --model "$LABEL" --label "$label" --set "$set" \
     "${common[@]}" "${extra[@]}" --out "$out/research-eval-$label.json" > "$out/research-eval-$label.log" 2>&1

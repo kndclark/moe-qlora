@@ -1783,6 +1783,15 @@ or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a 
     there (attempt 1). With that one flag the adapter behaves as on the laptop at the
     eval's resolution, so the desktop can serve the candidate while the laptop trains.
     The adapter copy it served from is `llm:/home/david/g7b/g6u/` (180 MB).
+- **G7b-think, pre-registered 2026-10-02 before the run:** the same server (gate flags +
+  `--linear-backend marlin`), thinking on, N1's five sets (`THINK=on EXTRA="--linear-backend
+  marlin" LABEL=g6u probes/g7b_desktop.sh results/g6u-train-adapter`), against G6u's
+  three thinking-on laptop runs (N1 r1-r3; `MODE=think probes/g7b_compare.py`). Same
+  line: a row more than 2 items outside the laptop's [min, max] means thinking-on
+  serving on sm_86 is not equivalent. Why: the gate's primary mode reasons for hundreds
+  of tokens, where weight-only FP8 (desktop) against W8A8 (laptop) may drift more than
+  in 512-token thinking-off answers. Expectation (INFERENCE): equivalent; the laptop's
+  thinking-on ranges are wider (up to 7 items), so the line is easier to meet.
 
 ### G7c: base Lightning pooled across both cards, pre-registered 2026-10-02
 - Why: the lab exists to pool VRAM; the pool has served only Qwen3-14B and Llama-70B.

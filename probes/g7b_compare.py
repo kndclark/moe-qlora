@@ -4,6 +4,7 @@ the desktop's items, the laptop's items per repeat, and how far the desktop sits
 the laptop's [min, max]; per set: call formats, unparsed turns, statuses, elapsed.
 
 usage: python3 probes/g7b_compare.py OUT.json LABEL
+       MODE=think python3 probes/g7b_compare.py OUT.json LABEL   (G7b-think: N1's five sets)
 """
 import collections
 import json
@@ -14,7 +15,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from noise_summary import headline  # noqa: E402  (guarded by __main__, safe to import)
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-TAGS = ["v1", "v2", "rocky", "promqlcat", "general", "alert", "trap3"]
+MODE = os.environ.get("MODE", "nothink")
+SUFFIX = "think-4k" if MODE == "think" else "nothink"
+TAGS = (["v2", "rocky", "promqlcat", "alert", "trap3"] if MODE == "think"
+        else ["v1", "v2", "rocky", "promqlcat", "general", "alert", "trap3"])
 
 
 def items(run, split, metric):
@@ -27,9 +31,9 @@ def main():
     out_path, label = sys.argv[1], sys.argv[2]
     rows, sets = [], {}
     for tag in TAGS:
-        desk = json.load(open(os.path.join(REPO, "results", "g7b", f"research-eval-{tag}-lightning-{label}-nothink-desk.json")))
-        lap = [json.load(open(os.path.join(REPO, "results", f"research-eval-{tag}-lightning-{label}-nothink.json")))]
-        lap += [json.load(open(os.path.join(REPO, "results", "noise", f"research-eval-{tag}-lightning-{label}-nothink-{r}.json")))
+        desk = json.load(open(os.path.join(REPO, "results", "g7b", f"research-eval-{tag}-lightning-{label}-{SUFFIX}-desk.json")))
+        lap = [json.load(open(os.path.join(REPO, "results", f"research-eval-{tag}-lightning-{label}-{SUFFIX}.json")))]
+        lap += [json.load(open(os.path.join(REPO, "results", "noise", f"research-eval-{tag}-lightning-{label}-{SUFFIX}-{r}.json")))
                 for r in ("r2", "r3")]
         fmt, st = collections.Counter(), collections.Counter()
         for r in desk["results"]:
