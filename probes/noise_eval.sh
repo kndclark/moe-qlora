@@ -13,10 +13,12 @@ out=$here/results/noise
 mkdir -p "$out"
 LABEL=${LABEL:?LABEL names the adapter}
 name=$LABEL-noise
+slog=$out/$LABEL-noise-serve.log
+[ "${THINK:-on}" = off ] && slog=$out/$LABEL-noise-nothink-serve.log  # N2 must not overwrite N1's
 B=http://127.0.0.1:8303
 python3 "$here/probes/g7a_eval.py" --selfcheck | tail -1 | grep -qx "selfcheck PASS" || { echo "g7a_eval.py --selfcheck failed"; exit 4; }
 restore() {
-  docker logs "$name" > "$out/$LABEL-noise-serve.log" 2>&1 || true
+  docker logs "$name" > "$slog" 2>&1 || true
   docker rm -f "$name" >/dev/null 2>&1
   echo performance | sudo -n tee /sys/firmware/acpi/platform_profile >/dev/null
   echo "profile: $(cat /sys/firmware/acpi/platform_profile)"
