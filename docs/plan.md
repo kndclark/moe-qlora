@@ -1780,6 +1780,27 @@ or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a 
     eval's resolution, so the desktop can serve the candidate while the laptop trains.
     The adapter copy it served from is `llm:/home/david/g7b/g6u/` (180 MB).
 
+### G7c: base Lightning pooled across both cards, pre-registered 2026-10-02
+- Why: the lab exists to pool VRAM; the pool has served only Qwen3-14B and Llama-70B.
+  G7b showed Lightning loads on sm_86 with `--linear-backend marlin`; the pool image
+  (`gpu-lab:vllm-ray`) is vLLM 0.29.0 and `nemotron_h` implements `SupportsPP`.
+  Whether Lightning runs pipeline-parallel across sm_86 + sm_120 is UNKNOWN.
+- Run: `probes/g7c_pool.sh`: `lab pool up` with `POOL_MODEL` = the NVFP4 repo,
+  `POOL_MAXLEN=16384`, and `POOL_EXTRA_FLAGS` = the gate's Lightning flags plus
+  `--linear-backend marlin` (bin/lab's own pool flags otherwise: PP 2 over Ray,
+  `--no-enable-flashinfer-autotune`, gpu util 0.92, 512 batched tokens). Base model only:
+  the pool containers mount only `/srv/model-cache`, and putting the adapter there means
+  writing the shared mirror, which waits for David. Then the head's KV lines, base v1
+  thinking off (against base's laptop run on G6's server), and bench.py at c=1 and c=16.
+  Always `lab pool down`, then `lab up` on the desktop.
+- What it decides: (1) Lightning pools or not; if not, the error, recorded, no retry
+  beyond this design; (2) the pooled KV budget against the single laptop card's; (3) v1
+  rows within 2 items of the laptop run (one run each: descriptive, not a verdict);
+  (4) decode tok/s at c=1 and c=16 as the first pooled-Lightning baseline.
+- Expectations (INFERENCE): it serves; KV well above one card's (most of each card is
+  free once the weights split); single-stream decode slower than one card (one link
+  crossing per token, ~0.24 ms, plus the pipeline bubble), c=16 aggregate higher.
+
 ## Hard stops and rules
 
 - No edits to `~/gpu-lab` until the feasibility verdict. Probes and results stay in this
