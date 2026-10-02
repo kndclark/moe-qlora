@@ -1738,6 +1738,26 @@ or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a 
 - Expectations (INFERENCE): it serves (Marlin's FP4 path is a weight-only dequant that
   is not Blackwell-specific); fp8 KV is the likeliest refusal; numbers inside the
   laptop's range on most rows, slower per set.
+- **Attempt 1 (MEASURED, 2026-10-02 00:27; `results/g7b/g6u-desk-serve-attempt1.log`,
+  `results/g7b/g6u-attempt1.log`): does not serve as is.** Every flag was accepted
+  (fp8 KV included) and the NVFP4 parts load through Marlin's weight-only path ("Your
+  GPU does not have native support for FP4 ... Marlin"). The checkpoint is mixed:
+  vLLM detects ModelOpt FP8, NVFP4, W4A16_NVFP4 and MXFP8 sections. For the FP8 linears
+  it selects `CutlassFP8ScaledMMLinearKernel`, and the first profiling forward, in a
+  Mamba mixer's `in_proj` (under the LoRA wrapper), dies: `RuntimeError:
+  cutlass_scaled_mm_sm80_epilogue ... scaled_mm_c2x.cu:89`. Cause, read in the image:
+  that kernel's `is_supported` (`kernels/linear/scaled_mm/cutlass.py:164`) returns True
+  on any CUDA device with no compute-capability gate, and it is listed before
+  `MarlinFP8ScaledMMLinearKernel` in `_POSSIBLE_FP8_KERNELS`; sm_86 has no FP8 tensor
+  cores. Not a flag refusal, so the DROP fallback does not apply. (An upstream
+  candidate of the kind `~/gpu-lab/docs/contributions.md` tracks.)
+- **Amendment, written before attempt 2:** one retry with `--linear-backend marlin`
+  (`EXTRA=--linear-backend marlin`), vLLM 0.29's per-layer kernel selector and the
+  linear-layer twin of the gate's `--moe-backend marlin`; for layer types Marlin has no
+  kernel for it falls back to automatic selection with a warning. It also changes the
+  FP8 linears from W8A8 to weight-only, so any row outside the laptop's range carries
+  that difference too. If attempt 2 fails, G7b's result is "not servable on sm_86
+  with vLLM 0.29 without a source change", and it stops there.
 
 ## Hard stops and rules
 

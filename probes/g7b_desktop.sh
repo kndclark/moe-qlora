@@ -4,8 +4,9 @@
 # thinking-off sets run from the laptop through probes/g7a_eval.py, as the gate runs them.
 # Outputs: results/g7b/research-eval-<tag>-lightning-<LABEL>-nothink-desk.{json,log},
 # results/g7b/<LABEL>-desk-serve.log.
-# usage: LABEL=g6u [DROP="--kv-cache-dtype fp8"] g7b_desktop.sh ADAPTER_DIR
+# usage: LABEL=g6u [DROP="--kv-cache-dtype fp8"] [EXTRA="--linear-backend marlin"] g7b_desktop.sh ADAPTER_DIR
 #   DROP removes one flag the server refuses on sm_86 (plan.md: at most one, and said so).
+#   EXTRA adds server flags (plan.md "G7b" amendment: --linear-backend marlin).
 set -u
 adapter=$(realpath "$1")
 LABEL=${LABEL:?LABEL names the adapter}
@@ -19,6 +20,7 @@ python3 "$here/probes/g7a_eval.py" --selfcheck | tail -1 | grep -qx "selfcheck P
 ssh llm "mkdir -p $remote" && scp -q -r "$adapter"/adapter_config.json "$adapter"/adapter_model.safetensors llm:$remote/ || exit 1
 flags="--kv-cache-dtype fp8 --mamba-cache-mode align --moe-backend marlin"
 [ -n "${DROP:-}" ] && flags=${flags/$DROP/}
+flags="$flags ${EXTRA:-}"
 restore() {
   ssh llm "sudo docker logs $name" > "$out/$LABEL-desk-serve.log" 2>&1 || true
   ssh llm "sudo docker rm -f $name" >/dev/null 2>&1
