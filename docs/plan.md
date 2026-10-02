@@ -1758,6 +1758,27 @@ or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a 
   FP8 linears from W8A8 to weight-only, so any row outside the laptop's range carries
   that difference too. If attempt 2 fails, G7b's result is "not servable on sm_86
   with vLLM 0.29 without a source change", and it stops there.
+- **G7B RESULT (MEASURED, 2026-10-02; `results/g7b-compare.json`, `results/g7b-g6u.log`,
+  `results/g7b/`): attempt 2 SERVES, and the desktop's answers match the laptop's: 0 of
+  22 rows more than 2 items outside the laptop's three thinking-off runs.** The
+  candidate can be served from the desktop's 3090 with the gate's flags plus
+  `--linear-backend marlin`.
+  - Server: ready in 112 s; `MarlinFP8ScaledMMLinearKernel` for the FP8 linears,
+    `MarlinNvFp4LinearKernel` for NVFP4 GEMMs, the Marlin NVFP4 MoE backend, FlashInfer
+    attention; fp8 KV accepted. Card 21.2 GiB at ready, 21.4 GiB, 60 C, 127 W after.
+  - Eval: 7 sets, exit 0; 478 items, 476 answered, 1 at the call limit, 1 truncated; 467
+    calls all `xml_function`; 0 final answers holding an unparsed `<tool_call>`.
+  - Rows outside the laptop's [min, max] (desktop vs laptop r1-r3): two_flag 7 vs 9-10
+    (-2); rocky_held_out 54 vs 55-56 (-1); no_tool over-trigger 2 vs 0-1 (one more);
+    task 15 vs 12-14 (+1); promql 15 vs 12-14 (+1); alert 8 vs 5-7 (+1). Mixed in sign,
+    none past the pre-registered 2-item line. The other 16 rows sit inside the range.
+  - Speed: slower per set on the 3090: v2 190 s vs 90-93 s, alert 28 vs 15-21, v1 142 vs
+    113-132; rocky about equal (88 vs 81-86).
+  - Reading: the NVFP4 checkpoint serves on sm_86 only through Marlin for every
+    quantized layer type; vLLM 0.29's automatic choice for the FP8 linears is wrong
+    there (attempt 1). With that one flag the adapter behaves as on the laptop at the
+    eval's resolution, so the desktop can serve the candidate while the laptop trains.
+    The adapter copy it served from is `llm:/home/david/g7b/g6u/` (180 MB).
 
 ## Hard stops and rules
 
