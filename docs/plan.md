@@ -1717,6 +1717,28 @@ or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a 
   This settles the first UNKNOWN above. Still open: how closely a trained adapter served on
   NVFP4 tracks the NF4 model it was trained on (G6 measures that through the server).
 
+### G7b: the candidate served on the desktop 3090 (sm_86), pre-registered 2026-10-02
+- Why: every Lightning serve so far ran on the laptop (sm_120), which is also the only
+  card that trains. Replacing Qwen3-8B as the lab's default adapter base needs the
+  adapter servable where the lab serves, and the front door (LiteLLM) is on the desktop.
+  Whether vLLM 0.29 runs NVFP4 with `--moe-backend marlin`, fp8 KV and LoRA on sm_86 is
+  UNKNOWN (nothing in this plan or memory measures it).
+- Run: `LABEL=g6u probes/g7b_desktop.sh results/g6u-train-adapter`: the gate's server
+  flags and image (`vllm/vllm-openai:v0.29.0`, already on the desktop; the NVFP4
+  snapshot bee7596 is in the desktop's cache, 21 GB; no download), bound to lab-desktop
+  only; the seven thinking-off sets from the laptop through `probes/g7a_eval.py`, as the
+  gate. After the 14B pool sweep (gpu-lab branch pool-14b-prefill) frees the card.
+- If the server refuses one flag as unsupported on sm_86, that flag is dropped once
+  (`DROP=...`) and the result says so; an OOM is recorded, not retried (hard stops).
+- What it decides: (1) serves or not (loads, LoRA applies, all calls `xml_function`, 0
+  unparsed); (2) per row, the desktop run against G6u's three thinking-off laptop runs
+  (N2): rows outside the laptop's [min, max] are named with their distance. A row more
+  than 2 items outside on a set means the sm_86 path changes the model's behaviour and
+  serving there is not equivalent.
+- Expectations (INFERENCE): it serves (Marlin's FP4 path is a weight-only dequant that
+  is not Blackwell-specific); fp8 KV is the likeliest refusal; numbers inside the
+  laptop's range on most rows, slower per set.
+
 ## Hard stops and rules
 
 - No edits to `~/gpu-lab` until the feasibility verdict. Probes and results stay in this
