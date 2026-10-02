@@ -1596,6 +1596,60 @@ or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a 
     items each, which may sit inside the spread. Risk: "I couldn't search ..., so this is
     from memory" opens trap answers without a denial in the first sentence (answered
     without denying rises), or appears after lookups that worked.
+- **G6W RESULT (MEASURED, 2026-10-01; `results/g6w-{train,compare,compare-vs-g6u,
+  web-calls,trap-failures,think-counts,tool-choice}.json`, `results/n1w-summary.json`,
+  `results/research-eval-*-lightning-g6w-*.*`, `results/noise/*-g6w-*`): PASSES both
+  modes at the gate, but by the rule G6w is dropped and G6u stays the candidate. Over
+  three repeats G6w ties G6u on every trap row, fabricates on trap3 beyond the spread
+  against base (3.00 vs 0, range 2) and trails G6u on promql beyond the spread (13.67 vs
+  15.33, range 1). web_search on trap items falls only from 72 to 62 of 123 (> 36): the
+  search habit comes with the traces' reasoning, so the data lever is spent.**
+  - Train: 338/338 steps, 3,348 s, no guard abort, exit 0; loss 0.6098 first step, 0.0578
+    last; epoch means 0.437 / 0.213 (G6u 0.436 / 0.214). Torch peak 19.94 GiB; max 79 C,
+    153 W; sw_power_cap only. Trace guard 502/502 and parity 1658/1658 PASS in the run.
+    Adapter `results/g6w-train-adapter/` (not in git).
+  - Eval: 14 runs, exit 0 (base reused); 956 items, 0 turn errors, 937 calls all
+    `xml_function`, 0 unparsed; 9 at the call limit, 1 think-trapped, 1 truncated (G6u
+    12, 6, 2). N1 repeats r2 and r3: 10 runs, exit 0 (the script's own exit 1 is its last
+    line, `[ "$with_base" = base ] && ...`, false without `base`).
+  - Gate, thinking on vs base: held_out +12, seen_tool +7, trap +7, held_out2 +13,
+    two_flag +5, task +6, trap2 +6, rocky_held_out +13, rocky_trap +6 (all wins);
+    rocky_task 0.65 vs 0.65, promql +2, alert +3, trap3 noticed +3 and fabricated 4 vs 0
+    (ties at the gate's line). vs G6u, single run: every row a tie thinking on; thinking
+    off, trap3 noticed 0.583 vs 1.000 (-5, a loss). vs the Qwen3-8B v3 adapter, thinking
+    off: 2 wins (promql, alert), 0 losses, 20 ties.
+  - N1 means, thinking on (base / G6u / G6w): task 13.00 / 17.67 / 18.00; rocky_task
+    12.67 / 12.67 / 11.67; trap2 3.00 / 9.00 / 9.00; rocky_trap 1.00 / 6.00 / 7.33;
+    promql 12.00 / 15.33 / 13.67; alert 6.00 / 7.00 / 7.33; trap3 noticed 3.67 / 8.00 /
+    7.67; trap3 fabricated 0 / 2.00 / 3.00; rocky_trap_control (wrong denials) 0 / 0.33 /
+    2.00 (range 2, not beyond). G6w is steadier on task (18, 18, 18).
+  - Mechanism (`probes/trap_web_calls.py`, r1-r3 pooled, G6u -> G6w): items with a
+    web_search 167 -> 104 of 983; trap items 72 -> 62 of 123. Failures after a search:
+    truncated_in_think 11 -> 1, call_limit 5 -> 9, fabricated 6 -> 5, answered without
+    denying 5 -> 5. Across the trap rows (`probes/trap_failures.py`): truncated_in_think
+    11 -> 1, call_limit 18 -> 21, trap3 fabricated 6 -> 9, answered without denying 5 -> 7.
+    Reasoning on 544 of 971 thinking-on turns (G6u 555 of 994); unclosed think 6 -> 1.
+  - Reading: the 60 failed searches did what they were built to do (the think closes and
+    an answer follows a failed search) and not what was hoped (fewer searches). The
+    closed think turned the think-trap failures into call-limit and fabrication failures,
+    not passes. The pre-registered risk showed on trap3, read per item: when the lookup
+    of a tool that does not exist fails, G6w writes "I couldn't check `gti --help` (the
+    tool isn't installed here), so I can't verify the exact syntax" and then answers
+    from memory; thinking on, 3 r1 items go from noticed (G6u) to fabricated, 2 of them
+    after a failed web_search ("the online documentation couldn't be queried"), and a
+    fourth (`ipa-healthcheckd --fix`) is fabricated by both. The new
+    phrase itself is rare: "couldn't search / from memory / unverified" in 0 of 478
+    thinking-on answers and 11 of 478 thinking-off (G6u 4; alert 7, rocky_task 3,
+    rocky_trap 1); whether those followed a lookup that worked was not read.
+  - promql, read per item over three repeats (G6u 46, G6w 41 of 54): four items differ,
+    all on live metrics. One is the model's error (`up{job="gpulab"} == 0`, a job label
+    that does not exist); the others (`up` count, laptop fan RPM, desktop VRAM total)
+    read live values, and G6w ran two days after G6u, so drift in the live state may
+    account for part of the gap (UNKNOWN, not separated).
+  - Expectations against the result: web_search fell (overall, not per set, which was
+    not counted); truncated_in_think after a search fell (11 -> 1); trap rows did not
+    rise (0, +1.33, -0.33); the risk partly happened (fabrication up, answered without
+    denying 5 -> 7 on the trap rows).
 
 ### G7: serving on vLLM 0.29 (laptop)
 - Base NVFP4, then base + LoRA, then merge if needed. UNKNOWN:
