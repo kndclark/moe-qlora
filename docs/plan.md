@@ -1677,6 +1677,23 @@ or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a 
   - Expectations (INFERENCE): Qwen v3 is steady (memory: ~1 of 158 items between
     repeats); G6u's thinking-off ranges are 0-2 items; the three wins (6-7 items each)
     survive.
+- **N2 RESULT (MEASURED, 2026-10-02; `results/n2-summary.json`, `results/n2-{g6u,qwen}.log`,
+  `results/noise/*-nothink-r{2,3}.*`; 28 runs, all exit 0): as pre-registered, the clause
+  does not hold. G6u is above Qwen v3 beyond the spread on six rows and below it on one,
+  held_out: 88.33 vs 89.67 of 90 (range 1), 1.5 points. The rule said "below on none".**
+  - Above Qwen v3 beyond the spread (G6u / Qwen means, larger range): trap3 noticed 12.00 /
+    5.00 (0); alert 6.00 / 0 (2); rocky_task 9.00 / 4.67 (4); promql 13.33 / 9.33 (2); trap
+    15.00 / 13.00 (0); trap2 11.00 / 9.67 (1). The other 15 rows: within the spread.
+  - The rebuilt Qwen server reproduces r1: Qwen's r1 sits inside its r2-r3 range on every
+    row (e.g. held_out 90 / 89 / 90, promql 9 / 10 / 9, rocky_task 5 / 5 / 4), so the
+    verdict uses r1-r3 and the harness difference (d5ce5b2f vs a56bfe79) shows no effect.
+  - Spread, thinking off: Qwen v3 0-1 items on every row (as expected); G6u 0-2 except
+    rocky_task 4 (11, 7, 9: the gate's 0.55 was a high draw; mean 0.45). trap3 noticed is
+    12/12 in all three G6u repeats.
+  - Reading: on what it was trained for (flag lookup) G6u sits a point below Qwen v3,
+    which is at its ceiling (89.67 of 90); on the task, tool and trap rows it is
+    clearly ahead. Whether "below on none" was the right bar for a 90-item row at a
+    ceiling is David's call; the rule as written is not met.
 
 ### G7: serving on vLLM 0.29 (laptop)
 - Base NVFP4, then base + LoRA, then merge if needed. UNKNOWN:
