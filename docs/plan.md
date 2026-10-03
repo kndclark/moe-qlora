@@ -2167,6 +2167,15 @@ and a change counts past 2.0 tok/s (the side quest's bar, triton's own range).
       on one 3090 DSpark is the single-user path NVIDIA says it is, and DFlash (-28% at
       c=1) is not; for long concurrent prompts one card's KV is the limit, and the pool's
       is not.
+    - **With the G6u adapter (MEASURED, desktop, graphs, bf16 KV, util 0.95, 20:03-20:09;
+      `results/lsingle/l2b-desktop-g6u-bf16/`, `l11-desktop-dspark-g6u/`,
+      `results/l2b-desktop-g6u-items.json`):** G6u alone serves: KV 2.01 GiB, decode c=1
+      **179.6** (base, same flags: 215.6; LoRA costs ~17%), c=16 92.4 per request. v1
+      against G6u's three laptop runs (eager, fp8 KV, `results/noise`): held_out 0-1,
+      seen_tool 0-1, no_tool 0-2: the adapter applies, and graphs, bf16 KV and the card
+      change nothing measurable. G6u + DSpark: vLLM 0.29 accepts LoRA with speculative
+      decoding (it reached memory profiling), but one 3090 cannot hold it: LoRA +0.85 GiB,
+      draft +1.64 GiB, graphs 0.55 GiB, KV -0.19 GiB at 0.95. It moves to the pool.
     - **L11 DFlash RESULT (desktop, graphs, 0.92):** serves; KV 0.57 GiB (26,916 tokens);
       decode c=1 **149.5** tok/s against 208.8 without a draft (**-28%**), c=16 **142.1**
       per request against 98.9 (**+44%**). Accepted 46% of drafted tokens on bench's text

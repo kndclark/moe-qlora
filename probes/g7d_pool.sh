@@ -10,7 +10,9 @@
 # usage: [G7D_OUT=dir] [G7D_MODEL=repo G7D_REV=rev] [G7D_MORE="..."] [G7D_MODES="off on"] g7d_pool.sh
 #   Unset = G7d exactly. L6: G7D_OUT=l6 G7D_MODEL=<BF16 repo> G7D_REV=a9904d24...
 #   G7D_MORE="--quantization fp8" G7D_MODES=off. G7D_EAGER="" drops --enforce-eager (CUDA
-#   graphs, adopted for the pool 2026-10-02); unset keeps it.
+#   graphs, adopted for the pool 2026-10-02); unset keeps it. G7D_BENCH=1 adds gpu-lab
+#   bench.py at c=1 and c=16 against the adapter, and spec-decode counters from /metrics
+#   (spec.txt, empty without a draft); a draft goes in G7D_MORE in dotted form.
 set -u
 here=$(cd "$(dirname "$0")/.." && pwd)
 out=$here/results/${G7D_OUT:-g7d}
@@ -58,4 +60,12 @@ for mode in ${G7D_MODES:-off on}; do
     echo "  $label: exit $?, $(( $(date +%s)-t ))s"
   done
 done
+if [ -n "${G7D_BENCH:-}" ]; then
+  for c in 1 16; do
+    python3 /home/david/gpu-lab/bench/bench.py --base $B --model "$LABEL" --concurrency $c --repeats 2 \
+      --label "pool $LABEL c=$c" --json-out "$out/bench-c$c.json" > "$out/bench-c$c.log" 2>&1
+    echo "bench c=$c exit $?: $(grep -E 'decode rate' "$out/bench-c$c.log" | tail -1 | tr -s ' ')"
+  done
+  curl -s $B/metrics | grep -E '^vllm:spec_decode_num_(drafts|draft_tokens|accepted_tokens)_total' > "$out/spec.txt"
+fi
 echo "GPUs after: laptop $(nvidia-smi --query-gpu=memory.used,temperature.gpu --format=csv,noheader); desktop $(ssh llm 'nvidia-smi --query-gpu=memory.used,temperature.gpu --format=csv,noheader')"
