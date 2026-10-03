@@ -217,3 +217,45 @@ item, and no item was truncated in think.
   laptop at util 0.85:
   - decode is 91 tok/s at c=1 with the adapter, against base Lightning's ~225;
   - KV room is 1.6× base Lightning's 266,240 tokens.
+
+### S1 result: Qwen3.8-27B INT4 (MEASURED, 2026-10-03)
+
+`python3 probes/s1_compare.py q38-int4 q38-int4-low`, desktop 3090, 478 items per pass.
+
+- **Room and speed at util 0.90, fp8 KV, language model only:**
+  - Weights 16.84 GiB.
+  - KV 1.63 GiB, which is **31,804 tokens**: about an eighth of Lightning's 266,240 on one
+    card, and 1.94 requests of 16,384.
+  - Decode 46.7 tok/s at c=1 and 38.1 per stream at c=16.
+- **Thinking on, template default (xhigh):**
+  - Against base Lightning: win 1, loss 4, tie 17. Pooled items +56 for Qwen3.8 against
+    +77 for Lightning, sign p 0.08, so level.
+  - 29 items ended truncated in think, at 806 completion tokens per item.
+  - It calls tools heavily: on v1, 46 of 158 items reached the 3-call limit, and the
+    harness records no answer for those.
+  - Losses: held_out −12, seen_tool −6, trap −5, held_out2 −5.
+  - Alert reached 1.00 against 0.56, but at +4 that is a tie by the row rule.
+- **Thinking on, reasoning_effort low:**
+  - Against base Lightning: **win 5, loss 0, tie 17. Pooled items +89 against +47,
+    sign p 0.0004.**
+  - Only 2 items were truncated, at 469 tokens per item.
+  - Wins: trap +6, no_tool over_trigger +5, task (0.95 vs 0.60) +7, trap2 +5, general
+    over_trigger +8.
+  - Ties include alert (1.00 vs 0.56), rocky_task (0.65 vs 0.65), promql (0.78 vs 0.67)
+    and trap3 noticed (0.58 vs 0.25).
+- **Against G6q, thinking on, low:** win 1 (task 0.95 vs 0.70), loss 4, tie 17. Pooled
+  items +24 against +92.
+  - The four losses are all flag rows: held_out, seen_tool, held_out2 and rocky_held_out.
+    Those are the rows an adapter fixes; N4 took Nano 4B's to 0.99–1.00.
+- **Thinking off, against base Lightning:** win 6, loss 1 (task 0.40 vs 0.80), tie 15.
+  Pooled items +130 against +51.
+- **Effort is a measured confound.** Low effort beats xhigh on this protocol. xhigh
+  spends its budget on tool loops that hit the 3-call cap and on longer thinking:
+
+  | across all 478 items | xhigh | low |
+  |---|---|---|
+  | call_limit | 140 | 70 |
+  | truncated_in_think | 29 | 2 |
+  | items with no answer | 169 | 72 |
+  | tool calls per item | 1.99 | 1.62 |
+  - Reading: any Qwen3.8 work here should serve at low effort, or move the cap.

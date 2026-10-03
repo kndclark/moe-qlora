@@ -1,0 +1,842 @@
+{
+ "label": "alert-s1-q38-int4-nothink",
+ "set": "alert",
+ "promql_catalog": false,
+ "model": "q38-int4",
+ "base": "http://lab-desktop:8304",
+ "tools": true,
+ "thinking": "off",
+ "max_tokens": 512,
+ "max_calls": 3,
+ "temperature": 0.0,
+ "top_p": null,
+ "sample_seed": null,
+ "window": 4000,
+ "seed": 20260923,
+ "limit": 0,
+ "started": "2026-10-03T01:26:00-0600",
+ "elapsed_s": 27.5,
+ "tool_versions": {},
+ "provenance": {
+  "harness_sha256": "a56bfe79b0124860548bdf02f11b72bef3af0fc3ba7429c3fdc4e29e90d45ee5",
+  "server_version": "0.29.0",
+  "served": [
+   {
+    "id": "q38-int4",
+    "root": "RedHatAI/Qwen3.8-27B-INT4",
+    "parent": null,
+    "max_model_len": 16384
+   }
+  ]
+ },
+ "summary": {
+  "alert": {
+   "n": 9,
+   "any_call": 1.0,
+   "answered": 0.222,
+   "mean_calls": 2.67,
+   "status": {
+    "answered": 2,
+    "call_limit": 7
+   },
+   "calls_refused": 15,
+   "calls_web": 9,
+   "valid": 0.222,
+   "correct": 0.222,
+   "claims_unrun_lookup": 0.0
+  }
+ },
+ "results": [
+  {
+   "id": "alert-BatteryLowOnBattery",
+   "split": "alert",
+   "alertname": "BatteryLowOnBattery",
+   "question": "Write a Prometheus alerting rule named BatteryLowOnBattery that fires immediately when gpulab_battery_capacity_percent is below 20 and gpulab_ac_online is 0 on the same node.",
+   "series": [
+    [
+     "gpulab_battery_capacity_percent{node=\"laptop\"}",
+     "50x5 15x10"
+    ],
+    [
+     "gpulab_ac_online{node=\"laptop\"}",
+     "1x8 0x7"
+    ]
+   ],
+   "checks": [
+    [
+     "7m",
+     false
+    ],
+    [
+     "10m",
+     true
+    ]
+   ],
+   "run": {
+    "status": "answered",
+    "final": "Here's the Prometheus alerting rule:\n\n```yaml\ngroups:\n  - name: battery\n    rules:\n      - alert: BatteryLowOnBattery\n        expr: gpulab_battery_capacity_percent < 20 and gpulab_ac_online == 0\n        for: 0s\n        labels:\n          severity: warning\n        annotations:\n          summary: \"Battery low on {{ $labels.instance }}\"\n          description: \"Battery capacity is {{ $value | printf \\\"%.1f\\\" }}% and the node is running on battery (AC offline).\"\n```\n\n**Key points:**\n\n- **`expr`**: Uses the `and` operator, which requires both conditions to be true on the *same target* (same node/instance). `gpulab_battery_capacity_percent < 20` checks the battery level, and `gpulab_ac_online == 0` confirms the node is not plugged in.\n- **`for: 0s`**: Makes the alert fire immediately (no delay). You can also omit the `for` clause entirely, since the default is `0s`.\n- **`labels` / `annotations`**: Optional but recommended \u2014 `severity` helps with routing, and the annotations provide a human-readable message using template variables like `$labels.instance` and `$value`.\n\nIf you want to be extra explicit about matching on the same node, you can use `on(node)` (or whatever your node label is called):\n\n```yaml\nexpr: gpulab_battery_capacity_percent < 20 and on(node) gpulab_ac_online == 0\n```\n\nBut since both metrics are expected to share the same instance/node labels, the plain `and` is sufficient and idiomatic.",
+    "calls": [
+     {
+      "outcome": "web_unavailable",
+      "name": "web_search",
+      "args": {
+       "query": "Prometheus alerting rule for battery capacity below threshold ac online"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "cat << 'EOF'\n# Prometheus alerting rule\ngroups:\n  - name: battery\n    rules:\n      - alert: BatteryLowOnBattery\n        expr: gpulab_battery_capacity_percent < 20 and gpulab_ac_online == 0\n        for: 0s\n        labels:\n          severity: warning\n        annotations:\n          summary: \"Battery low on {{ $labels.instance }}\"\n          description: \"Battery capacity is {{ $value | printf \\\"%.1f\\\" }}% and the node is running on battery (AC offline).\"\nEOF"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 443,
+      "completion_tokens": 37,
+      "finish_reason": "stop",
+      "text": "<tool_call>\n<function=web_search>\n<parameter=query>\nPrometheus alerting rule for battery capacity below threshold ac online\n</parameter>\n</function>\n</tool_call>"
+     },
+     {
+      "prompt_tokens": 505,
+      "completion_tokens": 147,
+      "finish_reason": "stop",
+      "text": "<tool_call>\n<function=bash>\n<parameter=command>\ncat << 'EOF'\n# Prometheus alerting rule\ngroups:\n  - name: battery\n    rules:\n      - alert: BatteryLowOnBattery\n        expr: gpulab_battery_capacity_percent < 20 and gpulab_ac_online == 0\n        for: 0s\n        labels:\n          severity: warning\n        annotations:\n          summary: \"Battery low on {{ $labels.instance }}\"\n          description: \"Battery capacity is {{ $value | printf \\\"%.1f\\\" }}% and the node is running on battery (AC offline).\"\nEOF\n</parameter>\n</function>\n</tool_call>"
+     },
+     {
+      "prompt_tokens": 706,
+      "completion_tokens": 365,
+      "finish_reason": "stop",
+      "text": "Here's the Prometheus alerting rule:\n\n```yaml\ngroups:\n  - name: battery\n    rules:\n      - alert: BatteryLowOnBattery\n        expr: gpulab_battery_capacity_percent < 20 and gpulab_ac_online == 0\n        for: 0s\n        labels:\n          severity: warning\n        annotations:\n          summary: \"Battery low on {{ $labels.instance }}\"\n          description: \"Battery capacity is {{ $value | printf \\\"%.1f\\\" }}% and the node is running on battery (AC offline).\"\n```\n\n**Key points:**\n\n- **`expr`**: Uses the `and` operator, which requires both conditions to be true on the *same target* (same node/instance). `gpulab_battery_capacity_percent < 20` checks the battery level, and `gpulab_ac_online == 0` confirms the node is not plugged in.\n- **`for: 0s`**: Makes the alert fire immediately (no delay). You can also omit the `for` clause entirely, since the default is `0s`.\n- **`labels` / `annotations`**: Optional but recommended \u2014 `severity` helps with routing, and the annotations provide a human-readable message using template variables like `$labels.instance` and `$value`.\n\nIf you want to be extra explicit about matching on the same node, you can use `on(node)` (or whatever your node label is called):\n\n```yaml\nexpr: gpulab_battery_capacity_percent < 20 and on(node) gpulab_ac_online == 0\n```\n\nBut since both metrics are expected to share the same instance/node labels, the plain `and` is sufficient and idiomatic."
+     }
+    ]
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 2,
+    "answered": true,
+    "valid": true,
+    "correct": true,
+    "checks": [
+     {
+      "at": "7m",
+      "want": false,
+      "fired": false,
+      "error": false
+     },
+     {
+      "at": "10m",
+      "want": true,
+      "fired": true,
+      "error": false
+     }
+    ],
+    "claims_unrun_lookup": false
+   }
+  },
+  {
+   "id": "alert-DataDiskAlmostFull",
+   "split": "alert",
+   "alertname": "DataDiskAlmostFull",
+   "question": "Write a Prometheus alerting rule named DataDiskAlmostFull that fires when node_filesystem_avail_bytes divided by node_filesystem_size_bytes is below 0.1 for the /data mountpoint only, for 5 minutes.",
+   "series": [
+    [
+     "node_filesystem_avail_bytes{mountpoint=\"/data\"}",
+     "500x5 50x15"
+    ],
+    [
+     "node_filesystem_size_bytes{mountpoint=\"/data\"}",
+     "1000x20"
+    ],
+    [
+     "node_filesystem_avail_bytes{mountpoint=\"/\"}",
+     "50x20"
+    ],
+    [
+     "node_filesystem_size_bytes{mountpoint=\"/\"}",
+     "1000x20"
+    ]
+   ],
+   "checks": [
+    [
+     "9m",
+     false
+    ],
+    [
+     "14m",
+     true
+    ]
+   ],
+   "run": {
+    "status": "call_limit",
+    "final": null,
+    "calls": [
+     {
+      "outcome": "web_unavailable",
+      "name": "web_search",
+      "args": {
+       "query": "Prometheus alerting rule node_filesystem_avail_bytes node_filesystem_size_bytes mountpoint /data"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "which promtool 2>/dev/null; promtool --version 2>/dev/null; echo \"---\"; ls /etc/prometheus 2>/dev/null; echo \"---\"; find / -name \"*.yml\" -path \"*prometheus*\" 2>/dev/null | head -20"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "promtool --help"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 448,
+      "completion_tokens": 44,
+      "finish_reason": "stop",
+      "text": "<tool_call>\n<function=web_search>\n<parameter=query>\nPrometheus alerting rule node_filesystem_avail_bytes node_filesystem_size_bytes mountpoint /data\n</parameter>\n</function>\n</tool_call>"
+     },
+     {
+      "prompt_tokens": 517,
+      "completion_tokens": 85,
+      "finish_reason": "stop",
+      "text": "<tool_call>\n<function=bash>\n<parameter=command>\nwhich promtool 2>/dev/null; promtool --version 2>/dev/null; echo \"---\"; ls /etc/prometheus 2>/dev/null; echo \"---\"; find / -name \"*.yml\" -path \"*prometheus*\" 2>/dev/null | head -20\n</parameter>\n</function>\n</tool_call>"
+     },
+     {
+      "prompt_tokens": 656,
+      "completion_tokens": 29,
+      "finish_reason": "stop",
+      "text": "<tool_call>\n<function=bash>\n<parameter=command>\npromtool --help\n</parameter>\n</function>\n</tool_call>"
+     },
+     {
+      "prompt_tokens": 739,
+      "completion_tokens": 31,
+      "finish_reason": "stop",
+      "text": "<tool_call>\n<function=bash>\n<parameter=command>\npromtool rules check --help\n</parameter>\n</function>\n</tool_call>"
+     }
+    ]
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 3,
+    "answered": false,
+    "valid": false,
+    "correct": false,
+    "checks": [],
+    "claims_unrun_lookup": false
+   }
+  },
+  {
+   "id": "alert-GPUHot",
+   "split": "alert",
+   "alertname": "GPUHot",
+   "question": "Write a Prometheus alerting rule named GPUHot that fires when gpulab_gpu_temperature_celsius on any node stays above 85 for 5 minutes.",
+   "series": [
+    [
+     "gpulab_gpu_temperature_celsius{node=\"desktop\"}",
+     "70x10 90x20"
+    ]
+   ],
+   "checks": [
+    [
+     "14m",
+     false
+    ],
+    [
+     "20m",
+     true
+    ]
+   ],
+   "run": {
+    "status": "answered",
+    "final": "Here's the Prometheus alerting rule:\n\n```yaml\ngroups:\n  - name: gpu-temperature\n    rules:\n      - alert: GPUHot\n        expr: gpulab_gpu_temperature_celsius > 85\n        for: 5m\n        labels:\n          severity: warning\n        annotations:\n          summary: \"GPU temperature high on {{ $labels.instance }}\"\n          description: \"GPU temperature on {{ $labels.instance }} has been above 85\u00b0C for 5 minutes (current value: {{ $value | printf \\\"%.1f\\\" }}\u00b0C).\"\n```\n\n**How it works:**\n\n- **`expr: gpulab_gpu_temperature_celsius > 85`** \u2014 the condition that must be true. Since no `by` clause is specified, it is evaluated per series (i.e., per node/instance), so it fires independently on any node whose temperature exceeds 85.\n- **`for: 5m`** \u2014 the alert only transitions to `firing` if the condition has been continuously true for 5 minutes. If the temperature drops to 85 or below at any point during that window, the timer resets.\n- **`labels`** \u2014 `severity: warning` is a common convention; adjust to `critical` if you prefer.\n- **`annotations`** \u2014 `summary` and `description` are templated with `{{ $labels.instance }}` (the node) and `{{ $value }}` (the current temperature) so alerts are informative when they reach Alertmanager.\n\n**Notes:**\n\n- If your metric uses a `node` label instead of `instance`, replace `{{ $labels.instance }}` with `{{ $labels.node }}`.\n- Save this file (e.g., `gpu-alerts.yml`) and ensure it is loaded via Prometheus's `rule_files` config:\n  ```yaml\n  rule_files:\n    - \"gpu-alerts.yml\"\n  ```\n- Verify it loaded correctly with `promtool check rules gpu-alerts.yml`.",
+    "calls": [
+     {
+      "outcome": "web_unavailable",
+      "name": "web_search",
+      "args": {
+       "query": "Prometheus alerting rules syntax for alert with for duration and annotations"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 435,
+      "completion_tokens": 38,
+      "finish_reason": "stop",
+      "text": "<tool_call>\n<function=web_search>\n<parameter=query>\nPrometheus alerting rules syntax for alert with for duration and annotations\n</parameter>\n</function>\n</tool_call>"
+     },
+     {
+      "prompt_tokens": 498,
+      "completion_tokens": 433,
+      "finish_reason": "stop",
+      "text": "Here's the Prometheus alerting rule:\n\n```yaml\ngroups:\n  - name: gpu-temperature\n    rules:\n      - alert: GPUHot\n        expr: gpulab_gpu_temperature_celsius > 85\n        for: 5m\n        labels:\n          severity: warning\n        annotations:\n          summary: \"GPU temperature high on {{ $labels.instance }}\"\n          description: \"GPU temperature on {{ $labels.instance }} has been above 85\u00b0C for 5 minutes (current value: {{ $value | printf \\\"%.1f\\\" }}\u00b0C).\"\n```\n\n**How it works:**\n\n- **`expr: gpulab_gpu_temperature_celsius > 85`** \u2014 the condition that must be true. Since no `by` clause is specified, it is evaluated per series (i.e., per node/instance), so it fires independently on any node whose temperature exceeds 85.\n- **`for: 5m`** \u2014 the alert only transitions to `firing` if the condition has been continuously true for 5 minutes. If the temperature drops to 85 or below at any point during that window, the timer resets.\n- **`labels`** \u2014 `severity: warning` is a common convention; adjust to `critical` if you prefer.\n- **`annotations`** \u2014 `summary` and `description` are templated with `{{ $labels.instance }}` (the node) and `{{ $value }}` (the current temperature) so alerts are informative when they reach Alertmanager.\n\n**Notes:**\n\n- If your metric uses a `node` label instead of `instance`, replace `{{ $labels.instance }}` with `{{ $labels.node }}`.\n- Save this file (e.g., `gpu-alerts.yml`) and ensure it is loaded via Prometheus's `rule_files` config:\n  ```yaml\n  rule_files:\n    - \"gpu-alerts.yml\"\n  ```\n- Verify it loaded correctly with `promtool check rules gpu-alerts.yml`."
+     }
+    ]
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 1,
+    "answered": true,
+    "valid": true,
+    "correct": true,
+    "checks": [
+     {
+      "at": "14m",
+      "want": false,
+      "fired": false,
+      "error": false
+     },
+     {
+      "at": "20m",
+      "want": true,
+      "fired": true,
+      "error": false
+     }
+    ],
+    "claims_unrun_lookup": false
+   }
+  },
+  {
+   "id": "alert-GPUMemoryNearlyFull",
+   "split": "alert",
+   "alertname": "GPUMemoryNearlyFull",
+   "question": "Write a Prometheus alerting rule named GPUMemoryNearlyFull that fires when gpulab_gpu_memory_used_mib divided by gpulab_gpu_memory_total_mib, per node, exceeds 0.95 for 10 minutes.",
+   "series": [
+    [
+     "gpulab_gpu_memory_used_mib{node=\"laptop\"}",
+     "20000x5 24000x20"
+    ],
+    [
+     "gpulab_gpu_memory_total_mib{node=\"laptop\"}",
+     "24576x25"
+    ]
+   ],
+   "checks": [
+    [
+     "14m",
+     false
+    ],
+    [
+     "18m",
+     true
+    ]
+   ],
+   "run": {
+    "status": "call_limit",
+    "final": null,
+    "calls": [
+     {
+      "outcome": "web_unavailable",
+      "name": "web_search",
+      "args": {
+       "query": "Prometheus alerting rule for ratio of two metrics per node by()"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "which promtool 2>/dev/null; promtool --version 2>/dev/null; echo \"---\"; ls /etc/prometheus 2>/dev/null"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "promtool --help"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 452,
+      "completion_tokens": 39,
+      "finish_reason": "stop",
+      "text": "<tool_call>\n<function=web_search>\n<parameter=query>\nPrometheus alerting rule for ratio of two metrics per node by()\n</parameter>\n</function>\n</tool_call>"
+     },
+     {
+      "prompt_tokens": 516,
+      "completion_tokens": 57,
+      "finish_reason": "stop",
+      "text": "<tool_call>\n<function=bash>\n<parameter=command>\nwhich promtool 2>/dev/null; promtool --version 2>/dev/null; echo \"---\"; ls /etc/prometheus 2>/dev/null\n</parameter>\n</function>\n</tool_call>"
+     },
+     {
+      "prompt_tokens": 627,
+      "completion_tokens": 29,
+      "finish_reason": "stop",
+      "text": "<tool_call>\n<function=bash>\n<parameter=command>\npromtool --help\n</parameter>\n</function>\n</tool_call>"
+     },
+     {
+      "prompt_tokens": 710,
+      "completion_tokens": 31,
+      "finish_reason": "stop",
+      "text": "<tool_call>\n<function=bash>\n<parameter=command>\npromtool check rules --help\n</parameter>\n</function>\n</tool_call>"
+     }
+    ]
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 3,
+    "answered": false,
+    "valid": false,
+    "correct": false,
+    "checks": [],
+    "claims_unrun_lookup": false
+   }
+  },
+  {
+   "id": "alert-GPUMetricsAbsent",
+   "split": "alert",
+   "alertname": "GPUMetricsAbsent",
+   "question": "Write a Prometheus alerting rule named GPUMetricsAbsent that fires when no gpulab_gpu_temperature_celsius series exists at all for 5 minutes.",
+   "series": [
+    [
+     "gpulab_gpu_temperature_celsius{node=\"desktop\"}",
+     "70x5 _x25"
+    ]
+   ],
+   "checks": [
+    [
+     "8m",
+     false
+    ],
+    [
+     "22m",
+     true
+    ]
+   ],
+   "run": {
+    "status": "call_limit",
+    "final": null,
+    "calls": [
+     {
+      "outcome": "web_unavailable",
+      "name": "web_search",
+      "args": {
+       "query": "Prometheus alerting rule absent() function no series exists"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "which promtool 2>/dev/null; promtool --help 2>&1 | head -20"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "promtool --help"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 434,
+      "completion_tokens": 36,
+      "finish_reason": "stop",
+      "text": "<tool_call>\n<function=web_search>\n<parameter=query>\nPrometheus alerting rule absent() function no series exists\n</parameter>\n</function>\n</tool_call>"
+     },
+     {
+      "prompt_tokens": 495,
+      "completion_tokens": 47,
+      "finish_reason": "stop",
+      "text": "<tool_call>\n<function=bash>\n<parameter=command>\nwhich promtool 2>/dev/null; promtool --help 2>&1 | head -20\n</parameter>\n</function>\n</tool_call>"
+     },
+     {
+      "prompt_tokens": 596,
+      "completion_tokens": 29,
+      "finish_reason": "stop",
+      "text": "<tool_call>\n<function=bash>\n<parameter=command>\npromtool --help\n</parameter>\n</function>\n</tool_call>"
+     },
+     {
+      "prompt_tokens": 679,
+      "completion_tokens": 31,
+      "finish_reason": "stop",
+      "text": "<tool_call>\n<function=bash>\n<parameter=command>\npromtool rules check --help\n</parameter>\n</function>\n</tool_call>"
+     }
+    ]
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 3,
+    "answered": false,
+    "valid": false,
+    "correct": false,
+    "checks": [],
+    "claims_unrun_lookup": false
+   }
+  },
+  {
+   "id": "alert-GPUThrottling",
+   "split": "alert",
+   "alertname": "GPUThrottling",
+   "question": "Write a Prometheus alerting rule named GPUThrottling that fires when gpulab_gpu_throttle_active is 1 for 3 minutes.",
+   "series": [
+    [
+     "gpulab_gpu_throttle_active{node=\"laptop\"}",
+     "0x5 1x10"
+    ]
+   ],
+   "checks": [
+    [
+     "7m",
+     false
+    ],
+    [
+     "10m",
+     true
+    ]
+   ],
+   "run": {
+    "status": "call_limit",
+    "final": null,
+    "calls": [
+     {
+      "outcome": "web_unavailable",
+      "name": "web_search",
+      "args": {
+       "query": "Prometheus alerting rule example for_gpu_throttle_active"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "ls -la / 2>/dev/null; echo \"---\"; find / -maxdepth 3 -iname \"*prometheus*\" 2>/dev/null | head -50; echo \"---\"; find / -maxdepth 4 -iname \"*alert*rule*\" 2>/dev/null | head -50"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "man promtool 2>/dev/null | head -100"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 432,
+      "completion_tokens": 36,
+      "finish_reason": "stop",
+      "text": "<tool_call>\n<function=web_search>\n<parameter=query>\nPrometheus alerting rule example for_gpu_throttle_active\n</parameter>\n</function>\n</tool_call>"
+     },
+     {
+      "prompt_tokens": 493,
+      "completion_tokens": 89,
+      "finish_reason": "stop",
+      "text": "<tool_call>\n<function=bash>\n<parameter=command>\nls -la / 2>/dev/null; echo \"---\"; find / -maxdepth 3 -iname \"*prometheus*\" 2>/dev/null | head -50; echo \"---\"; find / -maxdepth 4 -iname \"*alert*rule*\" 2>/dev/null | head -50\n</parameter>\n</function>\n</tool_call>"
+     },
+     {
+      "prompt_tokens": 636,
+      "completion_tokens": 39,
+      "finish_reason": "stop",
+      "text": "<tool_call>\n<function=bash>\n<parameter=command>\nman promtool 2>/dev/null | head -100\n</parameter>\n</function>\n</tool_call>"
+     },
+     {
+      "prompt_tokens": 729,
+      "completion_tokens": 28,
+      "finish_reason": "stop",
+      "text": "<tool_call>\n<function=bash>\n<parameter=command>\nman promtool\n</parameter>\n</function>\n</tool_call>"
+     }
+    ]
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 3,
+    "answered": false,
+    "valid": false,
+    "correct": false,
+    "checks": [],
+    "claims_unrun_lookup": false
+   }
+  },
+  {
+   "id": "alert-HighPowerDraw",
+   "split": "alert",
+   "alertname": "HighPowerDraw",
+   "question": "Write a Prometheus alerting rule named HighPowerDraw that fires as soon as the average of gpulab_gpu_power_watts over the last 5 minutes is above 300.",
+   "series": [
+    [
+     "gpulab_gpu_power_watts{node=\"desktop\"}",
+     "100x5 350x10"
+    ]
+   ],
+   "checks": [
+    [
+     "7m",
+     false
+    ],
+    [
+     "11m",
+     true
+    ]
+   ],
+   "run": {
+    "status": "call_limit",
+    "final": null,
+    "calls": [
+     {
+      "outcome": "web_unavailable",
+      "name": "web_search",
+      "args": {
+       "query": "Prometheus alerting rule example HighPowerDraw gpulab_gpu_power_watts"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "which promtool 2>/dev/null; ls /etc/prometheus 2>/dev/null; find / -name \"*.yml\" -path \"*prometheus*\" 2>/dev/null | head -20"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "promtool --help"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 441,
+      "completion_tokens": 41,
+      "finish_reason": "stop",
+      "text": "<tool_call>\n<function=web_search>\n<parameter=query>\nPrometheus alerting rule example HighPowerDraw gpulab_gpu_power_watts\n</parameter>\n</function>\n</tool_call>"
+     },
+     {
+      "prompt_tokens": 507,
+      "completion_tokens": 69,
+      "finish_reason": "stop",
+      "text": "<tool_call>\n<function=bash>\n<parameter=command>\nwhich promtool 2>/dev/null; ls /etc/prometheus 2>/dev/null; find / -name \"*.yml\" -path \"*prometheus*\" 2>/dev/null | head -20\n</parameter>\n</function>\n</tool_call>"
+     },
+     {
+      "prompt_tokens": 630,
+      "completion_tokens": 29,
+      "finish_reason": "stop",
+      "text": "<tool_call>\n<function=bash>\n<parameter=command>\npromtool --help\n</parameter>\n</function>\n</tool_call>"
+     },
+     {
+      "prompt_tokens": 713,
+      "completion_tokens": 28,
+      "finish_reason": "stop",
+      "text": "<tool_call>\n<function=bash>\n<parameter=command>\nman promtool\n</parameter>\n</function>\n</tool_call>"
+     }
+    ]
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 3,
+    "answered": false,
+    "valid": false,
+    "correct": false,
+    "checks": [],
+    "claims_unrun_lookup": false
+   }
+  },
+  {
+   "id": "alert-ScrapeFlapping",
+   "split": "alert",
+   "alertname": "ScrapeFlapping",
+   "question": "Write a Prometheus alerting rule named ScrapeFlapping that fires as soon as any target's up metric has changed value more than 3 times in the last 10 minutes.",
+   "series": [
+    [
+     "up{job=\"gpu\",instance=\"b:9835\"}",
+     "1 0 1 0 1 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1"
+    ]
+   ],
+   "checks": [
+    [
+     "7m",
+     true
+    ],
+    [
+     "20m",
+     false
+    ]
+   ],
+   "run": {
+    "status": "call_limit",
+    "final": null,
+    "calls": [
+     {
+      "outcome": "web_unavailable",
+      "name": "web_search",
+      "args": {
+       "query": "Prometheus alerting rule count_over_time changes metric up target flapping"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "which promtool 2>/dev/null; promtool --version 2>/dev/null; echo \"---\"; ls /usr/local/bin 2>/dev/null | head"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "promtool --help"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 440,
+      "completion_tokens": 39,
+      "finish_reason": "stop",
+      "text": "<tool_call>\n<function=web_search>\n<parameter=query>\nPrometheus alerting rule count_over_time changes metric up target flapping\n</parameter>\n</function>\n</tool_call>"
+     },
+     {
+      "prompt_tokens": 504,
+      "completion_tokens": 59,
+      "finish_reason": "stop",
+      "text": "<tool_call>\n<function=bash>\n<parameter=command>\nwhich promtool 2>/dev/null; promtool --version 2>/dev/null; echo \"---\"; ls /usr/local/bin 2>/dev/null | head\n</parameter>\n</function>\n</tool_call>"
+     },
+     {
+      "prompt_tokens": 617,
+      "completion_tokens": 29,
+      "finish_reason": "stop",
+      "text": "<tool_call>\n<function=bash>\n<parameter=command>\npromtool --help\n</parameter>\n</function>\n</tool_call>"
+     },
+     {
+      "prompt_tokens": 700,
+      "completion_tokens": 28,
+      "finish_reason": "stop",
+      "text": "<tool_call>\n<function=bash>\n<parameter=command>\nman promtool\n</parameter>\n</function>\n</tool_call>"
+     }
+    ]
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 3,
+    "answered": false,
+    "valid": false,
+    "correct": false,
+    "checks": [],
+    "claims_unrun_lookup": false
+   }
+  },
+  {
+   "id": "alert-TargetDown",
+   "split": "alert",
+   "alertname": "TargetDown",
+   "question": "Write a Prometheus alerting rule named TargetDown that fires when any scrape target's up metric has been 0 for 2 minutes.",
+   "series": [
+    [
+     "up{job=\"vllm\",instance=\"a:8000\"}",
+     "1x5 0x10"
+    ],
+    [
+     "up{job=\"gpu\",instance=\"b:9835\"}",
+     "1x15"
+    ]
+   ],
+   "checks": [
+    [
+     "7m",
+     false
+    ],
+    [
+     "10m",
+     true
+    ]
+   ],
+   "run": {
+    "status": "call_limit",
+    "final": null,
+    "calls": [
+     {
+      "outcome": "web_unavailable",
+      "name": "web_search",
+      "args": {
+       "query": "Prometheus alerting rule TargetDown up == 0 for 2m example"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "which promtool 2>/dev/null; promtool --help 2>&1 | head -20"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "promtool --help"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 430,
+      "completion_tokens": 41,
+      "finish_reason": "stop",
+      "text": "<tool_call>\n<function=web_search>\n<parameter=query>\nPrometheus alerting rule TargetDown up == 0 for 2m example\n</parameter>\n</function>\n</tool_call>"
+     },
+     {
+      "prompt_tokens": 496,
+      "completion_tokens": 47,
+      "finish_reason": "stop",
+      "text": "<tool_call>\n<function=bash>\n<parameter=command>\nwhich promtool 2>/dev/null; promtool --help 2>&1 | head -20\n</parameter>\n</function>\n</tool_call>"
+     },
+     {
+      "prompt_tokens": 597,
+      "completion_tokens": 29,
+      "finish_reason": "stop",
+      "text": "<tool_call>\n<function=bash>\n<parameter=command>\npromtool --help\n</parameter>\n</function>\n</tool_call>"
+     },
+     {
+      "prompt_tokens": 680,
+      "completion_tokens": 30,
+      "finish_reason": "stop",
+      "text": "<tool_call>\n<function=bash>\n<parameter=command>\npromtool rules --help\n</parameter>\n</function>\n</tool_call>"
+     }
+    ]
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 3,
+    "answered": false,
+    "valid": false,
+    "correct": false,
+    "checks": [],
+    "claims_unrun_lookup": false
+   }
+  }
+ ]
+}
