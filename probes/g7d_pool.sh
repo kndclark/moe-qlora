@@ -9,7 +9,8 @@
 # results/g7d/{pool-up,vllm-pool,pool-down,desktop-lab-up}.log.
 # usage: [G7D_OUT=dir] [G7D_MODEL=repo G7D_REV=rev] [G7D_MORE="..."] [G7D_MODES="off on"] g7d_pool.sh
 #   Unset = G7d exactly. L6: G7D_OUT=l6 G7D_MODEL=<BF16 repo> G7D_REV=a9904d24...
-#   G7D_MORE="--quantization fp8" G7D_MODES=off.
+#   G7D_MORE="--quantization fp8" G7D_MODES=off. G7D_EAGER="" drops --enforce-eager (CUDA
+#   graphs, adopted for the pool 2026-10-02); unset keeps it.
 set -u
 here=$(cd "$(dirname "$0")/.." && pwd)
 out=$here/results/${G7D_OUT:-g7d}
@@ -27,7 +28,7 @@ finish() {
 }
 trap finish EXIT
 POOL_MODEL=$M POOL_MAXLEN=16384 POOL_WAIT_SECS=900 POOL_GPU_UTIL=0.85 \
-POOL_EXTRA_FLAGS="--revision ${G7D_REV:-bee7596271d1495f6992ae224aefde4410e816b8} --kv-cache-dtype fp8 --mamba-cache-mode align --moe-backend marlin --linear-backend marlin --enforce-eager --max-num-seqs 16 --enable-lora --max-lora-rank 16 --max-loras 1 --lora-modules $LABEL=/hf/adapters/lightning-g6u${G7D_MORE:+ $G7D_MORE}" \
+POOL_EXTRA_FLAGS="--revision ${G7D_REV:-bee7596271d1495f6992ae224aefde4410e816b8} --kv-cache-dtype fp8 --mamba-cache-mode align --moe-backend marlin --linear-backend marlin${G7D_EAGER- --enforce-eager} --max-num-seqs 16 --enable-lora --max-lora-rank 16 --max-loras 1 --lora-modules $LABEL=/hf/adapters/lightning-g6u${G7D_MORE:+ $G7D_MORE}" \
   "$LAB" pool up > "$out/pool-up.log" 2>&1
 rc=$?
 echo "pool up exit $rc $(date +%T)"

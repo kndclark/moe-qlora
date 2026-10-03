@@ -1992,6 +1992,17 @@ the laptop and the desktop in parallel):
   `results/n1-items-g6u-g6q.json`; G6u vs G6t: 1-0 for G6u; vs base: 6-0). Thinking off,
   G6q has one run. Run G6q off r2, r3 on the gate's server and compare with G6u's N2
   runs. Whether the candidate changes is David's call on the result.
+  - **L7 RESULT (MEASURED, 2026-10-02 19:14-19:27; `results/noise/*-g6q-nothink-r{2,3}`,
+    `results/l7-items.json`):** all 14 evals exit 0 (the chain's "L7 exit 1" is
+    `noise_eval.sh`'s last line, `[ "$with_base" = base ] && run ...`, false without
+    base). Thinking off, three repeats each: G6u beats G6q on trap3 noticed 8-0 (p 0.008)
+    and G6q beats G6u on none; pooled discordant items 28 vs 28; Holm: 0 of 20 rows.
+  - Reading: a split, not a winner. Under P1 G6q takes 2 thinking-on rows and G6u 1
+    thinking-off row; nothing survives Holm in either mode; over both modes the discordant
+    items are 66 (G6u) vs 77 (G6q), p 0.40 (POST HOC, pooled). The data do not say switch
+    and do not say stay. Tie-break proposal (David's call): the mode Lightning will serve
+    in. Thinking on leans G6q (traces did not buy G6u that mode); thinking off leans G6u
+    (trap3). G6u stays on `main` until David decides.
 - **L8 the thinking-on yardstick.** Qwen v3 thinking on at 4096 tokens, five sets x three
   repeats, item by item against G6u's N1 runs (and G6q's if L7 moves).
 - **L9 render design B.** 588 of 1824 history turns are off by a newline under design A
@@ -2027,6 +2038,42 @@ the laptop and the desktop in parallel):
     FlashInfer is unfixed: `main`'s `kernel_selective_state_update_stp.cuh` still makes 5
     cluster-form TMA calls and 0 cta-form (latest release v0.7.0.post1, 2026-09-29); no
     matching issue found in its tracker. Filing the draft stays David's call.
+  - David, 2026-10-02: "don't make any posts upstream, but continue to investigate that
+    issue and adversarially verify if/why it hasn't been posted already. again do NOT post
+    or file anything, just research." Nothing was posted; all of the below is reading.
+  - **L10b RESULT (SOURCED + MEASURED, 2026-10-02 19:25-19:40):**
+    - Still unfixed: FlashInfer `main` `46340689` (committed 2026-10-02) has 13 cluster-form
+      calls (stp 5, mtp_vertical 4, mtp_horizontal 4) and 0 `.shared::cta`; the last
+      commits to `include/flashinfer/mamba` (2026-09-30, -09-09, -09-03) do not touch them.
+    - Still unreported: no issue or PR in FlashInfer, vLLM, SGLang, CCCL or CUTLASS for
+      the SSU (searches: selective_state_update with sm120/sm_120/OOM/5090, mamba sm120,
+      cp_async_bulk_tensor, syscall, space_cluster, shared::cta, mamba-backend
+      flashinfer, mamba-ssu-algorithm; the search itself checked against broad terms).
+    - The mechanism is already public, from NVIDIA: CCCL #6708 (closed 2026-01-15), ~4.2
+      GiB after `thrust::transform` on an RTX PRO 6000; a CCCL maintainer: bulk copy to
+      `space_cluster` on sm120 makes the driver "allocate auxiliary memory per GPU thread
+      ... about 14.5KiB per thread", "by design". CCCL moved its own algorithms to
+      `space_shared` (#6362, merged 2025-11-03) and deprecated, since 3.2, the
+      `cuda::device::experimental::cp_async_bulk_tensor_*_global_to_shared` helpers that
+      FlashInfer calls ("Use cuda::ptx::cp_async_bulk_tensor instead"); on CCCL `main`
+      they still hardcode `space_cluster` (6 sites). `cuda::ptx` has the `.shared::cta`
+      4d tile form, so the supported fix is FlashInfer's, and our shim is that form.
+    - The path is meant for sm_12x: `gen_selective_state_update_sm100_module` declares
+      `supported_major_versions=[10, 11, 12]` and dispatch sends `sm_major >= 10` there.
+    - sm_121a (DGX Spark) and sm_120f lower the cluster form to the same syscall
+      (MEASURED: `tma2/run.sh` with those targets added, nvcc 13.0.88 and 13.3.73; sm_100a
+      inline). NVIDIA's Lightning recipe for Spark uses `--mamba-backend flashinfer`.
+    - Why nobody has reported it (INFERENCE from the above): vLLM's default SSU is Triton
+      (`arg_utils.py:769`, `MambaBackendEnum.TRITON`), so the FlashInfer SSU is opt-in;
+      on sm_90/sm_100 it compiles inline; on sm_12x it is a silent memory tax that fails
+      only when free memory at first launch is below SMs x 1,536 x ~13.6 KB (a unit
+      test, a Spark's unified memory or a big card at modest util never sees it); the
+      failed launch is unchecked, so the error lands at the next op as a generic CUDA
+      error; and the one NVIDIA thread that names the cause is filed under Thrust.
+    - Not this issue, noted: vLLM #59770 (opened 2026-10-02), Lightning NVFP4 decode ~16%
+      slower on DGX Spark from v0.29.0 (v0.28.0 67.9 vs 57.2 tok/s; SSU backend ruled
+      out); FlashInfer #4731, sm120 NVFP4-KV multi-token verify ~3x slower, cancels MTP
+      gains (we run fp8 KV, not NVFP4 KV).
 
 **Run sheet, fixed 2026-10-02 before any of these ran.** Quality: v1 (or the seven
 sets) thinking off, item by item with `probes/pair_items.py` against the reference
@@ -2058,6 +2105,75 @@ and a change counts past 2.0 tok/s (the side quest's bar, triton's own range).
   `NODE=desktop LABEL=l5-desktop-fi EXTRA="--linear-backend marlin --mamba-backend
   flashinfer --mamba-ssu-algorithm simple"`. L3, L11 against L4-laptop; L5 against
   L4-desktop; L4 against the pool (G7c2).
+  - **L4 RESULT (MEASURED, 2026-10-02 19:01-19:16; `results/lsingle/l4-*`,
+    `results/lsingle-{laptop,desktop}.log`, `results/l4-items.json`, `l4-cards-items.json`):
+    one card, eager, util 0.85.** KV laptop 1.5 GiB (170,666 tokens), desktop 1.76 GiB
+    (200,704). Decode p50 c=1 / c=16 per request: laptop **32.8 / 32.2**, desktop **25.2 /
+    24.6** tok/s, against the eager pool's 29.8 / 22.75 (G7c2). So G7c's "pooled is slower
+    than one card" holds for the laptop only; the pool sits between the cards. v1 item by
+    item: laptop L4 vs pool 8-13 (p 0.38), desktop L4 vs pool 11-9 (p 0.82), desktop vs
+    laptop 13-6 (p 0.17); no row p < 0.05 in any of the three.
+  - **L2b RESULT (MEASURED, 19:09-19:29; `results/lsingle/l2b-*`, `l2b-desktop-items.json`):
+    one card with CUDA graphs.** Desktop at 0.85: serves, KV 0.69 GiB (graphs 0.20 + 0.14
+    GiB, and vLLM's graph profiling makes 0.85 act as 0.8401); decode c=1 **208.4 tok/s**
+    (8.3x its eager 25.2, and above the pool's 198.6), c=16 80.7 per request (cv 15%). At
+    0.92 (David's go, "yes raise memory to continue testing the single card cuda graphs"):
+    KV 2.34 GiB, c=1 208.8, c=16 **98.9** per request (cv 5.9%), TTFT p95 0.37 s against
+    2.74 s: at 0.85 the 16 requests were short of KV, not of compute. v1: graphs vs eager
+    8-15 (p 0.21); 0.92 vs 0.85 9-5 (p 0.42); one card with graphs vs the pool with
+    graphs (L2) 8-12 (p 0.50). Laptop at 0.85: does not serve: KV 0.14 GiB, just under the
+    0.14 GiB one 16,384-token request needs (graphs 0.54 GiB; util acts as 0.8247); rerun
+    at 0.90 queued for after the chain.
+  - **L5 RESULT (MEASURED, 19:16-19:44; `results/lsingle/l5-desktop-fi*`,
+    `l5-desktop-fi-g-items.json`): FlashInfer SSU (`simple`) runs on sm_86.** Eager: c=1
+    25.7 vs 25.2 tok/s (+2.2%), c=16 25.7 vs 24.6 (+4.6%), KV unchanged; v1 vs L4-desktop
+    10-10 (p 1.0). With graphs (0.85): c=1 208.2 vs 208.4, c=16 80.8 vs 80.7, v1 vs
+    L2b-desktop 13-5 (p 0.096). Reading: the SSU swap is a launch-overhead gain that CUDA
+    graphs already take; under graphs it buys nothing here, so it is not adopted.
+  - **L3 / L11, first tries (MEASURED, laptop, eager, 0.85):** L3 MTP fails at load:
+    `moe_backend='marlin' is not supported for unquantized MoE` (the MTP layer is BF16);
+    L11 DFlash fails: model 19.3 GiB with the draft, KV 0.02 GiB. Desktop, graphs, 0.92:
+    the first three draft runs never reached vLLM (ssh's remote shell stripped the JSON
+    quotes; `l_single.sh` now %q-quotes EXTRA on the desktop). Then:
+    - MTP with `"moe_backend":"triton"` in the speculative config: same error. vLLM 0.29
+      runs these on Model Runner V2 ("Using V2 Model Runner"), and only the V1 proposer
+      reads that field (`v1/spec_decode/llm_base_proposer.py:1295`). Rerun with no
+      `--moe-backend` (`L_MOE=""`), so vLLM picks per layer: queued.
+      **Rerun (19:47):** vLLM picked MARLIN for the NVFP4 experts and TRITON for the MTP
+      layer, so the backend question is solved, but the MTP layer is a BF16 MoE layer:
+      weights 20.32 GiB against 17.81 without it (+2.51 GiB), KV -0.51 GiB at 0.92. One
+      3090 cannot hold MTP with graphs; it moves to the pool (9-10 GiB KV per card).
+    - DSpark: `FP8 KV cache is not supported by the Triton attention backend on ... RTX
+      3090 ... requires SM89+`. Its attention has sinks (`attention_sink_bias`, sliding
+      window 1024); on sm_86 only Triton attention has sinks (FlashInfer: SM12x XQA and
+      SM100; FlashAttention: FA3/4). Rerun with `"kv_cache_dtype":"bfloat16"` in the
+      speculative config, the draft's own KV dtype (`config/speculative.py:415`), the
+      target's stays fp8: queued.
+      **Rerun (19:47):** past attention, then KV: one 16,384-token request needed 4.19 GiB
+      against 0.39 available (attention block 4,240 tokens). A mixed-dtype layout cost: with
+      one KV dtype for both (`--kv-cache-dtype bfloat16`, 19:51) it needs 0.39 GiB, 11x
+      less, and fell 0.05 GiB short at 0.92 (draft weights 1.64 GiB). Control, same bf16 KV
+      and no draft: KV 2.41 GiB (205,824 tokens), decode c=1 215.6, c=16 102.3 tok/s (fp8
+      KV at 0.92: 208.8 / 98.9, so bf16 KV is ~3% faster on sm_86, which has no native
+      fp8); v1 bf16 vs fp8 KV 12-8 (p 0.50).
+    - **L11 DSpark RESULT (MEASURED, desktop, graphs, bf16 KV, util 0.94, 19:56-20:01;
+      `results/lsingle/l11-desktop-dspark-bf16/`, `results/l11-desktop-dspark-items.json`):
+      serves; KV 0.83 GiB (34,304 tokens, 2.09x one 16,384-token request). Decode c=1
+      **366.8 tok/s** against 215.6 without a draft (**+70%**; 14.5x one eager card), c=16
+      **226.1 per request** against 102.3 (**+121%**). Accepted 70% of drafted tokens on
+      bench's text (3.11 per step), 52% on v1's tool calls (2.55). v1 against the bf16
+      control: every row p = 1.0 (held_out 8-9). The cost is KV: v1 (16 concurrent long
+      prompts) took 117 s against 68.5 s, because 34k tokens of KV queue them. Reading:
+      on one 3090 DSpark is the single-user path NVIDIA says it is, and DFlash (-28% at
+      c=1) is not; for long concurrent prompts one card's KV is the limit, and the pool's
+      is not.
+    - **L11 DFlash RESULT (desktop, graphs, 0.92):** serves; KV 0.57 GiB (26,916 tokens);
+      decode c=1 **149.5** tok/s against 208.8 without a draft (**-28%**), c=16 **142.1**
+      per request against 98.9 (**+44%**). Accepted 46% of drafted tokens on bench's text
+      (2.39 tokens per step), 30% on v1's tool calls (1.91). v1 vs L2b-desktop-u92 6-11
+      (p 0.33). Reading (INFERENCE): verifying 4 tokens of an MoE model reads up to 4
+      tokens' experts, which costs more than ~1.4 accepted tokens save at batch 1; at 16
+      requests the experts are read anyway.
 
 **Needs David's go:** L11 the DFlash draft (1.1 GiB download; every download needs his
 go), only if L3 shows speculative decoding pays here.
@@ -2068,10 +2184,30 @@ go), only if L3 shows speculative decoding pays here.
     image). NVIDIA's card recommends DSpark, not DFlash, for low-concurrency serving; its
     recipe: `--speculative_config.model <draft> --speculative_config.num_speculative_tokens
     3` with vLLM v0.27.1. DSpark is a second download: not fetched.
+  - David, 2026-10-02: "sure lets try Dspark". Fetched the same way: rev `8a017711`, 5
+    files (model.safetensors 1.35 GB, W4A16 NVFP4, 6 sliding-window attention layers), 27 s;
+    sha256 matches the HF LFS oid; laptop mirror synced (1.35 GB in 10 s).
 
 **Protocol, no run:** (P1) the item-level bar for every comparison (N2 audit; David's
 call). (P2) the live-metric sets (promql, promqlcat) compare only runs made the same day,
 interleaved; G6w's promql gap stays unseparated (G6w is dropped).
+  - **P1 ADOPTED.** David, 2026-10-02: "if item level test is better then use it". Checked
+    first, on runs that share a config (MEASURED): laptop L4 against the G6-server run of
+    the same base, flags and card, seen_tool reads 13 vs 8 items, beyond the old "more than
+    2 items" bar, and item by item it is 6-1, p 0.125: noise, as it must be. The desktop's
+    SSU swap (L5 against L4): seen_tool 3 items apart, 5-2, p 0.45. So from here a row is a
+    win or a loss only at a two-sided sign test p < 0.05 on its discordant items, with the
+    pooled discordant count and the Holm-corrected count beside. Caveat (MEASURED, same
+    runs): desktop L4 against that G6-server run gives seen_tool 6-0, p 0.031, where the
+    G6-server run is the low one of a same-config pair; with one run a side, a p < 0.05
+    row is a lead until it survives Holm or repeats.
+- **CUDA graphs ADOPTED for the pool.** David, 2026-10-02: "yes to CUDA graphs on the
+  pool". L2: c=1 198.6 against 29.8 tok/s eager, quality p = 1.0 on every row. `bin/lab`
+  already captures graphs (`POOL_EXTRA_FLAGS` is empty by default); the eager flag was this
+  repo's (G7a's single-card memory choice, carried by `g7c_pool.sh` and `g7d_pool.sh`).
+  Pooled Lightning runs from here leave it out: `G7C_EAGER=""`, and `g7d_pool.sh` gains
+  the same switch, `G7D_EAGER=""`; unset, both still reproduce G7c and G7d exactly. The
+  70B stays eager (its graphs do not fit; gpu-lab memory).
 
 **Not worth it, with the reason:**
 - Routed-expert LoRA (Routes "B", F3): the remaining failures are behaviours (template

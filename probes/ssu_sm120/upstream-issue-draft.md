@@ -1,6 +1,6 @@
-<!-- DRAFT, NOT FILED. Filing is outward-facing and needs David's go. Before filing:
-     search FlashInfer issues/PRs for "selective_state_update sm_120" / "cp_async_bulk_tensor
-     syscall" (not yet searched), and re-check against the current FlashInfer main. -->
+<!-- DRAFT, NOT FILED. David, 2026-10-02: do NOT post or file anything; research only.
+     Searched 2026-10-02 (plan.md "L10b"): no FlashInfer/vLLM/SGLang/CCCL/CUTLASS issue for
+     this; FlashInfer main 46340689 still has the 13 cluster-form calls. -->
 
 # Mamba selective_state_update: first launch reserves ~1.6 GiB on sm_120 (cluster-space TMA load lowers to a syscall)
 
@@ -37,7 +37,12 @@ inline-asm helper issuing `.shared::cta` (libcu++'s
 
 A workaround with no code change: `--mamba-ssu-algorithm simple` (no TMA).
 
-Possibly worth a CCCL / CUDA note too: the libcu++ helper hardcodes the cluster space, and
-its lowering on sm_120 is a large, silent memory cost.
+Prior art: NVIDIA/cccl#6708 identifies the same driver allocation for `cp_async_bulk` to
+`space_cluster` on sm120 (~14.5 KiB per thread, "by design"); CCCL moved its own algorithms
+to `space_shared` in NVIDIA/cccl#6362 and has deprecated the
+`cuda::device::experimental::cp_async_bulk_tensor_*_global_to_shared` helpers since 3.2.
+The supported replacement, `cuda::ptx::cp_async_bulk_tensor(cuda::ptx::space_shared,
+cuda::ptx::space_global, ...)`, emits the `.shared::cta` form. sm_121a (DGX Spark) and
+sm_120f lower the cluster form to the same syscall (nvcc 13.0.88 / 13.3.73).
 
 Patch and repro harness available on request.

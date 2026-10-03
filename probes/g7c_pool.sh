@@ -8,7 +8,10 @@
 # usage: [POOL_GPU_UTIL=u] [G7C_OUT=dir] [G7C_MORE_FLAGS="..."] g7c_pool.sh
 #   G7C_OUT names the folder under results/ (default g7c); G7C_MORE_FLAGS is appended
 #   to the pool's vLLM flags (G7c2: "--max-num-seqs 16"). Unset = the original G7c run.
-#   G7C_EAGER="" drops --enforce-eager (L2: CUDA graphs); unset keeps it.
+#   G7C_EAGER="" drops --enforce-eager (L2: CUDA graphs); unset keeps it. A draft model goes
+#   in G7C_MORE_FLAGS in vLLM's dotted form (--speculative_config.model ...): bin/lab quotes
+#   the flags into a remote bash -c, which JSON's quotes would break. Spec-decode counters
+#   from /metrics land in spec-{eval,bench}.txt (empty without a draft).
 set -u
 here=$(cd "$(dirname "$0")/.." && pwd)
 out=$here/results/${G7C_OUT:-g7c}
@@ -37,8 +40,11 @@ python3 "$here/probes/g7a_eval.py" --base $B --model $M --label v1-lightning-not
   --max-calls 3 --temperature 0 --window 4000 --seed 20260923 --concurrency 16 --thinking off --max-tokens 512 \
   --out "$out/research-eval-v1-lightning-nothink-pool.json" > "$out/research-eval-v1-lightning-nothink-pool.log" 2>&1
 echo "v1 eval exit $?"
+spec() { curl -s $B/metrics | grep -E '^vllm:spec_decode_num_(drafts|draft_tokens|accepted_tokens)_total' > "$out/spec-$1.txt"; }
+spec eval
 for c in 1 16; do
   python3 /home/david/gpu-lab/bench/bench.py --base $B --model $M --concurrency $c --repeats 2 \
     --label "pool Lightning NVFP4 c=$c" --json-out "$out/bench-c$c.json" > "$out/bench-c$c.log" 2>&1
   echo "bench c=$c exit $?"; tail -4 "$out/bench-c$c.log"
 done
+spec bench

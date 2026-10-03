@@ -18,9 +18,10 @@ H=$HOME/gpu-lab/bench/research_eval.py
 name=qwen3-8b-n2
 B=http://127.0.0.1:8300
 maxlen=8192 mode=nothink
-[ "${THINK:-off}" = on ] && maxlen=16384 mode=think-4k
+slog=qwenv3-noise-serve.log
+[ "${THINK:-off}" = on ] && maxlen=16384 mode=think-4k slog=qwenv3-noise-think-serve.log
 restore() {
-  docker logs "$name" > "$out/qwenv3-noise-serve.log" 2>&1 || true
+  docker logs "$name" > "$out/$slog" 2>&1 || true
   docker rm -f "$name" >/dev/null 2>&1
   echo performance | sudo -n tee /sys/firmware/acpi/platform_profile >/dev/null
   echo "profile: $(cat /sys/firmware/acpi/platform_profile)"

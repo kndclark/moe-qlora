@@ -7,8 +7,15 @@
 # must have none, e.g. --speculative-config {"method":"mtp","num_speculative_tokens":3}.
 # Outputs: results/lsingle/<LABEL>/{serve.log,bench-c1.json,bench-c16.json,
 #   research-eval-v1-lightning-nothink-<LABEL>.{json,log}}
-# usage: NODE=laptop|desktop LABEL=name [EXTRA="..."] [L_EAGER=""] l_single.sh
-#   L_EAGER="" drops --enforce-eager (L2b: CUDA graphs); unset keeps it.
+# usage: NODE=laptop|desktop LABEL=name [EXTRA="..."] [L_EAGER=""] [L_UTIL=0.9] l_single.sh
+#   L_EAGER="" drops --enforce-eager (L2b: CUDA graphs); unset keeps it. L_UTIL raises
+#   --gpu-memory-utilization from 0.85 (David, 2026-10-02, for single-card graph runs).
+#   With a draft model, spec-decode counters from /metrics land in spec-{bench,eval}.txt.
+#   On the desktop each EXTRA word is %q-quoted: ssh re-parses the command remotely, which
+#   would strip the quotes out of JSON. L_MOE="" drops --moe-backend marlin (vLLM then picks
+#   per layer; MTP's layer is unquantized, and the speculative config's moe_backend did not
+#   reach it in v0.29.0). L_MODEL names the served model that bench and v1 call (default
+#   lightning-nvfp4); with --lora-modules in EXTRA it can name the adapter.
 set -u
 NODE=${NODE:?laptop or desktop} LABEL=${LABEL:?names the run}
 here=$(cd "$(dirname "$0")/.." && pwd)
@@ -27,13 +34,15 @@ stop() {
   "${run[@]}" rm -f $name >/dev/null 2>&1
 }
 trap stop EXIT
+extra=(${EXTRA:-})
+if [ "$NODE" = desktop ]; then q=(); for w in "${extra[@]}"; do q+=("$(printf %q "$w")"); done; extra=("${q[@]}"); fi
 "${run[@]}" run -d --name $name --gpus all --ipc=host -p $port \
   -v /srv/model-cache:/hf:ro -e HF_HOME=/hf -e HF_HUB_OFFLINE=1 \
   vllm/vllm-openai:v0.29.0 \
   --model $M --revision bee7596271d1495f6992ae224aefde4410e816b8 --served-model-name lightning-nvfp4 \
-  --kv-cache-dtype fp8 --mamba-cache-mode align --moe-backend marlin \
-  --max-model-len 16384 --max-num-seqs 16 --gpu-memory-utilization 0.85 ${L_EAGER---enforce-eager} \
-  ${EXTRA:-} >/dev/null || exit 1
+  --kv-cache-dtype fp8 --mamba-cache-mode align ${L_MOE---moe-backend marlin} \
+  --max-model-len 16384 --max-num-seqs 16 --gpu-memory-utilization ${L_UTIL:-0.85} ${L_EAGER---enforce-eager} \
+  "${extra[@]}" >/dev/null || exit 1
 echo "$NODE $LABEL extra: ${EXTRA:-none}"
 t0=$(date +%s)
 until curl -sf $B/health >/dev/null; do
@@ -46,13 +55,16 @@ done
 echo "ready in $(( $(date +%s)-t0 ))s"
 "${run[@]}" logs $name 2>&1 | grep -E "Available KV cache memory|GPU KV cache size" | sed 's/^.*\] //' | cut -c1-140
 for c in 1 16; do
-  python3 /home/david/gpu-lab/bench/bench.py --base $B --model lightning-nvfp4 --concurrency $c --repeats 2 \
+  python3 /home/david/gpu-lab/bench/bench.py --base $B --model ${L_MODEL:-lightning-nvfp4} --concurrency $c --repeats 2 \
     --label "$LABEL c=$c" --json-out "$out/bench-c$c.json" > "$out/bench-c$c.log" 2>&1
   echo "bench c=$c exit $?: $(grep -E 'decode rate' "$out/bench-c$c.log" | tail -1 | tr -s ' ')"
 done
+spec() { curl -s $B/metrics | grep -E '^vllm:spec_decode_num_(drafts|draft_tokens|accepted_tokens)_total' > "$out/spec-$1.txt"; }
+spec bench
 label=v1-lightning-nothink-$LABEL
-python3 "$here/probes/g7a_eval.py" --base $B --model lightning-nvfp4 --label "$label" --set v1 \
+python3 "$here/probes/g7a_eval.py" --base $B --model ${L_MODEL:-lightning-nvfp4} --label "$label" --set v1 \
   --max-calls 3 --temperature 0 --window 4000 --seed 20260923 --concurrency 16 --thinking off --max-tokens 512 \
   --out "$out/research-eval-$label.json" > "$out/research-eval-$label.log" 2>&1
 echo "v1 eval exit $?"
+spec eval
 "${run[@]}" logs $name 2>&1 | grep -iE "spec_decode|acceptance|draft" | tail -3 | sed 's/^.*\] //' | cut -c1-200

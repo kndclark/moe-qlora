@@ -4,7 +4,7 @@
 cd /w
 for NV in /usr/local/cuda-13.0/bin/nvcc /usr/local/lib/python3.12/dist-packages/nvidia/cu13/bin/nvcc; do
   echo "#### $NV: $($NV --version | grep release)"
-  for A in sm_120a sm_100a; do
+  for A in sm_120a sm_121a sm_120f sm_100a; do
     for V in "" "-DCTA"; do
       o=f_${A}${V}.cubin
       if $NV -arch=$A $V -cubin -o $o forms2.cu 2> err.txt; then

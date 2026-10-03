@@ -1,0 +1,29 @@
+desktop l11-desktop-dspark extra: --linear-backend marlin --speculative-config {"model":"nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4-DSpark","revision":"8a0177116d138011e63103110f136ec0ca09ebbf","num_speculative_tokens":3}
+container exited before ready (62s)
+(EngineCore pid=237) ValueError: FP8 KV cache is not supported by the Triton attention backend on NVIDIA GeForce RTX 3090 (compute capability 8.6); native FP8 (fp8e4nv) requires SM89+. Re-run with --kv-cache-dtype bfloat16.
+(APIServer pid=1)     raise RuntimeError(
+(APIServer pid=1) RuntimeError: Engine core initialization failed. See root cause above. Failed core proc(s): {}
+desktop l3-desktop-mtp extra: --linear-backend marlin --speculative-config {"method":"mtp","num_speculative_tokens":3,"moe_backend":"triton"}
+container exited before ready (61s)
+(EngineCore pid=238) ValueError: moe_backend='marlin' is not supported for unquantized MoE. Expected one of ['triton', 'batched_triton', 'flashinfer_trtllm', 'flashinfer_cutlass', 'aiter'].
+(APIServer pid=1)     raise RuntimeError(
+(APIServer pid=1) RuntimeError: Engine core initialization failed. See root cause above. Failed core proc(s): {}
+desktop l11-desktop-dflash extra: --linear-backend marlin --speculative-config {"model":"nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4-DFlash","revision":"8abcc4db8f34a5080c31eef05d4467afc06c6b9e","num_speculative_tokens":3}
+ready in 153s
+Available KV cache memory: 0.57 GiB
+GPU KV cache size: 26,916 tokens, Maximum concurrency for 16,384 tokens per request: 1.64x
+bench c=1 exit 0:  decode rate p50 149.520 p95 161.323 mean 147.793 sd 11.396 cv 7.7% tok/s
+bench c=16 exit 0:  decode rate p50 142.127 p95 158.860 mean 143.308 sd 8.317 cv 5.8% tok/s
+v1 eval exit 0
+SpecDecoding metrics: Mean acceptance length: 1.99, Accepted throughput: 94.39 tokens/s, Drafted throughput: 286.77 tokens/s, Accepted: 944 tokens, Drafted: 2868 tokens, Per-position acceptance rate: 
+SpecDecoding metrics: Mean acceptance length: 1.98, Accepted throughput: 91.40 tokens/s, Drafted throughput: 279.61 tokens/s, Accepted: 914 tokens, Drafted: 2796 tokens, Per-position acceptance rate: 
+SpecDecoding metrics: Mean acceptance length: 2.00, Accepted throughput: 106.60 tokens/s, Drafted throughput: 320.40 tokens/s, Accepted: 1066 tokens, Drafted: 3204 tokens, Per-position acceptance rate
+desktop l5-desktop-fi-g extra: --linear-backend marlin --mamba-backend flashinfer --mamba-ssu-algorithm simple
+ready in 133s
+Available KV cache memory: 0.69 GiB
+GPU KV cache size: 77,824 tokens, Maximum concurrency for 16,384 tokens per request: 4.75x
+bench c=1 exit 0:  decode rate p50 208.237 p95 208.684 mean 208.354 sd 0.197 cv 0.1% tok/s
+bench c=16 exit 0:  decode rate p50 80.840 p95 86.785 mean 83.644 sd 12.487 cv 14.9% tok/s
+v1 eval exit 0
+Initializing a V1 LLM engine (v0.29.0) with config: model='/hf/hub/models--nvidia--NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4/snapshots/bee7596271d1495f6992ae224aefde4410e816b8', speculative_config=N
+desktop queue 3 done 19:44:33
