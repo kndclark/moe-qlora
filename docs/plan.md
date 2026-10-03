@@ -2038,6 +2038,23 @@ the laptop and the desktop in parallel):
     same with `THINK=off`; compare with `probes/n2_items.py` g6ub g6u in both modes.
   - Decides: design B replaces A only if it wins at least one row and loses none, item by
     item, in both modes. Otherwise A stays, and the memory note is closed.
+  - **L9 RESULT (MEASURED, 2026-10-02 19:28-22:03; `results/g6ub-train.log`,
+    `results/g6ub-train-adapter/`, `results/*-g6ub-*`, `results/noise/*-g6ub-*`,
+    `results/l9-{think,nothink}-items.json`): design B does not replace A.** Training 540
+    steps, exit 0 (last step loss 0.089); every eval exit 0 (the "exit 1" lines are
+    `noise_eval.sh`'s last line, as in L7). Three repeats each, G6ub (B) vs G6u (A):
+    - Thinking on: B wins no row; B loses alert 0-8 (p 0.008). Leans to B, none p < 0.05:
+      trap2 5-0 (0.062), rocky_trap 9-2 (0.065), trap3 noticed 6-1 and fabricated 4-0
+      (0.125). Pooled discordant 47 vs 29 for B (p 0.05, POST HOC); Holm 0 of 14.
+    - Thinking off: no row p < 0.05 either way, 11 of 20 rows identical item by item;
+      pooled 18 vs 22 (p 0.64); alert 4-5.
+    - The alert loss is tool choice, not knowledge: on alert thinking on, B made 66 calls,
+      56 of them bash `-h`/`--help`/`man` lookups (5-6 of 9 items per run end at the
+      3-call limit); A made 20 calls, 19 `web_search`, and answered all 9 every run.
+  - Reading: by the pre-registered rule A stays and the render-design question is closed.
+    B's per-turn exact prompts may make the trained flag-lookup habit carry further
+    (INFERENCE); its post-hoc lean on trap rows thinking on does not outweigh a measured
+    loss. No further render training is recommended.
 - **L10 upstream, no GPU.** Search for existing issues or fixes: vLLM's CUTLASS FP8
   kernel with no sm_86 gate (G7b), FlashInfer's `.shared::cluster` TMA load on sm_120
   (`probes/ssu_sm120/upstream-issue-draft.md`). Filing is outward-facing: David's go.
