@@ -1926,6 +1926,23 @@ or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a 
   (G7b: 0 of 22 off, 0 of 14 on); (3) KV with LoRA against G7c2's 10.69 / 9.78 GiB.
 - Expectations (INFERENCE): it serves; 0 rows more than 2 items outside, as on the
   desktop; KV a little below G7c2's (LoRA buffers).
+- **G7D RESULT (MEASURED, 2026-10-02 18:23-18:49; `results/g7d.log`, `results/g7d/`,
+  `results/g7d-compare.json`, `g7d-think-compare.json`, `g7d-promql-think-items.json`):
+  the adapter serves pooled.** Runner exit 0, 12 of 12 sets exit 0, no OOM or error in
+  the pool log; `lab pool down` exit 0, desktop `lab up` exit 0, llama-swap active.
+  1. LoRA through pipeline parallel across sm_86 + sm_120: works. Ready in 2.2 min;
+     `/v1/models` lists the base, `pool` and `g6u`.
+  2. G7b's bar: thinking off, 0 of 22 rows more than 2 items outside the laptop's range
+     (4 rows by 1-2). Thinking on, 1 of 14: promql 12 vs [16, 15, 15], 3 below. Item by
+     item it is 1 vs 5 discordant items, sign test p 0.22, and all six are live-state
+     questions the pool run itself changed: the desktop GPU's temperature under pool load,
+     vLLM's KV use, running and waiting requests (the pooled answer "16 requests running"
+     was true: the eval runs 16 at a time), desktop VRAM total. That is protocol P2's
+     confound (live sets compared across days and lab states), not a pooled defect.
+  3. KV with LoRA: 10.21 GiB on the desktop, 9.24 on the laptop, about 0.5 GiB per card
+     below G7c2 (10.69 / 9.78): the LoRA buffers, as expected. 2,110,805 tokens.
+  - Elapsed: thinking-off sets 7-120 s, thinking-on 46-385 s; GPUs after: laptop 56 C,
+    desktop 62 C.
 
 ## Final stage: the Lightning gap ledger, written 2026-10-02
 

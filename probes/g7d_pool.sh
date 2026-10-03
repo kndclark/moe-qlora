@@ -7,13 +7,15 @@
 # on the desktop, which pool down does not do.
 # Outputs: results/g7d/research-eval-<tag>-lightning-g6u-{nothink,think-4k}-pool.{json,log},
 # results/g7d/{pool-up,vllm-pool,pool-down,desktop-lab-up}.log.
-# usage: g7d_pool.sh
+# usage: [G7D_OUT=dir] [G7D_MODEL=repo G7D_REV=rev] [G7D_MORE="..."] [G7D_MODES="off on"] g7d_pool.sh
+#   Unset = G7d exactly. L6: G7D_OUT=l6 G7D_MODEL=<BF16 repo> G7D_REV=a9904d24...
+#   G7D_MORE="--quantization fp8" G7D_MODES=off.
 set -u
 here=$(cd "$(dirname "$0")/.." && pwd)
-out=$here/results/g7d
+out=$here/results/${G7D_OUT:-g7d}
 mkdir -p "$out"
 LAB=/home/david/gpu-lab/bin/lab
-M=nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4
+M=${G7D_MODEL:-nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4}
 B=http://lab-desktop:8200
 LABEL=g6u
 python3 "$here/probes/g7a_eval.py" --selfcheck | tail -1 | grep -qx "selfcheck PASS" || { echo "g7a_eval.py --selfcheck failed"; exit 4; }
@@ -25,7 +27,7 @@ finish() {
 }
 trap finish EXIT
 POOL_MODEL=$M POOL_MAXLEN=16384 POOL_WAIT_SECS=900 POOL_GPU_UTIL=0.85 \
-POOL_EXTRA_FLAGS="--revision bee7596271d1495f6992ae224aefde4410e816b8 --kv-cache-dtype fp8 --mamba-cache-mode align --moe-backend marlin --linear-backend marlin --enforce-eager --max-num-seqs 16 --enable-lora --max-lora-rank 16 --max-loras 1 --lora-modules $LABEL=/hf/adapters/lightning-g6u" \
+POOL_EXTRA_FLAGS="--revision ${G7D_REV:-bee7596271d1495f6992ae224aefde4410e816b8} --kv-cache-dtype fp8 --mamba-cache-mode align --moe-backend marlin --linear-backend marlin --enforce-eager --max-num-seqs 16 --enable-lora --max-lora-rank 16 --max-loras 1 --lora-modules $LABEL=/hf/adapters/lightning-g6u${G7D_MORE:+ $G7D_MORE}" \
   "$LAB" pool up > "$out/pool-up.log" 2>&1
 rc=$?
 echo "pool up exit $rc $(date +%T)"
@@ -35,7 +37,7 @@ if [ $rc -ne 0 ]; then
 fi
 ssh llm "sudo docker exec ray-head grep -E 'KV cache size|Maximum concurrency|Available KV' /tmp/vllm-pool.log" | sed 's/^.*INFO/INFO/' | cut -c1-200
 echo "models: $(curl -s $B/v1/models | python3 -c 'import json,sys;print(*[m["id"] for m in json.load(sys.stdin)["data"]])')"
-for mode in off on; do
+for mode in ${G7D_MODES:-off on}; do
   if [ $mode = off ]; then
     common=(--max-calls 3 --temperature 0 --window 4000 --seed 20260923 --concurrency 16 --thinking off --max-tokens 512)
     sets=(v1:v1 v2:v2 rocky:rocky promqlcat:promql general:general alert:alert trap3:trap3)
