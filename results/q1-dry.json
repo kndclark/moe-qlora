@@ -1,0 +1,92 @@
+{
+ "label": "q1-dry",
+ "model": "Qwen/Qwen3.8-27B",
+ "revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+ "dataset": "/out/research_dataset_g6q.json",
+ "guard": "hw",
+ "config": {
+  "lengths": [
+   512,
+   1024,
+   2048
+  ],
+  "warmup": 2,
+  "steps": 10,
+  "rank": 16,
+  "alpha": 32,
+  "dropout": 0.05,
+  "lr": 0.0001,
+  "weight_decay": 0.0,
+  "clip": 1.0,
+  "optimizer": "paged_adamw_8bit",
+  "batch": 1,
+  "targets": ".*\\.self_attn\\.(q_proj|k_proj|v_proj|o_proj)$|.*\\.linear_attn\\.(in_proj_qkv|in_proj_z|in_proj_b|in_proj_a)$|.*\\.mlp\\.(up_proj|down_proj)$",
+  "ce_chunk": 256,
+  "reasoning_effort": "low",
+  "seed": 0,
+  "fp32_upcast": false,
+  "gradient_checkpointing": "non-reentrant"
+ },
+ "tokens": {
+  "low": {
+   "records": 1248,
+   "tokens": 1190982,
+   "assistant_tokens": 105943,
+   "p50": 862,
+   "p90": 1500,
+   "p95": 1543,
+   "max": 1901,
+   "over_512": 1102,
+   "over_1024": 491,
+   "over_2048": 0,
+   "no_trained_tokens": 0,
+   "off_records": 357,
+   "turns_with_think_masked": 2424
+  },
+  "xhigh": {
+   "records": 1248,
+   "tokens": 1201674,
+   "assistant_tokens": 105943,
+   "p50": 870,
+   "p90": 1510,
+   "p95": 1546,
+   "max": 1913,
+   "over_512": 1116,
+   "over_1024": 492,
+   "over_2048": 0,
+   "no_trained_tokens": 0,
+   "off_records": 357,
+   "turns_with_think_masked": 2424
+  },
+  "render_seconds": 2.6,
+  "ids": {
+   "header": [
+    248045,
+    74455,
+    198
+   ],
+   "think_open": [
+    248068,
+    198
+   ],
+   "off_think": [
+    248068,
+    271,
+    248069,
+    271
+   ],
+   "im_end": 248046
+  }
+ },
+ "parity": {
+  "turns": 2424,
+  "boundary_ok": 2424,
+  "boundary_bad": 0,
+  "exact": 1639,
+  "history_diff_turns": 785,
+  "bad_examples": [],
+  "pass": true
+ },
+ "stream_tokens": 1190982,
+ "time": "2026-10-03T14:14:42+0000"
+}

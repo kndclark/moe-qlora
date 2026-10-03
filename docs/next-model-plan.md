@@ -482,3 +482,188 @@ Lightning" columns give three readings against base's S1 reference runs:
      layers need training kernels the image may not have. A G4/G5-style memory probe
      comes first.
 
+## Q1: does Qwen3.8-27B QLoRA-train on one 24 GB card? Pre-registered 2026-10-03
+
+This answers open question 2 above, by measurement on the laptop (RTX 5090 Laptop, sm_120,
+24,463 MiB = 23.89 GiB), the card G5 and G6 trained on. Nothing below is run yet.
+
+### Weights
+
+- `Qwen/Qwen3.8-27B` @ `1d4bf0f2`, BF16: 32 files, 55,586,114,863 B (51.77 GiB), 19 LFS
+  (18 shards and tokenizer.json). The manifest is `results/s1-q38-bf16-manifest.json`
+  (SOURCED, HF tree API). The script that wrote it reproduces
+  `s1-qwen38-int4-manifest.json` byte for byte from that repo's tree.
+- Downloaded on the desktop as uid 1000 with `hf download --revision` in
+  `gpu-lab:training` (container `dl-q38-bf16`), as S1's were.
+- **Pass (CHOSEN):** `probes/g0_verify.py` passes on the desktop snapshot and again on the
+  laptop mirror after `lab mirror sync` (`results/s1-q38-bf16-verify-{desktop,laptop}.json`).
+  The probe reads the mirror.
+
+### The probe: `probes/q1_probe.py`, through `probes/gpurun.sh`, `GUARD=hw`
+
+**Load (G4's style).**
+- `Qwen3_5ForCausalLM`, text only, built from the checkpoint's `text_config`. SOURCED in
+  the image: transformers 5.16.1 maps `model.language_model.*` onto it
+  (`conversion_mapping.py:978`, a `PrefixChange` for `qwen3_5_text`) and ignores
+  `^model.visual.*` and `^mtp.*` (`modeling_qwen3_5.py:1584`). So the vision tower and the
+  MTP head are never built. Missing and unexpected keys are recorded, beside the index's
+  key counts by prefix.
+- NF4, double quantization, bf16 compute: qlora.py's load. The embeddings and the untied
+  lm_head stay bf16 (bitsandbytes' default skip of the output layer); nothing is fp32.
+- ARITHMETIC for the resident weights: 24.35B decoder Linear parameters at NF4 with
+  statistics ≈ 11.70 GiB; embeddings and lm_head 2 × 1.271B × 2 B = 4.74 GiB; ≈ 16.44 GiB
+  in all. A result more than 5% off is a surprise to explain, not a fail.
+- Recorded: load time, host peak RSS, torch peak and idle allocated and reserved, NVML
+  before, peak and idle, resident bytes by class, and a sanity forward (finite, with
+  " Paris" top-1 for "The capital of France is"). Then the same idle figures with LoRA
+  attached.
+
+**Training steps (G5's style).**
+- **LoRA:** r 16, alpha 32, dropout 0.05, bias none (G6q). Targets are G6q's regex
+  carried over:
+  - full-attention q/k/v/o_proj (16 layers);
+  - the Gated DeltaNet input projections `in_proj_qkv`, `in_proj_z`, `in_proj_b` and
+    `in_proj_a` (48 layers). Lightning's mamba `in_proj` fuses the same streams (x, z,
+    B/C, dt);
+  - MLP up/down_proj (64 layers).
+
+  Not `gate_proj` or the DeltaNet `out_proj`: G6q trained no counterpart (Nemotron's MLP
+  has no gate, and G6q did not target mamba `out_proj`). ARITHMETIC: 384 LoRA modules,
+  85.0M trainable parameters. The lab's all-linear Qwen surface (plus `gate_proj` and
+  `out_proj`) would be 116.7M; that one is not measured here.
+- Gradient checkpointing (non-reentrant), `enable_input_require_grads`, no fp32 upcast
+  (qlora.py `--no-fp32-upcast`, G5, G6q).
+- `paged_adamw_8bit`, lr 1e-4 held constant, weight decay 0, clip 1.0. Batch 1, one
+  sequence per optimizer step. G6q accumulates 8 records per step; the memory per
+  sequence and per optimizer step is the same.
+- **Chunked cross-entropy, chunk 256** (G6q's F1). `chunked_ce.chunked_loss` is reused
+  under a `Qwen3_5ForCausalLM` forward written in the probe; the nemotron_h install is
+  not used. Why: at 2,048 × 248,320 the bf16 logits are 0.95 GiB and fp32 1.89 GiB
+  (ARITHMETIC), before the loss's own copies.
+- **Kernel path.** MEASURED in the image: `fla`, `causal_conv1d`, `flash_attn` and
+  `kernels` do not import. So the 48 DeltaNet layers run transformers' torch fallback,
+  `torch_chunk_gated_delta_rule` (`modeling_qwen3_5.py:249`), with the torch conv1d;
+  attention runs sdpa. The probe counts calls to the function actually used. Nothing is
+  installed or patched: an OOM inside the fallback is a result.
+- **Data.**
+  - G6q's 1,248 records (`results/research_dataset_g6q.json`), rendered with Qwen3.8's
+    template and the lab's TOOLS plus each record's `extra_tools`.
+  - G6q's think render: thinking-on records mask `<think>\n`, the end of the thinking-on
+    prompt, and train `\n</think>\n\n` + content + `<|im_end|>`. "off" records mask
+    `<think>\n\n</think>\n\n`. Thinking-on records render at `reasoning_effort` low
+    (S1's reading).
+  - A boundary guard, as g6_train.py's `parity()`: on every trained turn, the span from
+    the assistant header to the first trained token must equal the server prompt's.
+  - The records are concatenated in a seeded order (seed 0) and cut into exact L-token
+    windows with G6q's labels. Each step gets a new window.
+- **Lengths:** 512, 1,024, 2,048, in that order. Per length, 2 warm-up and 10 measured
+  steps.
+- **Per step:** loss, grad norm, seconds, tokens/s, torch peak allocated and reserved,
+  NVML peak, and the device peak by G5's definition (the larger of the sampled NVML peak
+  and NVML-before − torch-reserved-before + the step's torch peak reserved). Per length:
+  peak temperature, peak power and throttle-reason counts.
+- **Thermal guard:** `GUARD=hw`, as the lab's training runs: abort on hw_thermal or
+  hw_power_brake, or at 90 C; sw_thermal is counted. gpurun.sh sets `max-power` and
+  restores `performance` on exit.
+
+**Token counts** (a dry run, no GPU): every record's Qwen3.8 token count, untruncated, at
+low and at xhigh effort: p50, p90, p95, max, and the number over 512, 1,024 and 2,048.
+Lightning's are MEASURED (`results/g6q-train.json`): 1,178,797 tokens, p50 860, p90 1,503,
+max 1,892. Qwen3.8's are UNKNOWN.
+
+### Pass rule, CHOSEN before the run
+
+- **A length PASSES** if all 12 steps finish with finite losses, no OOM and no guard
+  abort, and the device peak stays ≤ card total − 0.5 GiB = 23.39 GiB (G5's line).
+- A length that finishes but peaks over the line is "runs, over the line": not a pass,
+  as Lightning's seq 2048 was before chunked CE.
+- **An OOM ends the sweep.** It is a hard stop: no retry and no changed setting.
+
+What each outcome means:
+- **2,048 passes:** Qwen3.8 trains on one card on G6q's data as it is, if no record is over
+  2,048 Qwen tokens. If some are, they would be cut as MAX_LEN cuts them, and the count
+  is stated.
+- **1,024 passes, 2,048 does not:** one card trains only records of ≤ 1,024 Qwen tokens
+  (the number over is stated), or split ones; otherwise the pool.
+- **Only 512 passes:** the same at 512. G6q's data would need rewriting short, so in
+  practice the pool.
+- **512 fails:** not trainable on one card in this configuration. The pool is the route
+  (plan.md line 17's fallback), and whether it fits is UNKNOWN.
+- Speed is recorded, not gated: epoch hours for G6q's Qwen token count at the measured
+  tokens/s (ARITHMETIC).
+
+### Q1 result (MEASURED, 2026-10-03): 2,048 PASSES, so Qwen3.8 trains on one card on G6q's data as it is
+
+**Weights.** `dl-q38-bf16` exited 0. `g0_verify.py` PASSES on both snapshots: 32/32 files,
+55,586,114,863 B, 19 sha256 and 13 git-blob hashes equal, all world-readable
+(`results/s1-q38-bf16-verify-desktop.json`, then `lab mirror sync`, 55.59 GB in 211 s,
+then `results/s1-q38-bf16-verify-laptop.json`).
+
+**Token counts** (`results/q1-dry.{json,log}`; CPU only, `DRY_RUN=1`). Qwen3.8's tokenizer
+and template render G6q's data almost exactly as Lightning's do:
+
+| render | tokens | p50 | p90 | p95 | max | over 512 | over 1,024 | over 2,048 |
+|---|---|---|---|---|---|---|---|---|
+| Lightning (g6q-train.json) | 1,178,797 | 860 | 1,503 | | 1,892 | | | 0 |
+| Qwen3.8, effort low | 1,190,982 | 862 | 1,500 | 1,543 | 1,901 | 1,102 | 491 | 0 |
+| Qwen3.8, effort xhigh | 1,201,674 | 870 | 1,510 | 1,546 | 1,913 | 1,116 | 492 | 0 |
+
+- 105,943 trained (assistant) tokens. Every record has some; 357 are "off" records.
+- The boundary guard PASSES: 2,424/2,424 trained turns match the server prompt, the
+  same count as G6q's render. 785 turns differ in history only: the training sequence
+  tokenizes a past turn's `<think>\n\n</think>` as `<think>`, `\n`, `\n`, `</think>`,
+  where the server writes `\n\n`. This is design A's history difference.
+
+**Load** (`results/q1-laptop.{json,log}`, `GUARD=hw` via gpurun.sh, `max-power`):
+- `Qwen3_5ForCausalLM` loaded in 11.3 s from the laptop mirror. The index holds 850
+  `model.language_model.*` keys, 333 `model.visual.*`, 15 `mtp.*` and `lm_head`; the load
+  reports 0 missing, 0 unexpected and 0 mismatched keys. 0 visual and 0 MTP modules were
+  built; every parameter is on cuda:0.
+- 496 `Linear4bit` modules; the only bf16 Linear left is `lm_head`. Attention runs sdpa.
+- **Idle torch-allocated 16.441 GiB, against 16.44 arithmetic.** That is 11.339 NF4 packed,
+  4.741 bf16 and 0.361 of quantization statistics. Torch peak during the load was 16.567;
+  NVML peak 18.239; host peak RSS 38.9 GiB.
+- Sanity forward: finite, " Paris" top-1.
+- With LoRA attached: 85,008,384 trainable fp32 parameters in 384 modules, as the
+  arithmetic said, and no other trainable parameter. Idle 16.789 GiB allocated, NVML
+  18.378.
+- Other apps held 1.222 GiB of NVML memory before CUDA started (nautilus, chrome and
+  ptyxis on the display). The device peaks below include it.
+
+**Kernel path.** `torch_chunk_gated_delta_rule` and `causal_conv1d_fn` are transformers'
+own functions (`modeling_qwen3_5`); `fla`, `causal_conv1d`, `flash_attn` and `kernels` do
+not import. Each training step calls the DeltaNet fallback 96 times (48 layers, forward
+plus checkpoint recompute) and the chunked CE once. Nothing was installed or patched.
+
+**Training steps.** 12 of 12 at every length, finite losses, no OOM, no abort. Throttle
+reasons: sw_power_cap only (the card at its power limit; counted, not fatal). No thermal
+or power-brake flag.
+
+| seq | verdict | torch peak alloc | torch peak reserved | device peak (line 23.39) | s/step | tok/s | loss first → last | peak temp, power |
+|---|---|---|---|---|---|---|---|---|
+| 512 | **PASS** | 17.938 GiB | 18.416 | 20.091 | 2.115 | 242.1 | 1.453 → 0.736 | 74 °C, 166 W |
+| 1,024 | **PASS** | 18.790 | 19.105 | 20.788 | 4.145 | 247.0 | 0.447 → 1.341 | 78 °C, 176 W |
+| 2,048 | **PASS** | 20.628 | 21.051 | 22.708 | 9.737 | 210.3 | 0.517 → 1.324 | 78 °C, 173 W |
+
+- The torch peak is the same on every measured step at each length, so it does not grow.
+- Each step is a new window of different data, so first and last loss show only that the
+  losses are finite. They are not a learning curve.
+- The margin at 2,048 is 0.68 GiB under the line, with 1.2 GiB of other apps' memory
+  inside the peak.
+
+**Verdict under the rule chosen before the run: 2,048 PASSES, and no G6q record is over
+2,048 Qwen tokens (max 1,901 at low effort).** So Qwen3.8-27B QLoRA-trains on one 24 GB
+card on G6q's data as it is.
+
+What it does not settle:
+- **Speed (ARITHMETIC).** At 247 tok/s for ~1,000-token sequences and 210 at 2,048, one
+  epoch of G6q's 1,190,982 tokens takes 1.3–1.6 h, so G6q's 2 epochs take about 2.7–3.1 h.
+  G6q on Lightning took 0.83 h (2,970 s).
+- **The LoRA surface.** The G6q-mapped 85.0M parameters were measured. The lab's
+  all-linear Qwen surface (116.7M) is not. ARITHMETIC: its 31.7M extra fp32 parameters,
+  gradients and 8-bit Adam states come to about 0.3 GiB, plus their activations, against
+  a 0.68 GiB margin. UNKNOWN until measured.
+- **Stability without the fp32 upcast** over a full run is UNKNOWN. The memory note on the
+  32B says the same.
+- **Pool room and fidelity** are not touched here. Whether the NF4 model keeps the base's
+  eval rows is a G2-style question this probe does not ask.
