@@ -921,3 +921,32 @@ with NF4 (assistant tokens 1.50 to 3.75 and 1.55 to 3.86); a wrong unpack gives 
 (ln 128,256 for a uniform guess) or more. GPTQ's zeros are all 8, as a symmetric checkpoint's
 must be; layer 0's q_proj has a weight of 67.0, which these losses show is the checkpoint's.
 NF4's error on that matrix is 3.2% of its norm.
+
+**W70 result (MEASURED, 2026-10-03, laptop): a 70B QLoRA trains on the one 24 GB card.**
+Gates 2 and 3 both ran 6 steps with no OOM and no guard abort (`results/w70-r0.*`,
+`results/w70-r20.*`; max-power, 175 W cap, 84 to 87 C):
+
+| | gate 2, `RESIDENT=0` | gate 3, `RESIDENT=20` |
+|---|---|---|
+| layers streamed from RAM | 80 (32.9 GiB pinned) | 60 (24.7 GiB pinned) |
+| copied per step | 525.9 GiB | 394.5 GiB |
+| GPU peak, nvml / torch allocated | 13.85 / 7.83 GiB | 22.07 / 16.04 GiB |
+| process RAM peak, while loading | 52.1 GiB | 55.5 GiB |
+| 6 steps, summed | 334.0 s | 334.3 s |
+| full-run estimate (312 steps) | 4.62 h | 4.64 h |
+
+- Losses per step 1.39 to 2.03 nats (gate 2's line: below about 3); the two runs agree to
+  the third decimal, as gate 1's default-kernel noise floor allows.
+- The copies hide behind compute entirely. A streamed layer takes 18.9 ms forward and 39.3
+  ms backward against 18.6 and 39.0 resident (step 2, 583 tokens a record), and a 0.41 GiB
+  copy is 8.5 ms at 51.8 GB/s. So keeping layers resident buys nothing: stream them all and
+  keep the 8 GiB of VRAM.
+- Against the arithmetic: layer size, pinned RAM and copy volume came out as computed; the
+  card held 13.9 GiB besides the layers, not about 9 (torch reserves 12.2 GiB for 7.8
+  allocated), so about 23 layers fit resident, not 25 to 30; steps ran 38 to 100 s, not
+  about 80, and a full run is about 4.6 h, not 7.
+- The tight resource is system RAM, not VRAM: loading peaks at 52 to 55 GiB of the
+  laptop's 61 (the GPTQ shards are read while the NF4 copies are pinned). The desktop's 30
+  GiB could not pin all 80 layers (32.9 GiB; arithmetic, not run).
+- This is a fit-and-speed probe: no adapter was saved and nothing was evaluated. A full run
+  needs an adapter-saving path and a Llama-3.1-70B eval plan before it means anything.

@@ -1,0 +1,546 @@
+{
+ "label": "w70-r20",
+ "model": "hugging-quants/Meta-Llama-3.1-70B-Instruct-GPTQ-INT4",
+ "revision": "1b0ae7f9d6da8b79f36fdc24912f950ecb2b6e91",
+ "selftest": false,
+ "guard": "hw",
+ "config": {
+  "max_len": 2048,
+  "resident": 20,
+  "steps": 6,
+  "lr": 0.0001,
+  "records_per_step": 8,
+  "rank": 16,
+  "alpha": 32,
+  "dropout": 0.05,
+  "targets": ".*\\.self_attn\\.(q_proj|k_proj|v_proj|o_proj)$|.*\\.mlp\\.(up_proj|down_proj)$",
+  "ce_chunk": 256,
+  "schedule_steps": 312,
+  "quant": "GPTQ int4 -> bf16 -> NF4 double quant, blocksize 64"
+ },
+ "data": {
+  "records": 1248,
+  "unrenderable": 0,
+  "unrenderable_examples": [],
+  "tokens": 1064148,
+  "assistant_tokens": 87916,
+  "p50": 766,
+  "max_full": 1800,
+  "truncated": 0
+ },
+ "platform_profile": "max-power",
+ "nvml_used_before_cuda_GiB": 0.809,
+ "quant_check": {
+  "W_std": 0.09980439394712448,
+  "W_absmax": 67.0,
+  "nf4_rel_err": 0.032287999987602234,
+  "gptq_zeros_seen": [
+   8
+  ]
+ },
+ "lora": {
+  "trainable_params": 159907840,
+  "dtype": "torch.float32"
+ },
+ "load_s_quantize": 30.6,
+ "streamer": {
+  "resident_layers": 20,
+  "streamed_layers": 60,
+  "layer_GiB": 0.411,
+  "pinned_GiB": 24.653
+ },
+ "idle": {
+  "torch_allocated_GiB": 10.79,
+  "nvml_used_GiB": 12.05
+ },
+ "load_s_total": 32.7,
+ "steps": [
+  {
+   "step": 1,
+   "kind": "8 longest",
+   "loss": 1.8098,
+   "grad_norm": 2.6916,
+   "seconds": 100.1,
+   "tokens": 14308,
+   "tok_per_s": 142.9,
+   "copied_GiB": 394.453,
+   "torch_peak_GiB": 16.044,
+   "torch_peak_reserved_GiB": 20.395,
+   "nvml_peak_GiB": 21.649,
+   "temp_C": 84,
+   "watts": 176.9,
+   "reasons": {
+    "sw_power_cap": 394
+   },
+   "layer_ms_mean": {
+    "f_resident_ms": 50.31,
+    "f_streamed_ms": 48.98,
+    "b_streamed_ms": 103.13,
+    "b_resident_ms": 102.89
+   },
+   "records": [
+    {
+     "tokens": 1800,
+     "seconds": 13.78,
+     "loss_unscaled": 2.3665
+    },
+    {
+     "tokens": 1798,
+     "seconds": 12.71,
+     "loss_unscaled": 2.2012
+    },
+    {
+     "tokens": 1789,
+     "seconds": 12.19,
+     "loss_unscaled": 1.5745
+    },
+    {
+     "tokens": 1789,
+     "seconds": 12.22,
+     "loss_unscaled": 1.5745
+    },
+    {
+     "tokens": 1789,
+     "seconds": 12.23,
+     "loss_unscaled": 1.5745
+    },
+    {
+     "tokens": 1789,
+     "seconds": 12.23,
+     "loss_unscaled": 1.5745
+    },
+    {
+     "tokens": 1778,
+     "seconds": 12.23,
+     "loss_unscaled": 1.8703
+    },
+    {
+     "tokens": 1776,
+     "seconds": 12.28,
+     "loss_unscaled": 1.8078
+    }
+   ]
+  },
+  {
+   "step": 2,
+   "kind": "epoch-0 order",
+   "loss": 2.0028,
+   "grad_norm": 2.5388,
+   "seconds": 37.8,
+   "tokens": 4667,
+   "tok_per_s": 123.6,
+   "copied_GiB": 394.453,
+   "torch_peak_GiB": 14.255,
+   "torch_peak_reserved_GiB": 20.4,
+   "nvml_peak_GiB": 22.032,
+   "temp_C": 85,
+   "watts": 175.4,
+   "reasons": {
+    "sw_power_cap": 149
+   },
+   "layer_ms_mean": {
+    "f_resident_ms": 18.55,
+    "f_streamed_ms": 18.94,
+    "b_streamed_ms": 39.33,
+    "b_resident_ms": 39.03
+   },
+   "records": [
+    {
+     "tokens": 548,
+     "seconds": 4.56,
+     "loss_unscaled": 1.9559
+    },
+    {
+     "tokens": 389,
+     "seconds": 3.65,
+     "loss_unscaled": 3.8844
+    },
+    {
+     "tokens": 633,
+     "seconds": 4.91,
+     "loss_unscaled": 1.5461
+    },
+    {
+     "tokens": 806,
+     "seconds": 6.09,
+     "loss_unscaled": 2.2307
+    },
+    {
+     "tokens": 838,
+     "seconds": 6.39,
+     "loss_unscaled": 1.0269
+    },
+    {
+     "tokens": 570,
+     "seconds": 4.63,
+     "loss_unscaled": 2.1516
+    },
+    {
+     "tokens": 441,
+     "seconds": 3.74,
+     "loss_unscaled": 2.2425
+    },
+    {
+     "tokens": 442,
+     "seconds": 3.75,
+     "loss_unscaled": 2.082
+    }
+   ]
+  },
+  {
+   "step": 3,
+   "kind": "epoch-0 order",
+   "loss": 1.9113,
+   "grad_norm": 2.225,
+   "seconds": 39.7,
+   "tokens": 4948,
+   "tok_per_s": 124.6,
+   "copied_GiB": 394.453,
+   "torch_peak_GiB": 15.061,
+   "torch_peak_reserved_GiB": 20.443,
+   "nvml_peak_GiB": 22.075,
+   "temp_C": 85,
+   "watts": 175.4,
+   "reasons": {
+    "sw_power_cap": 159
+   },
+   "layer_ms_mean": {
+    "f_resident_ms": 19.72,
+    "f_streamed_ms": 19.97,
+    "b_streamed_ms": 41.24,
+    "b_resident_ms": 40.84
+   },
+   "records": [
+    {
+     "tokens": 448,
+     "seconds": 3.75,
+     "loss_unscaled": 1.451
+    },
+    {
+     "tokens": 1277,
+     "seconds": 8.96,
+     "loss_unscaled": 1.4721
+    },
+    {
+     "tokens": 830,
+     "seconds": 6.16,
+     "loss_unscaled": 2.4094
+    },
+    {
+     "tokens": 461,
+     "seconds": 4.02,
+     "loss_unscaled": 2.2819
+    },
+    {
+     "tokens": 450,
+     "seconds": 4.03,
+     "loss_unscaled": 2.1407
+    },
+    {
+     "tokens": 482,
+     "seconds": 4.09,
+     "loss_unscaled": 1.8174
+    },
+    {
+     "tokens": 540,
+     "seconds": 4.61,
+     "loss_unscaled": 1.9821
+    },
+    {
+     "tokens": 460,
+     "seconds": 4.03,
+     "loss_unscaled": 1.7151
+    }
+   ]
+  },
+  {
+   "step": 4,
+   "kind": "epoch-0 order",
+   "loss": 1.6749,
+   "grad_norm": 2.7758,
+   "seconds": 63.8,
+   "tokens": 8600,
+   "tok_per_s": 134.8,
+   "copied_GiB": 394.453,
+   "torch_peak_GiB": 15.307,
+   "torch_peak_reserved_GiB": 20.443,
+   "nvml_peak_GiB": 22.075,
+   "temp_C": 87,
+   "watts": 176.9,
+   "reasons": {
+    "sw_power_cap": 252,
+    "sw_thermal": 2
+   },
+   "layer_ms_mean": {
+    "f_resident_ms": 31.42,
+    "f_streamed_ms": 31.76,
+    "b_streamed_ms": 66.52,
+    "b_resident_ms": 66.27
+   },
+   "records": [
+    {
+     "tokens": 531,
+     "seconds": 4.59,
+     "loss_unscaled": 1.5975
+    },
+    {
+     "tokens": 1370,
+     "seconds": 9.69,
+     "loss_unscaled": 1.4086
+    },
+    {
+     "tokens": 1384,
+     "seconds": 9.86,
+     "loss_unscaled": 1.422
+    },
+    {
+     "tokens": 731,
+     "seconds": 5.76,
+     "loss_unscaled": 2.2999
+    },
+    {
+     "tokens": 1411,
+     "seconds": 10.35,
+     "loss_unscaled": 1.264
+    },
+    {
+     "tokens": 868,
+     "seconds": 6.61,
+     "loss_unscaled": 2.1327
+    },
+    {
+     "tokens": 1357,
+     "seconds": 9.82,
+     "loss_unscaled": 2.109
+    },
+    {
+     "tokens": 948,
+     "seconds": 7.07,
+     "loss_unscaled": 1.1568
+    }
+   ]
+  },
+  {
+   "step": 5,
+   "kind": "epoch-0 order",
+   "loss": 2.028,
+   "grad_norm": 2.7376,
+   "seconds": 47.6,
+   "tokens": 5984,
+   "tok_per_s": 125.7,
+   "copied_GiB": 394.453,
+   "torch_peak_GiB": 15.144,
+   "torch_peak_reserved_GiB": 20.443,
+   "nvml_peak_GiB": 22.074,
+   "temp_C": 87,
+   "watts": 174.8,
+   "reasons": {
+    "sw_power_cap": 158,
+    "sw_thermal": 32
+   },
+   "layer_ms_mean": {
+    "f_resident_ms": 23.57,
+    "f_streamed_ms": 23.9,
+    "b_streamed_ms": 49.54,
+    "b_resident_ms": 49.15
+   },
+   "records": [
+    {
+     "tokens": 713,
+     "seconds": 5.73,
+     "loss_unscaled": 2.207
+    },
+    {
+     "tokens": 350,
+     "seconds": 3.38,
+     "loss_unscaled": 3.0631
+    },
+    {
+     "tokens": 1322,
+     "seconds": 9.63,
+     "loss_unscaled": 1.7397
+    },
+    {
+     "tokens": 464,
+     "seconds": 4.13,
+     "loss_unscaled": 1.8442
+    },
+    {
+     "tokens": 953,
+     "seconds": 7.1,
+     "loss_unscaled": 1.8053
+    },
+    {
+     "tokens": 492,
+     "seconds": 4.2,
+     "loss_unscaled": 1.7511
+    },
+    {
+     "tokens": 391,
+     "seconds": 3.75,
+     "loss_unscaled": 3.7506
+    },
+    {
+     "tokens": 1299,
+     "seconds": 9.66,
+     "loss_unscaled": 1.3531
+    }
+   ]
+  },
+  {
+   "step": 6,
+   "kind": "epoch-0 order",
+   "loss": 1.3881,
+   "grad_norm": 1.6793,
+   "seconds": 45.3,
+   "tokens": 5663,
+   "tok_per_s": 124.9,
+   "copied_GiB": 394.453,
+   "torch_peak_GiB": 15.403,
+   "torch_peak_reserved_GiB": 20.443,
+   "nvml_peak_GiB": 22.074,
+   "temp_C": 87,
+   "watts": 174.7,
+   "reasons": {
+    "sw_power_cap": 134,
+    "sw_thermal": 47
+   },
+   "layer_ms_mean": {
+    "f_resident_ms": 22.52,
+    "f_streamed_ms": 22.82,
+    "b_streamed_ms": 47.12,
+    "b_resident_ms": 46.82
+   },
+   "records": [
+    {
+     "tokens": 408,
+     "seconds": 3.76,
+     "loss_unscaled": 1.9459
+    },
+    {
+     "tokens": 1463,
+     "seconds": 10.6,
+     "loss_unscaled": 0.985
+    },
+    {
+     "tokens": 470,
+     "seconds": 4.13,
+     "loss_unscaled": 1.2279
+    },
+    {
+     "tokens": 503,
+     "seconds": 4.22,
+     "loss_unscaled": 1.8891
+    },
+    {
+     "tokens": 948,
+     "seconds": 7.12,
+     "loss_unscaled": 1.1524
+    },
+    {
+     "tokens": 662,
+     "seconds": 5.46,
+     "loss_unscaled": 1.1837
+    },
+    {
+     "tokens": 350,
+     "seconds": 3.39,
+     "loss_unscaled": 3.0457
+    },
+    {
+     "tokens": 859,
+     "seconds": 6.63,
+     "loss_unscaled": 1.2211
+    }
+   ]
+  }
+ ],
+ "wall_s": 367.0,
+ "phase_peaks": {
+  "init": {
+   "nvml_used_GiB": 0.809,
+   "temp_C": 61,
+   "watts": 14.6,
+   "rss_GiB": 0.997,
+   "samples": 1,
+   "reason_samples": {}
+  },
+  "load": {
+   "nvml_used_GiB": 14.476,
+   "temp_C": 67,
+   "watts": 93.0,
+   "rss_GiB": 55.473,
+   "samples": 123,
+   "reason_samples": {
+    "sw_power_cap": 36
+   }
+  },
+  "step1": {
+   "nvml_used_GiB": 21.649,
+   "temp_C": 84,
+   "watts": 176.9,
+   "rss_GiB": 12.806,
+   "samples": 400,
+   "reason_samples": {
+    "sw_power_cap": 394
+   }
+  },
+  "step2": {
+   "nvml_used_GiB": 22.032,
+   "temp_C": 85,
+   "watts": 175.4,
+   "rss_GiB": 12.834,
+   "samples": 151,
+   "reason_samples": {
+    "sw_power_cap": 149
+   }
+  },
+  "step3": {
+   "nvml_used_GiB": 22.075,
+   "temp_C": 85,
+   "watts": 175.4,
+   "rss_GiB": 12.848,
+   "samples": 159,
+   "reason_samples": {
+    "sw_power_cap": 159
+   }
+  },
+  "step4": {
+   "nvml_used_GiB": 22.075,
+   "temp_C": 87,
+   "watts": 176.9,
+   "rss_GiB": 12.86,
+   "samples": 254,
+   "reason_samples": {
+    "sw_power_cap": 252,
+    "sw_thermal": 2
+   }
+  },
+  "step5": {
+   "nvml_used_GiB": 22.074,
+   "temp_C": 87,
+   "watts": 174.8,
+   "rss_GiB": 12.865,
+   "samples": 190,
+   "reason_samples": {
+    "sw_power_cap": 158,
+    "sw_thermal": 32
+   }
+  },
+  "step6": {
+   "nvml_used_GiB": 22.074,
+   "temp_C": 87,
+   "watts": 174.7,
+   "rss_GiB": 12.868,
+   "samples": 181,
+   "reason_samples": {
+    "sw_power_cap": 134,
+    "sw_thermal": 47
+   }
+  }
+ },
+ "abort": null,
+ "time": "2026-10-03T23:21:24+0000",
+ "oom": null,
+ "full_run_estimate_h": 4.64
+}
