@@ -1,0 +1,25 @@
+
+[1m1/5  preflight[0m
+  gpu-lab:vllm-ray present on both nodes
+  no kernel or training run in the way
+  nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4 current in the mirror (last sync 2026-10-02T19:20:56-06:00)
+
+[1m2/5  stopping llama-swap, laptop first[0m
+  laptop  : inactive
+  laptop : wants 20368 MiB, vLLM will find 22731 MiB free
+  desktop : inactive
+  both cards free (desktop 33 MiB, laptop 332 MiB)
+  desktop: wants 20464 MiB, vLLM will find 23143 MiB free
+
+[1m3/5  ray cluster[0m
+  head   : ray-head on lab-desktop:6379
+  worker : registered; head sees 2 GPUs
+
+[1m4/5  vllm serve nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4 across both cards[0m
+  launched; log: ssh llm "sudo docker exec ray-head tail -f /tmp/vllm-pool.log"
+
+[1m5/5  waiting for the endpoint[0m
+  vLLM exited after 39s without serving. The log ends:
+    (APIServer pid=1130)   File "/usr/local/lib/python3.12/dist-packages/vllm/config/model.py", line 1427, in verify_with_parallel_config
+    (APIServer pid=1130)     raise NotImplementedError(
+    (APIServer pid=1130) NotImplementedError: Pipeline parallelism is not supported for this model. Supported models implement the `SupportsPP` interface.

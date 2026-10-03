@@ -23,3 +23,68 @@ profile: performance
 L8 exit 0
 == L2b laptop, graphs, util 0.90 22:10:03
 laptop l2b-laptop-u90 extra: none
+ready in 90s
+Available KV cache memory: 1.32 GiB
+GPU KV cache size: 150,186 tokens, Maximum concurrency for 16,384 tokens per request: 9.17x
+bench c=1 exit 0:  decode rate p50 224.590 p95 225.139 mean 224.545 sd 0.460 cv 0.2% tok/s
+bench c=16 exit 0:  decode rate p50 91.402 p95 106.310 mean 91.974 sd 8.046 cv 8.7% tok/s
+v1 eval exit 0
+Initializing a V1 LLM engine (v0.29.0) with config: model='/hf/hub/models--nvidia--NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4/snapshots/bee7596271d1495f6992ae224aefde4410e816b8', speculative_config=N
+== pool, base, bf16 KV, no draft 22:13:17
+pool up exit 0 22:16:16
+INFO 10-03 04:15:20 [gpu_worker.py:625] Available KV cache memory: 10.18 GiB
+INFO 10-03 04:15:20 [gpu_worker.py:640] CUDA graph memory profiling is enabled (default since v0.21.0). The current --gpu-memory-utilization=0.8500 is equivalent to --gpu-memory-utilization=0.8448 wit
+INFO 10-03 04:16:05 [kv_cache_utils.py:2032] GPU KV cache size: 1,638,400 tokens, Maximum concurrency for 16,384 tokens per request: 100.00x
+INFO 10-03 04:16:05 [gpu_worker.py:625] Available KV cache memory: 9.6 GiB
+INFO 10-03 04:16:05 [gpu_worker.py:640] CUDA graph memory profiling is enabled (default since v0.21.0). The current --gpu-memory-utilization=0.8500 is equivalent to --gpu-memory-utilization=0.8437 wit
+v1 eval exit 0
+bench c=1 exit 0
+  decode rate            p50 209.629  p95 210.893  mean 209.675  sd  0.841  cv   0.4%  tok/s
+  gpu after : {'driver': '595.91.07', 'temp_c': 73.0, 'power_w': 121.44, 'sm_mhz': 2730.0}
+  temp rise : +4 C (max during run 73 C)
+  wrote /home/david/moe-qlora/.claude/worktrees/g6q/results/l2-pool-bf16/bench-c1.json
+bench c=16 exit 0
+  decode rate            p50  81.685  p95  87.390  mean  81.281  sd  3.525  cv   4.3%  tok/s
+  gpu after : {'driver': '595.91.07', 'temp_c': 74.0, 'power_w': 134.76, 'sm_mhz': 2115.0}
+  temp rise : +4 C (max during run 74 C)
+  wrote /home/david/moe-qlora/.claude/worktrees/g6q/results/l2-pool-bf16/bench-c16.json
+pool down exit 0
+desktop lab up exit 0; llama-swap active
+== pool, base, bf16 KV, DSpark 22:18:02
+pool up exit 1 22:33:18
+(APIServer pid=1132)     raise NotImplementedError(
+(APIServer pid=1132) NotImplementedError: Pipeline parallelism is not supported for this model. Supported models implement the `SupportsPP` interface.
+pool down exit 0
+desktop lab up exit 0; llama-swap active
+== pool, G6u, bf16 KV, no draft, seven off sets + bench 22:33:22
+pool up exit 0 22:36:32
+INFO 10-03 04:35:38 [gpu_worker.py:625] Available KV cache memory: 9.64 GiB
+INFO 10-03 04:35:38 [gpu_worker.py:640] CUDA graph memory profiling is enabled (default since v0.21.0). The current --gpu-memory-utilization=0.8500 is equivalent to --gpu-memory-utilization=0.8427 wit
+INFO 10-03 04:36:19 [kv_cache_utils.py:2032] GPU KV cache size: 1,526,784 tokens, Maximum concurrency for 16,384 tokens per request: 93.19x
+INFO 10-03 04:36:19 [gpu_worker.py:625] Available KV cache memory: 8.94 GiB
+INFO 10-03 04:36:19 [gpu_worker.py:640] CUDA graph memory profiling is enabled (default since v0.21.0). The current --gpu-memory-utilization=0.8500 is equivalent to --gpu-memory-utilization=0.8383 wit
+models: nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4 pool g6u
+  v1-lightning-g6u-nothink-pool: exit 0, 55s
+  v2-lightning-g6u-nothink-pool: exit 0, 43s
+  rocky-lightning-g6u-nothink-pool: exit 0, 44s
+  promqlcat-lightning-g6u-nothink-pool: exit 0, 6s
+  general-lightning-g6u-nothink-pool: exit 0, 3s
+  alert-lightning-g6u-nothink-pool: exit 0, 8s
+  trap3-lightning-g6u-nothink-pool: exit 0, 4s
+bench c=1 exit 0:  decode rate p50 176.527 p95 177.083 mean 176.520 sd 0.365 cv 0.2% tok/s
+bench c=16 exit 0:  decode rate p50 74.966 p95 102.209 mean 79.633 sd 11.534 cv 14.5% tok/s
+GPUs after: laptop 20983 MiB, 75; desktop 19792 MiB, 66
+pool down exit 0
+desktop lab up exit 0; llama-swap active
+== pool, G6u, bf16 KV, DSpark, seven off sets + bench 22:40:00
+pool up exit 1 22:55:15
+(APIServer pid=1131)     raise NotImplementedError(
+(APIServer pid=1131) NotImplementedError: Pipeline parallelism is not supported for this model. Supported models implement the `SupportsPP` interface.
+pool down exit 0
+desktop lab up exit 0; llama-swap active
+== pool, base, fp8 KV, MTP (moe backend auto) 22:55:19
+Terminated                 POOL_MODEL=$M POOL_MAXLEN=16384 POOL_WAIT_SECS=900 POOL_EXTRA_FLAGS="--revision bee7596271d1495f6992ae224aefde4410e816b8 --kv-cache-dtype fp8 --mamba-cache-mode align --moe-backend marlin --linear-backend marlin${G7C_EAGER- --enforce-eager}${G7C_MORE_FLAGS:+ $G7C_MORE_FLAGS}" "$LAB" pool up > "$out/pool-up.log" 2>&1
+pool up exit 143 23:06:18
+(EngineCore pid=1342) /usr/local/lib/python3.12/dist-packages/ray/_private/worker.py:2051: FutureWarning: Tip: In future versions of Ray, Ray will no longer override accelerator visible devices env var if num_gpus=0 or num_gpus=None (defaul
+pool down exit 0
+desktop lab up exit 0; llama-swap active

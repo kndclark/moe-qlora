@@ -2236,6 +2236,61 @@ and a change counts past 2.0 tok/s (the side quest's bar, triton's own range).
       (p 0.33). Reading (INFERENCE): verifying 4 tokens of an MoE model reads up to 4
       tokens' experts, which costs more than ~1.4 accepted tokens save at batch 1; at 16
       requests the experts are read anyway.
+  - **Laptop + pool session (MEASURED, 2026-10-02 22:10-; `results/pool-session.log`,
+    driver script in the job's scratch; pool runs with graphs, util 0.85, 16 seqs):**
+    - **L2b laptop (graphs, util 0.90; `results/lsingle/l2b-laptop-u90/`,
+      `results/l2b-laptop-items.json`):** serves; KV 1.32 GiB (150,186 tokens). Decode c=1
+      **224.6 tok/s** (6.8x its eager 32.8), c=16 **91.4** per request (2.8x 32.2; cv
+      8.7%). v1 against L4-laptop: held_out 15-5, p 0.041, a single-run lead (P1).
+    - **Pool, bf16 KV, no draft (`results/l2-pool-bf16/`, `results/l2-pool-bf16-items.json`):**
+      KV 1,638,400 tokens against fp8's 2,105,344 (L2), still 100 concurrent 16,384-token
+      requests. Decode c=1 **209.6** (L2: 198.6, +5.5%), c=16 81.7 (85.1, -4%, inside its
+      cv 4%). v1 against L2: every row p >= 0.41 (held_out 9-14).
+    - **The serving-noise band (MEASURED, all 13 base v1 runs thinking off since L4):**
+      held_out spans 0.467-0.589 (42-53 of 90) across cards, graphs, KV dtype, SSU kernel
+      and drafts. L2b-laptop is the top of it and pool bf16 the bottom: the pair reads
+      17-6, p 0.035, the second single-run lead of the night. 78 pairs exist among 13
+      runs, so two at p < 0.05 is what chance gives (ARITHMETIC, as if the pairs were
+      independent: ~4 expected at 0.05 on held_out alone);
+      neither survives Holm. Reading: no serving config moves quality; a single-run p <
+      0.05 between serving configs is the band's width, as P1 says.
+    - **Pool DSpark: does not launch, base or with G6u (22:18, 22:40):** `NotImplementedError:
+      Pipeline parallelism is not supported for this model`. SOURCED (the v0.29.0 image):
+      `supports_pp` needs the class's `forward` to take `intermediate_tensors`
+      (`model_executor/models/interfaces.py:833`); `DFlashQwen3ForCausalLM.forward`
+      (`qwen3_dflash.py:732`) does not, and DSpark's class inherits it, so DFlash is
+      refused the same way; `NemotronHMTP` takes it. DSpark stays a one-card option.
+    - **Pool DFlash (23:06, `results/l11-pool-dflash/`): refused, as the source said**, same
+      `NotImplementedError`, 39 s after launch (run by hand with the fail-fast `lab` below).
+    - **Pool MTP (22:55, `results/l3-pool-mtp/`): passes the check, then deadlocks in
+      warmup.** fp8 KV, `--moe-backend auto`: KV 5.42 GiB on the laptop stage, 457,386
+      tokens; both stages captured graphs by 04:57:31 (container clock), then no line but
+      the "No available shared memory broadcast block" heartbeat for 9 min, desktop GPU 100%
+      at 156 W, laptop 3% at 12 W. py-spy (`docker exec --privileged`; `stack-pp*.txt`):
+      the laptop (last stage) is in the warmup's first decode step, waiting in
+      `recv_object` for the desktop's hidden states (`gpu/warmup.py:421`); the desktop is
+      still in the prefill's `sample_tokens` (`warmup.py:348`), after `PPHandler.receive`
+      queued its NCCL broadcast of the sampled tokens (`gpu/pp_utils.py:126`, buffer
+      `num_reqs x (num_speculative_tokens + 1)`), frozen loading a Triton kernel
+      (`_init_handles`) in two dumps 15 s apart. Reading (INFERENCE): the receive never
+      completes, its kernel spins the GPU, and the module load waits behind it; a size
+      mismatch between the broadcast and the multi-token receive buffer would do it, not
+      verified. Plain pooled decoding runs the same exchange and serves (L2, pool bf16).
+      Killed by hand at 23:06; pool down and desktop `lab up` exit 0.
+    - So no draft runs pooled on vLLM 0.29.0: DSpark and DFlash are refused, MTP hangs.
+      The pool's decode stays L2's (no draft); DSpark's +70% is one card's.
+    - **G6u pooled, graphs, bf16 KV (`results/l2c-pool-g6u/`,
+      `results/l2c-pool-g6u-items.json`):** KV 1,526,784 tokens. Decode c=1 **176.5**
+      (base, same flags: 209.6; LoRA costs 16%, as on one 3090), c=16 75.0 per request (cv
+      14.5%). Seven sets item by item against G7d (eager, fp8 KV): no row below p 0.25,
+      pooled 6-10. The rows that moved most are noise by P1: task 0.65 vs 0.80 (0-3),
+      rocky_task 0.30 vs 0.45 (0-3), alert 0.33 vs 0.56 (1-3).
+    - `lab pool up` waited out its whole 900 s budget on each DSpark launch although vLLM
+      died in under a minute: its readiness loop only polls the endpoint. gpu-lab branch
+      `pool-up-fail-fast` (7309c75) checks `pgrep -f '[v]llm serve'` in ray-head every ~10
+      s (1 = gone; ssh's 255 = keep waiting). Tested on real launches: DFlash failed in 52
+      s with the log's last lines; a healthy base launch served in 132 s and answered. A
+      live hang (MTP) still waits out the budget: the process is alive.
 
 **Needs David's go:** L11 the DFlash draft (1.1 GiB download; every download needs his
 go), only if L3 shows speculative decoding pays here.
@@ -2284,6 +2339,29 @@ interleaved; G6w's promql gap stays unseparated (G6w is dropped).
 - Sampling above temperature 0: ranking would need many repeats per point; low value.
 - A smaller Nemotron against Qwen: the next project, not a Lightning gap.
 - Lightning in the lab's front door: a deployment decision after L2-L8, not a test.
+
+**Ledger close-out (2026-10-02 23:10).** Every item above has a result; none is left
+running.
+- Answered: L1/G7d (the adapter pooled matches its one-card runs); L2 (graphs 6.7x,
+  adopted); L3 (MTP: +2.51 GiB, does not fit one 3090; pooled it deadlocks in v0.29.0's
+  warmup); L4 (one-card baselines); L5 (FlashInfer SSU on sm_86: nothing under graphs);
+  L6 (FP8 vs NVFP4 serving: no measurable cost); L7 (G6u vs G6q splits by thinking mode);
+  L8 (Qwen v3 never reasons with thinking on; G6q is the one adapter with no lost row
+  in either mode); L9 (render B lost; A stays); L10 / L10b (vLLM fixed the CUTLASS gate;
+  the FlashInfer sm_120 TMA bug is unfixed and unreported, the draft stays local, David's
+  rule); L11 (DSpark +70% at c=1 on one 3090 with bf16 KV; DFlash -28%; no draft pools).
+  Serving config moves no quality row (the noise band above).
+- Adopted: P1 (item-level bar), CUDA graphs on the pool.
+- Needs David: (1) the candidate: G6q over G6u on `main` (L8's matrix); (2) how Lightning
+  serves, if it joins the front door: one 3090 with graphs, bf16 KV and DSpark for one
+  user at a time (366.8 tok/s, 34k tokens of KV), or the pool for long and concurrent
+  work (209.6 tok/s, 1.6M tokens); (3) gpu-lab `pool-up-fail-fast` into `main` (a push
+  deploys); (4) optional: vLLM v0.28 against v0.29 decode (vLLM #59770 reports Lightning
+  decode 16% slower on DGX Spark since v0.29.0), a new image download.
+- Waiting on upstream, no action: pooled drafts (DSpark/DFlash need `SupportsPP`, MTP's
+  PP warmup hangs); recheck on the next vLLM image.
+- No further training is recommended: render is closed (L9) and the data lever is spent
+  (G6w).
 
 ## Hard stops and rules
 
