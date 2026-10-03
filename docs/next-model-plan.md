@@ -120,7 +120,7 @@ Two rules apply:
 
 - **Room and speed at the screen's settings (0.85, bf16 KV, fp32 mamba state):**
   - 10.66 GiB of KV holds 403,950 tokens. Lightning holds 266,240 on the same card.
-  - Decode runs 96.3 tok/s at c=1 and 70.8 per stream at c=16, against Lightning's ~225 at
+  - Decode runs 96.3 tok/s at c=1 and 70.8 per stream at c=16, against Lightning's ~220 at
     c=1. A dense 4B in bf16 reads 7.5 GiB per token; Lightning's ~3B active parameters
     are 4-bit.
 - **Thinking on, against base Lightning:**
@@ -215,7 +215,7 @@ item, and no item was truncated in think.
   was 0.15 on rocky_task before training and 0.15 after.
 - On this eval, a tuned Nano 4B is a smaller G6q with weaker task rows. Measured on the
   laptop at util 0.85:
-  - decode is 91 tok/s at c=1 with the adapter, against base Lightning's ~225;
+  - decode is 91 tok/s at c=1 with the adapter, against base Lightning's ~220;
   - KV room is 1.6× base Lightning's 266,240 tokens.
 
 ### S1 result: Qwen3.8-27B INT4 (MEASURED, 2026-10-03)
@@ -259,3 +259,67 @@ item, and no item was truncated in think.
   | items with no answer | 169 | 72 |
   | tool calls per item | 1.99 | 1.62 |
   - Reading: any Qwen3.8 work here should serve at low effort, or move the cap.
+
+### S1 result: Nano 9B v2 BF16 (MEASURED, 2026-10-03)
+
+`python3 probes/s1_compare.py nano9b-bf16`, laptop, with `--think-tag`.
+
+The tag is checked on the live server:
+- `/no_think` ends the prompt in `<think></think>`;
+- `/think` and no tag both end it in `<think>\n`, so without the tag every "thinking off"
+  run would have thought.
+
+- **Room and speed:**
+  - The weights are 16.58 GiB, which leaves 0.89 GiB of KV: **26,699 tokens**.
+  - Decode runs 45.0 tok/s at c=1 and 42.8 per stream at c=16.
+  - Tool calls arrive as `<TOOLCALL>` JSON, read by the harness as `json_embedded`.
+- **Thinking on, against base Lightning:**
+  - Rows: win 4, loss 7, tie 11. Pooled items: +77 for Nano 9B against +130 for
+    Lightning, sign p 0.0003.
+  - It wins every trap row: trap 0.93 vs 0.40, trap2, rocky_trap, and trap3 noticed
+    (0.75 vs 0.25).
+  - It loses the flag rows, plus rocky_task (0.35 vs 0.65) and general over_trigger.
+- **Thinking off, against base Lightning:** win 2, loss 9, tie 11. It also denies the
+  trap controls, which should not be refused: trap2_control 0.50 vs 0.08 and
+  rocky_trap_control 0.64 vs 0.07. Part of its trap strength is a general readiness to
+  refuse.
+
+### S1 summary (MEASURED)
+
+Every row is one card at the screen's settings: the laptop at util 0.85, except Qwen3.8,
+which ran on the desktop 3090 at 0.90. Both "against base Lightning" columns give rows as
+win/loss/tie, then pooled items better as model/Lightning.
+
+| model | weights | KV tokens | decode c=1 | thinking on, vs base Lightning | thinking off, vs base Lightning |
+|---|---|---|---|---|---|
+| Lightning NVFP4 (reference) | 17.81 GiB | 266,240 | ~220 (v0.29: 216.6–224.6; 3090: 208.6) | | |
+| Nano 4B BF16 | 7.47 GiB | 403,950 | 96.3 | 1/6/15; 44/139 | 0/11/11; 22/137 |
+| Nano 4B FP8 | 5.01 GiB | 660,041 | 137.3 | 1/8/13; 44/153 | 1/11/10; 27/133 |
+| Nano 9B v2 BF16 | 16.58 GiB | 26,699 | 45.0 | 4/7/11; 77/130 | 2/9/11; 59/120 |
+| Qwen3.8-27B INT4, xhigh (3090) | 16.84 GiB | 31,804 | 46.7 | 1/4/17; 56/77 | 6/1/15; 130/51 |
+| Qwen3.8-27B INT4, low (3090) | same | same | same | **5/0/17; 89/47** | (thinking off has no effort) |
+| N4: Nano 4B + G6q adapter | 7.53 GiB | 426,548 | 91.4 | 9/1/12; 121/28 | 9/2/11; 190/27 |
+
+### What S1 says about the next base (INFERENCE from the rows above)
+
+- **David's room argument holds for Nano 4B and only for Nano 4B.**
+  - It gives 1.5× Lightning's KV in BF16 and 2.5× in FP8.
+  - Nano 9B v2 and Qwen3.8 both leave about a tenth of Lightning's room on one card.
+  - None of the three small models decodes faster than Lightning: a dense model reads all
+    of its weights for every token.
+- **Training closes the habit gap, not the reasoning gap.**
+  - N4 brings Nano 4B level with G6q on every flag and trap row.
+  - It stays behind on the task, trap3 and alert rows, and G6q keeps the pooled lead.
+- **Qwen3.8 is the stronger base.**
+  - At low effort it already beats base Lightning with no training, and it loses to G6q
+    only on the flag rows an adapter fixes.
+  - Its cost is room: one 3090 holds 31,804 tokens, 1.94 requests of 16,384.
+- **Two open questions for a Qwen3.8 round:**
+  1. **Room on the pool: UNKNOWN.** Each stage would hold half the weights and half of the
+     16 attention layers. Pooled PP for this architecture has not been run.
+  2. **Training on one 24 GB card: UNKNOWN.** The nearest measurement is Qwen3-32B, with
+     the same 64 layers and 5120 width. It fitted QLoRA at 1,024 tokens per step with
+     0.1 GiB to spare, and only with `--no-fp32-upcast` (memory: laptop-training-ceilings).
+     G6q's records reach 2,048 tokens, the vocabulary is 248k, and the Gated DeltaNet
+     layers need training kernels the image may not have. A G4/G5-style memory probe
+     comes first.

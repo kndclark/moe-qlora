@@ -20,6 +20,9 @@ pooling and eval infrastructure lives in the companion repo,
   underneath with the files it came from. Claims are tagged MEASURED,
   SOURCED, ARITHMETIC, INFERENCE or UNKNOWN.
 - `docs/evidence.md` is the Phase 0 evidence the plan starts from.
+- `docs/next-model-plan.md` is the record after Lightning. It covers S1, a base
+  screen of Qwen3.8-27B and three small Nemotrons, and N4, Nano 4B trained on
+  G6q's data.
 
 ## Layout
 
