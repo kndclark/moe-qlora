@@ -771,6 +771,20 @@ eviction. **Reading:** the seven sets' summed `elapsed_s` against r3's 2,186 s (
 the screen's clock) and the serve log's hit rate. Below 2,186 s by more than the
 laptop-to-laptop spread we have no measure of yet would be a gain; the hit rate says why.
 
+**Before the run, why the hit rate is 0.0%** (a smoke on the idle desktop, same flags plus
+`--kv-offloading-size 8`, and r3's own records):
+
+- The tier starts with Qwen3.8 (an 8.58 GB shared-memory buffer) and costs no VRAM: KV room
+  stayed 1.63 GiB, 31,804 tokens.
+- Prefix caching does work for Qwen3.8, a block at a time. The same 3,983-token prompt sent
+  twice hit 3,136 tokens the second time, two whole 1,568-token blocks; the same system
+  prompt with another question hit the same 3,136. All hits came from VRAM; the RAM tier
+  stored the blocks (257 MB) and served none, since nothing had been evicted.
+- The eval's prompts never fill one block. In r3, first turns run 437 to 937 tokens (median
+  about 440) and later turns' medians 587 to 1,046; no prompt of the 478 items reaches 1,568.
+  So no prefix is ever cached, in VRAM or RAM; the laptop's limit is the KV room for the
+  requests running (3.6 at a time), which a RAM tier does not add.
+
 ### W70: training a 70B with its 4-bit weights streamed from RAM
 
 `probes/w70_stream.py` (its docstring has the design). The lab's earlier "70B CPU offload is
@@ -805,3 +819,25 @@ as Q2; data G6q's records in Llama 3.1's template (1,248 render, 1,064,148 token
 **Reading:** it trains on this card if gates 1 and 2 pass with no OOM and no guard abort;
 reported beside it are the peak memory, seconds a step, the copy volume, how much of each
 streamed layer's time the copy adds, and the hours a full run would take.
+
+**Gate 1 PASS, on the desktop 3090** while the laptop trained Q2 (its gpu-lab:training
+build differs, its torch 2.13.0, transformers 5.16.1, peft 0.21.0 and bitsandbytes 0.50.2
+do not; `results/w70-selftest-desktop.json`):
+
+- With deterministic kernels (SDPA's math backend, `use_deterministic_algorithms`), the
+  layer loop streamed equals it resident, and the loop equals plain autograd, bit for bit:
+  loss 12.685362 (4 of 80 layers, so no real model) and every LoRA gradient.
+- With the default kernels, as training runs, two resident runs differ by 0.0040 in the
+  largest gradient (0.61) and resident against streamed by 0.0041: attention's backward is
+  not deterministic, and streaming adds nothing to it.
+- The first try's "bitwise" gate failed for that reason and was rewritten to measure the
+  floor; it also showed `inject_adapter_in_model` leaves LoRA in bf16, so the probe now casts
+  it to fp32 as Q2's `get_peft_model` does.
+
+**The unpack is right** (`LOSSCHECK=4`, `results/w70-losscheck-desktop.json`): every one of
+the 80 layers built in turn, 4 G6q records run through it, the layer dropped. Over all
+tokens the records score 1.74 to 2.46 nats with the unpacked bf16 weights and 1.80 to 2.46
+with NF4 (assistant tokens 1.50 to 3.75 and 1.55 to 3.86); a wrong unpack gives about 11.8
+(ln 128,256 for a uniform guess) or more. GPTQ's zeros are all 8, as a symmetric checkpoint's
+must be; layer 0's q_proj has a weight of 67.0, which these losses show is the checkpoint's.
+NF4's error on that matrix is 3.2% of its norm.
