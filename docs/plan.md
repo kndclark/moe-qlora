@@ -1923,6 +1923,74 @@ or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a 
 - Expectations (INFERENCE): it serves; 0 rows more than 2 items outside, as on the
   desktop; KV a little below G7c2's (LoRA buffers).
 
+## Final stage: the Lightning gap ledger, written 2026-10-02
+
+David, 2026-10-02: "flesh out any gaps, assumptions, or anything else we said we would/
+could look into later related to 3.5 lightning. now is the time". Built from every
+UNKNOWN, INFERENCE, "not tested", "later" and "David's call" line in this file, the
+memory notes that defer Lightning work, and four checks made while writing it (MEASURED:
+the cached NVFP4 checkpoint carries one MTP layer, `num_nextn_predict_layers: 1`, 270
+tensors; NVIDIA publishes no FP8 checkpoint, only BF16, Base-BF16, NVFP4 and the NVFP4
+-DFlash / -DSpark speculative-decoding drafts; Qwen v3's thinking-on runs used default
+thinking and 512 tokens, not G6u's 4096; `g6_train.py` clips at 1.0 with warmup).
+Each item below is pre-registered here; its result goes under it. Comparisons use the
+item-level sign test from the N2 audit (p < 0.05 two-sided on discordant items).
+
+**Worth it: run, in this order** (the pool holds both cards; single-card items run on
+the laptop and the desktop in parallel):
+- **L1 (G7d)**: the adapter pooled. Running; pre-registered above.
+- **L2 pooled CUDA graphs.** Eager was chosen for one card's KV (G7a: graphs took ~2.2
+  GiB); the pool has ~10 GiB of KV per card. G7c2's base run without `--enforce-eager`:
+  does it serve, KV, decode c=1 / c=16 against G7c2, v1 off item by item against G7c2.
+- **L3 MTP speculative decoding**, no download. Base on the laptop first with
+  `--speculative-config` method mtp; then with the adapter (LoRA with speculative
+  decoding is UNKNOWN); then pooled if it serves. Decode against L4; v1 off item by item.
+- **L4 single-card decode baselines**: base on the laptop (G6 server flags) and on the
+  desktop (G7b's, with marlin); bench c=1 / c=16. G7c's "pooled is slower than one card"
+  is UNTESTED without it, and L2 and L3 need the denominator.
+- **L5 FlashInfer Mamba SSU beyond sm_120.** Adopted for the laptop (fi-simple, +8.4% at
+  c=1), never applied to a serve script, untested on sm_86 (no TMA there) and pooled.
+  Desktop single card first; pooled only if it runs.
+- **L6 serving precision gap.** The adapter trained on NF4 experts over BF16 and is
+  served on NVFP4 ("Still open" under G7). With no FP8 checkpoint, serve the cached BF16
+  with vLLM's load-time `--quantization fp8` (~31 GB: pooled only) plus the adapter; the
+  seven thinking-off sets item by item against G7d (NVFP4, same pool). If nemotron_h's
+  MoE has no online FP8 path, the error is the result.
+- **L7 the candidate, item by item.** Thinking on, G6q beats G6u on 2 rows (held_out2 8-1,
+  p 0.039; rocky_trap 9-1, p 0.021) and G6u beats G6q on none (rocky_task 11-3, p 0.057;
+  `results/n1-items-g6u-g6q.json`; G6u vs G6t: 1-0 for G6u; vs base: 6-0). Thinking off,
+  G6q has one run. Run G6q off r2, r3 on the gate's server and compare with G6u's N2
+  runs. Whether the candidate changes is David's call on the result.
+- **L8 the thinking-on yardstick.** Qwen v3 thinking on at 4096 tokens, five sets x three
+  repeats, item by item against G6u's N1 runs (and G6q's if L7 moves).
+- **L9 render design B.** 588 of 1824 history turns are off by a newline under design A
+  (memory: revisit "if Lightning becomes default", which is now). Rebuild the candidate's
+  data with design B, train (G6u took 56 min), three repeats in both modes, item by item.
+- **L10 upstream, no GPU.** Search for existing issues or fixes: vLLM's CUTLASS FP8
+  kernel with no sm_86 gate (G7b), FlashInfer's `.shared::cluster` TMA load on sm_120
+  (`probes/ssu_sm120/upstream-issue-draft.md`). Filing is outward-facing: David's go.
+
+**Needs David's go:** L11 the DFlash draft (1.1 GiB download; every download needs his
+go), only if L3 shows speculative decoding pays here.
+
+**Protocol, no run:** (P1) the item-level bar for every comparison (N2 audit; David's
+call). (P2) the live-metric sets (promql, promqlcat) compare only runs made the same day,
+interleaved; G6w's promql gap stays unseparated (G6w is dropped).
+
+**Not worth it, with the reason:**
+- Routed-expert LoRA (Routes "B", F3): the remaining failures are behaviours (template
+  collapse, tool choice) that attention + shared-expert LoRA already reach; per-expert
+  r=16 does not fit one card and the serving path is UNKNOWN. Revisit only if L7-L9 show
+  a knowledge ceiling.
+- Pooled (48 GB) training: about a week to build, and its trigger ("a named ceiling has
+  been hit") exists only through the item above.
+- Training internals (Route 2's speed, sm_120 hub kernels, paged-Adam accounting, G2's
+  outlier elements, F2's unclipped drift): the recipe works, `g6_train.py` clips, and no
+  answer changes a decision.
+- Sampling above temperature 0: ranking would need many repeats per point; low value.
+- A smaller Nemotron against Qwen: the next project, not a Lightning gap.
+- Lightning in the lab's front door: a deployment decision after L2-L8, not a test.
+
 ## Hard stops and rules
 
 - No edits to `~/gpu-lab` until the feasibility verdict. Probes and results stay in this
