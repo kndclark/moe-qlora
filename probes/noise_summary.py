@@ -48,8 +48,8 @@ QWEN = os.path.expanduser("~/gpu-lab/bench/results/research-eval-")
 
 def path(tag, label, rep):
     if label == "qwenv3":  # g6_compare.py's names: v1's file has no tag
-        name = "L-adv3-nothink" if tag == "v1" else f"{tag}-L-adv3-nothink"
-        if rep == "r1":
+        name = f"L-adv3-{SUFFIX}" if tag == "v1" else f"{tag}-L-adv3-{SUFFIX}"
+        if rep == "r1" and SUFFIX == "nothink":  # thinking-on Qwen runs (L8) are all in noise/
             return QWEN + name + ".json"
         return os.path.join(REPO, "results", "noise", f"research-eval-{name}-{rep}.json")
     lab = "" if label == "base" else f"-{label}"
