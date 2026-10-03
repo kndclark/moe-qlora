@@ -162,3 +162,58 @@ Readings, CHOSEN before the run:
    on. N4 reaches it if it loses no row and the pooled sign test does not favour G6q at
    p < 0.05. The same reading is reported against base Lightning.
 3. **Thinking off:** also reported against the Qwen3-8B v3 adapter, like for like on data.
+
+### N4 result (MEASURED, 2026-10-03)
+
+**Training.**
+- The run took 312 steps in 2,320 s; G6q took 2,970 s. Loss went from 1.659 to 0.057
+  (G6q: 1.713 to 0.074).
+- Peak torch memory was 10.35 GiB, the card peaked at 81 °C, and there was no abort.
+- The adapter has 17.05M trainable parameters in 71 modules (G6q: 11.36M in 93). Its
+  files are `results/nano4b-g6q-train-adapter/`, which is gitignored like every adapter.
+
+**Serving** on the BF16 base with LoRA, at the screen's settings:
+- 426,548 tokens of KV;
+- decode 91.4 tok/s at c=1 and 68.7 per stream at c=16.
+
+`python3 probes/s1_compare.py nano4b-g6q`. Thinking on averages 75 completion tokens per
+item, and no item was truncated in think.
+
+**Reading 1, did training help? PASS in both modes** (G6 rule against base Nano 4B):
+- Thinking on: win 9, loss 0. Pooled items +204 for N4, +16 for base.
+- Thinking off: win 13, loss 0. Pooled items +287 for N4, +9 for base.
+
+**Reading 2, does it reach Lightning? NO**, by the rule chosen before the run.
+- **Against G6q, thinking on:**
+  - Rows: win 0, loss 1, tie 21. Pooled items: +11 for N4 against +28 for G6q,
+    sign p 0.0095.
+  - The flag and trap rows are level (held_out 0.989 vs 0.989; trap2 0.917 vs 0.917).
+  - Every gap is on a reasoning row:
+
+    | row | N4 | G6q | difference |
+    |---|---|---|---|
+    | rocky_task | 0.15 | 0.45 | −6, the one LOSS |
+    | task | 0.50 | 0.70 | −4 |
+    | trap3 noticed | 0.08 | 0.42 | −4 |
+    | alert | 0.67 | 0.78 | −1 |
+    | promql | 0.78 | 0.83 | −1 |
+
+- **Against G6q, thinking off:** win 0, loss 1 (trap3 noticed), tie 21. Pooled items +8
+  against +29, sign p 0.0008.
+- **Against base Lightning, thinking on:**
+  - Win 9, loss 1, tie 12. Pooled items +121 against +28.
+  - The adapted 4B far outscores the untrained 30B, but it still loses rocky_task (0.15 vs
+    0.65), so it does not "reach" by the rule.
+
+**Reading 3, thinking off, against the Qwen3-8B v3 adapter: level.** Win 2, loss 0, tie
+20. Pooled items +21 against +19, sign p 0.87.
+
+**What it means.**
+- This bears out the prediction made before the run: the adapter carries the lab's
+  habits to a 4B as completely as to Lightning, with flag rows at 99–100%.
+- Rows that need the base model's own reasoning stay where the base left them. Nano 4B
+  was 0.15 on rocky_task before training and 0.15 after.
+- On this eval, a tuned Nano 4B is a smaller G6q with weaker task rows. Measured on the
+  laptop at util 0.85:
+  - decode is 91 tok/s at c=1 with the adapter, against base Lightning's ~225;
+  - KV room is 1.6× base Lightning's 266,240 tokens.

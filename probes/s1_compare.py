@@ -26,9 +26,13 @@ from noise_summary import headline  # noqa: E402
 R = os.path.join(os.path.dirname(here), "results")
 QWEN = os.path.expanduser("~/gpu-lab/bench/results/research-eval-")
 TAGS = ["v1", "v2", "rocky", "promqlcat", "general", "alert", "trap3"]
-MODELS = sys.argv[1:] or ["nano4b-bf16", "nano4b-fp8", "nano9b-bf16", "q38-int4", "q38-int4-low"]
+MODELS = sys.argv[1:] or ["nano4b-bf16", "nano4b-fp8", "nano9b-bf16", "q38-int4", "q38-int4-low", "nano4b-g6q"]
 REASONING = [("task", "hit_and_grounded"), ("rocky_task", "hit_and_grounded"), ("alert", "correct"),
              ("promql", "correct"), ("general", "correct_where_scorable")]
+# N4: an adapter screened by s1_screen.sh ADAPTER=..., and the base model it was trained on.
+ADAPTED = {"nano4b-g6q": "nano4b-bf16"}
+MUST_WIN = ["held_out"]  # g6_compare.py's G6 rule
+MUST_NOT_LOSE = ["trap", "trap_control", "no_tool", "task", "rocky_task", "alert", "promql"]
 REFS = {
     "think": {"lightning": lambda t: "v1-lightning-think-4k-g6srv" if t == "v1" else f"{t}-lightning-think-4k",
               "g6q": lambda t: f"{t}-lightning-g6q-think-4k"},
@@ -119,8 +123,33 @@ for model in MODELS:
             m[ref] = {"rows": rr, "missing_ref": missing,
                       "verdicts": {v: sum(r["verdict"] == v for r in rr) for v in ("win", "loss", "tie")},
                       "pooled": {"model_better": ab, "ref_better": bb, "sign_p": round(sign_p(ab, bb), 4)}}
+    if model in ADAPTED:  # N4's readings 1 and 2 (docs/next-model-plan.md)
+        base = ADAPTED[model]
+        for mode in ("think", "nothink"):
+            if mode not in rep:
+                continue
+            m = rep[mode]
+            rr = []
+            for t in TAGS:
+                a, b = load(model_label(model, mode, t)), load(model_label(base, mode, t))
+                if a and b:
+                    rr += [dict(r, set=t) for r in rows(a, b)]
+            ab, bb = sum(r["model_better"] for r in rr), sum(r["ref_better"] for r in rr)
+            v = {}
+            for r in rr:
+                v.setdefault(r["split"], []).append(r["verdict"])
+            reasons = [f"{s}: {v.get(s)} (needs a win)" for s in MUST_WIN if "win" not in v.get(s, [])]
+            reasons += [f"{s}: loss" for s in MUST_NOT_LOSE if "loss" in v.get(s, [])]
+            m["base_" + base] = {"rows": rr, "verdicts": {x: sum(r["verdict"] == x for r in rr) for x in ("win", "loss", "tie")},
+                                 "pooled": {"model_better": ab, "ref_better": bb, "sign_p": round(sign_p(ab, bb), 4)},
+                                 "g6_rule": {"pass": not reasons, "reasons": reasons}}
+            for ref in ("g6q", "lightning"):
+                x = m.get(ref)
+                if x:
+                    favours_ref = x["pooled"]["sign_p"] < 0.05 and x["pooled"]["ref_better"] > x["pooled"]["model_better"]
+                    x["reaches"] = x["verdicts"]["loss"] == 0 and not favours_ref
     th = rep.get("think", {}).get("lightning")
-    if model.startswith("nano4b") and th:
+    if model.startswith("nano4b") and model not in ADAPTED and th:
         lost = [f"{s}.{k}" for s, k in REASONING
                 if any(r["split"] == s and r["metric"] == k and r["verdict"] == "loss" for r in th["rows"])]
         seen = [f"{s}.{k}" for s, k in REASONING
@@ -145,7 +174,14 @@ for model, rep in report.items():
             p = x["pooled"]
             print(f"  vs {ref:12s} rows win {x['verdicts']['win']} loss {x['verdicts']['loss']} tie {x['verdicts']['tie']};"
                   f" pooled items {model} +{p['model_better']} / {ref} +{p['ref_better']}, sign p {p['sign_p']}"
-                  + (f"; ref missing: {', '.join(x['missing_ref'])}" if x["missing_ref"] else ""))
+                  + (f"; ref missing: {', '.join(x['missing_ref'])}" if x["missing_ref"] else "")
+                  + (f"; REACHES {ref}: {x['reaches']}" if "reaches" in x else ""))
+        for key in [k for k in m if k.startswith("base_")]:
+            x = m[key]
+            p = x["pooled"]
+            print(f"  vs {key[5:]:12s} rows win {x['verdicts']['win']} loss {x['verdicts']['loss']} tie {x['verdicts']['tie']};"
+                  f" pooled items {model} +{p['model_better']} / base +{p['ref_better']}, sign p {p['sign_p']};"
+                  f" G6 rule {'PASS' if x['g6_rule']['pass'] else 'FAIL: ' + '; '.join(x['g6_rule']['reasons'])}")
         for r in m.get("lightning", {}).get("rows", []):
             print(f"    {r['set']:9s} {r['split'] + '.' + r['metric']:38s} {r['model']:.3f} vs {r['ref']:.3f}"
                   f"  n={r['n']:3d} {r['items_better']:+4d} {r['verdict']:4s}  items +{r['model_better']}/-{r['ref_better']}"
