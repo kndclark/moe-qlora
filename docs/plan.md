@@ -2016,6 +2016,31 @@ the laptop and the desktop in parallel):
     N2's runs reproduce), first in the post-chain session (`results/pool-session.log`).
   - David, same evening: "in case i step away again, you are approved for recommended
     training actions throughough the night". Runs taken under it say so here.
+  - **L8 RESULT (MEASURED, 2026-10-02 22:03-22:10; `results/noise/*-L-adv3-think-4k-r*`,
+    `results/l8-items.json`, `l8-g6q-items.json`, `l8-g6q-nothink-items.json`):** served
+    at 0.88; 15 evals, exit 0. Qwen v3 does not reason with thinking on: of 1,647 turns,
+    823 carry an empty `<think></think>` and none has reasoning (the harness does send
+    `enable_thinking: true`, `research_eval.py:1000`); it is the v3 adapter's own habit,
+    trained on records without reasoning. G6u vs Qwen v3, thinking on, three repeats
+    each: G6u wins rocky_task 13-3 (p 0.021), promql 10-2 (0.039), alert 9-0 (0.004);
+    Qwen v3 wins held_out2 9-1 (0.021), rocky_held_out 9-0 (0.004), rocky_trap 10-2
+    (0.039); pooled 54 vs 51 (p 0.85); Holm 0 of 14. G6q vs Qwen v3 thinking on: G6q wins
+    alert 7-0 (0.016), loses none; pooled 31 vs 14. Thinking off: G6q wins alert 7-0,
+    loses none, pooled 40 vs 15 (G6u: 2 wins, 0 losses, 43 vs 16).
+  - Reading, the candidate matrix under P1 (vs Qwen v3; head to head from L7):
+
+    |            | off: vs Qwen v3 | on: vs Qwen v3  | head to head        |
+    |------------|-----------------|-----------------|---------------------|
+    | G6u        | 2 W, 0 L        | 3 W, **3 L**    | off: +1 (trap3)     |
+    | G6q        | 1 W, 0 L        | 1 W, 0 L        | on: +2 (held_out2, rocky_trap) |
+
+    G6q is the only adapter that beats the yardstick in both modes with no loss. G6u's
+    reasoning (thinking on) wins the task-shaped rows and loses the plain lookups
+    (held_out2, rocky_held_out), the same rows where G6q beat it in N1. Recommendation
+    for David: make G6q the candidate (main moves from G6u to G6q; the gate and the
+    pooled serving runs apply to it unchanged, since G6q and G6u share G6's flags).
+    Caveat: G6q does not reason with thinking on (0/919 turns, G6t record), so its
+    thinking-on mode is thinking off with a longer budget, like Qwen v3's.
 - **L9 render design B.** 588 of 1824 history turns are off by a newline under design A
   (memory: revisit "if Lightning becomes default", which is now). Rebuild the candidate's
   data with design B, train (G6u took 56 min), three repeats in both modes, item by item.
