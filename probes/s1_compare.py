@@ -205,186 +205,187 @@ def run_stats(runs):
     return {"items": n, "truncated_in_think": trunc, "mean_completion_tokens": round(toks / n) if n else None}
 
 
-report = {}
-for model in MODELS:
-    rep = report[model] = {}
-    for mode, refs in REFS.items():
-        runs = {t: load(model_label(model, mode, t)) for t in TAGS if model_label(model, mode, t)}
-        have = {t: d for t, d in runs.items() if d}
-        if not have:
-            continue
-        m = rep[mode] = {"missing": [t for t in runs if t not in have], "stats": run_stats(have.values())}
-        for ref, fmt in refs.items():
-            rr, missing = [], []
-            for t, d in have.items():
-                b = load(fmt(t))
-                if b is None:
-                    missing.append(t)
+if __name__ == "__main__":  # q2_compare.py imports the helpers above
+    report = {}
+    for model in MODELS:
+        rep = report[model] = {}
+        for mode, refs in REFS.items():
+            runs = {t: load(model_label(model, mode, t)) for t in TAGS if model_label(model, mode, t)}
+            have = {t: d for t, d in runs.items() if d}
+            if not have:
+                continue
+            m = rep[mode] = {"missing": [t for t in runs if t not in have], "stats": run_stats(have.values())}
+            for ref, fmt in refs.items():
+                rr, missing = [], []
+                for t, d in have.items():
+                    b = load(fmt(t))
+                    if b is None:
+                        missing.append(t)
+                        continue
+                    rr += [dict(r, set=t) for r in rows(d, b)]
+                ab = sum(r["model_better"] for r in rr)
+                bb = sum(r["ref_better"] for r in rr)
+                m[ref] = {"rows": rr, "missing_ref": missing,
+                          "verdicts": {v: sum(r["verdict"] == v for r in rr) for v in ("win", "loss", "tie")},
+                          "pooled": {"model_better": ab, "ref_better": bb, "sign_p": round(sign_p(ab, bb), 4)},
+                          "p1": p1(rr)}
+            m["n1"] = {ref: {rn: pooled(lambda t: model_label(model, mode, t),
+                                        lambda t: n1_label(fmt, t, rn), N1_SETS[mode]) for rn in N1_REPS}
+                       for ref, fmt in N1.get(mode, {}).items()}
+        if model in ADAPTED:  # N4's readings 1 and 2 (docs/next-model-plan.md)
+            base = ADAPTED[model]
+            for mode in ("think", "nothink"):
+                if mode not in rep:
                     continue
-                rr += [dict(r, set=t) for r in rows(d, b)]
-            ab = sum(r["model_better"] for r in rr)
-            bb = sum(r["ref_better"] for r in rr)
-            m[ref] = {"rows": rr, "missing_ref": missing,
-                      "verdicts": {v: sum(r["verdict"] == v for r in rr) for v in ("win", "loss", "tie")},
-                      "pooled": {"model_better": ab, "ref_better": bb, "sign_p": round(sign_p(ab, bb), 4)},
-                      "p1": p1(rr)}
-        m["n1"] = {ref: {rn: pooled(lambda t: model_label(model, mode, t),
-                                    lambda t: n1_label(fmt, t, rn), N1_SETS[mode]) for rn in N1_REPS}
-                   for ref, fmt in N1.get(mode, {}).items()}
-    if model in ADAPTED:  # N4's readings 1 and 2 (docs/next-model-plan.md)
-        base = ADAPTED[model]
+                m = rep[mode]
+                rr = []
+                for t in TAGS:
+                    a, b = load(model_label(model, mode, t)), load(model_label(base, mode, t))
+                    if a and b:
+                        rr += [dict(r, set=t) for r in rows(a, b)]
+                ab, bb = sum(r["model_better"] for r in rr), sum(r["ref_better"] for r in rr)
+                g6 = {}
+                for key in ("verdict", "p1"):  # the G6 rule by the 4-item rule, then by P1
+                    v = {}
+                    for r in rr:
+                        v.setdefault(r["split"], []).append(r[key])
+                    reasons = [f"{s}: {v.get(s)} (needs a win)" for s in MUST_WIN if "win" not in v.get(s, [])]
+                    reasons += [f"{s}: loss" for s in MUST_NOT_LOSE if "loss" in v.get(s, [])]
+                    g6[key] = {"pass": not reasons, "reasons": reasons}
+                m["base_" + base] = {"rows": rr, "verdicts": {x: sum(r["verdict"] == x for r in rr) for x in ("win", "loss", "tie")},
+                                     "pooled": {"model_better": ab, "ref_better": bb, "sign_p": round(sign_p(ab, bb), 4)},
+                                     "g6_rule": g6["verdict"], "p1": p1(rr), "g6_rule_p1": g6["p1"]}
+                for ref in ("g6q", "lightning"):
+                    x = m.get(ref)
+                    if x:
+                        favours_ref = x["pooled"]["sign_p"] < 0.05 and x["pooled"]["ref_better"] > x["pooled"]["model_better"]
+                        x["reaches"] = x["verdicts"]["loss"] == 0 and not favours_ref
+                        x["reaches_p1"] = x["p1"]["loss"] == 0 and not favours_ref
+        th = rep.get("think", {}).get("lightning")
+        if model.startswith("nano4b") and model not in ADAPTED and th:
+            lost = [f"{s}.{k}" for s, k in REASONING
+                    if any(r["split"] == s and r["metric"] == k and r["verdict"] == "loss" for r in th["rows"])]
+            seen = [f"{s}.{k}" for s, k in REASONING
+                    if any(r["split"] == s and r["metric"] == k for r in th["rows"])]
+            lost_p1 = [f"{s}.{k}" for s, k in REASONING
+                       if any(r["split"] == s and r["metric"] == k and r["p1"] == "loss" for r in th["rows"])]
+            rep["training_rule"] = {"reasoning_rows_seen": seen, "lost": lost,
+                                    "complete": len(seen) == len(REASONING), "train": len(lost) <= 2,
+                                    "lost_p1": lost_p1, "train_p1": len(lost_p1) <= 2}
+
+    # The null: each N1 reference against its own repeats; then each repeated model against itself.
+    null = []
+    for mode, refs in N1.items():
+        for ref, fmt in refs.items():
+            for x, y in itertools.combinations(N1_REPS, 2):
+                p = pooled(lambda t: n1_label(fmt, t, x), lambda t: n1_label(fmt, t, y), N1_SETS[mode])
+                null.append({"ref": ref, "mode": mode, "a": x, "b": y, "pooled": p})
+    repeats = {}
+    for group, runs in REPEATS.items():
+        if group not in MODELS:
+            continue
+        g = repeats[group] = {"runs": runs, "self": [], "vs_n1": {}}
+        for mode in ("think", "nothink"):
+            if model_label(group, mode, "v1") is None:
+                continue
+            for x, y in itertools.combinations(runs, 2):
+                for sets in (N1_SETS["think"], TAGS):  # N1's sets, as the null; then all seven
+                    p = pooled(lambda t: model_label(x, mode, t), lambda t: model_label(y, mode, t), sets)
+                    g["self"].append({"mode": mode, "a": x, "b": y, "sets": len(sets), "pooled": p})
+            for ref, fmt in N1.get(mode, {}).items():  # every run a side, on N1's sets
+                rr = rows_rep([lambda t, x=x: model_label(x, mode, t) for x in runs],
+                              [lambda t, r=r: n1_label(fmt, t, r) for r in N1_REPS], N1_SETS[mode])
+                if rr is not None:
+                    ab, bb = sum(r["model_better"] for r in rr), sum(r["ref_better"] for r in rr)
+                    g["vs_n1"].setdefault(mode, {})[ref] = {
+                        "rows": rr, "p1": p1(rr),
+                        "pooled": {"model_better": ab, "ref_better": bb, "sign_p": round(sign_p(ab, bb), 4)}}
+    reasoning = {"n1": {ref: row_items([lambda t, r=r, f=fmt: n1_label(f, t, r) for r in N1_REPS])
+                        for ref, fmt in N1["think"].items()},
+                 "repeats": {g: row_items([lambda t, x=x: model_label(x, "think", t) for x in runs])
+                             for g, runs in REPEATS.items() if g in MODELS},
+                 "models": {x: row_items([lambda t, x=x: model_label(x, "think", t)]) for x in MODELS}}
+    report["n1"] = {"sets": N1_SETS, "null": null, "repeats": repeats, "reasoning_rows": reasoning}
+    json.dump(report, open(os.path.join(R, "s1-compare.json"), "w"), indent=1)
+
+
+    def pp(p):
+        return "missing" if p is None else f"{p['model_better']}/{p['ref_better']} p {p['sign_p']}"
+
+
+    for model in MODELS:
+        rep = report[model]
         for mode in ("think", "nothink"):
             if mode not in rep:
                 continue
             m = rep[mode]
-            rr = []
-            for t in TAGS:
-                a, b = load(model_label(model, mode, t)), load(model_label(base, mode, t))
-                if a and b:
-                    rr += [dict(r, set=t) for r in rows(a, b)]
-            ab, bb = sum(r["model_better"] for r in rr), sum(r["ref_better"] for r in rr)
-            g6 = {}
-            for key in ("verdict", "p1"):  # the G6 rule by the 4-item rule, then by P1
-                v = {}
-                for r in rr:
-                    v.setdefault(r["split"], []).append(r[key])
-                reasons = [f"{s}: {v.get(s)} (needs a win)" for s in MUST_WIN if "win" not in v.get(s, [])]
-                reasons += [f"{s}: loss" for s in MUST_NOT_LOSE if "loss" in v.get(s, [])]
-                g6[key] = {"pass": not reasons, "reasons": reasons}
-            m["base_" + base] = {"rows": rr, "verdicts": {x: sum(r["verdict"] == x for r in rr) for x in ("win", "loss", "tie")},
-                                 "pooled": {"model_better": ab, "ref_better": bb, "sign_p": round(sign_p(ab, bb), 4)},
-                                 "g6_rule": g6["verdict"], "p1": p1(rr), "g6_rule_p1": g6["p1"]}
-            for ref in ("g6q", "lightning"):
-                x = m.get(ref)
-                if x:
-                    favours_ref = x["pooled"]["sign_p"] < 0.05 and x["pooled"]["ref_better"] > x["pooled"]["model_better"]
-                    x["reaches"] = x["verdicts"]["loss"] == 0 and not favours_ref
-                    x["reaches_p1"] = x["p1"]["loss"] == 0 and not favours_ref
-    th = rep.get("think", {}).get("lightning")
-    if model.startswith("nano4b") and model not in ADAPTED and th:
-        lost = [f"{s}.{k}" for s, k in REASONING
-                if any(r["split"] == s and r["metric"] == k and r["verdict"] == "loss" for r in th["rows"])]
-        seen = [f"{s}.{k}" for s, k in REASONING
-                if any(r["split"] == s and r["metric"] == k for r in th["rows"])]
-        lost_p1 = [f"{s}.{k}" for s, k in REASONING
-                   if any(r["split"] == s and r["metric"] == k and r["p1"] == "loss" for r in th["rows"])]
-        rep["training_rule"] = {"reasoning_rows_seen": seen, "lost": lost,
-                                "complete": len(seen) == len(REASONING), "train": len(lost) <= 2,
-                                "lost_p1": lost_p1, "train_p1": len(lost_p1) <= 2}
+            st = m["stats"]
+            print(f"\n== {model}, thinking {'on (4096)' if mode == 'think' else 'off (512)'}: {st['items']} items, "
+                  f"{st['truncated_in_think']} truncated in think, {st['mean_completion_tokens']} tokens/item"
+                  + (f"; missing sets: {', '.join(m['missing'])}" if m["missing"] else ""))
+            for ref in REFS[mode]:
+                if ref not in m:
+                    continue
+                x = m[ref]
+                p = x["pooled"]
+                print(f"  vs {ref:12s} rows win {x['verdicts']['win']} loss {x['verdicts']['loss']} tie {x['verdicts']['tie']};"
+                      f" pooled items {model} +{p['model_better']} / {ref} +{p['ref_better']}, sign p {p['sign_p']}"
+                      + (f"; ref missing: {', '.join(x['missing_ref'])}" if x["missing_ref"] else "")
+                      + (f"; REACHES {ref}: {x['reaches']}" if "reaches" in x else ""))
+                q = x["p1"]
+                print(f"  {'':15s} P1 win {q['win']} loss {q['loss']} tie {q['tie']}, Holm {q['holm']} of {q['tested']}"
+                      f"; wins {', '.join(q['wins']) or '-'}; losses {', '.join(q['losses']) or '-'}"
+                      + (f"; REACHES {ref} by P1: {x['reaches_p1']}" if "reaches_p1" in x else ""))
+            for ref, reps in m["n1"].items():
+                print(f"  vs {ref:12s} N1 repeats, {len(N1_SETS[mode])} sets: "
+                      + "; ".join(f"{rn} {pp(p)}" for rn, p in reps.items()))
+            for key in [k for k in m if k.startswith("base_")]:
+                x = m[key]
+                p = x["pooled"]
+                print(f"  vs {key[5:]:12s} rows win {x['verdicts']['win']} loss {x['verdicts']['loss']} tie {x['verdicts']['tie']};"
+                      f" pooled items {model} +{p['model_better']} / base +{p['ref_better']}, sign p {p['sign_p']};"
+                      f" G6 rule {'PASS' if x['g6_rule']['pass'] else 'FAIL: ' + '; '.join(x['g6_rule']['reasons'])}")
+                q = x["p1"]
+                print(f"  {'':15s} P1 win {q['win']} loss {q['loss']} tie {q['tie']}, Holm {q['holm']} of {q['tested']};"
+                      f" G6 rule by P1 {'PASS' if x['g6_rule_p1']['pass'] else 'FAIL: ' + '; '.join(x['g6_rule_p1']['reasons'])}")
+            for r in m.get("lightning", {}).get("rows", []):
+                print(f"    {r['set']:9s} {r['split'] + '.' + r['metric']:38s} {r['model']:.3f} vs {r['ref']:.3f}"
+                      f"  n={r['n']:3d} {r['items_better']:+4d} {r['verdict']:4s}  items +{r['model_better']}/-{r['ref_better']}"
+                      f" p {r['sign_p']}" + (f"  P1 {r['p1']}" if r["p1"] != "tie" else ""))
+        if "training_rule" in rep:
+            tr = rep["training_rule"]
+            print(f"  TRAINING RULE: lost {len(tr['lost'])} of {len(tr['reasoning_rows_seen'])} reasoning rows "
+                  f"({', '.join(tr['lost']) or 'none'}) -> {'TRAIN' if tr['train'] else 'do not train'}"
+                  + ("" if tr["complete"] else "  [INCOMPLETE: not every reasoning row ran]"))
+            print(f"  TRAINING RULE by P1: lost {len(tr['lost_p1'])} ({', '.join(tr['lost_p1']) or 'none'})"
+                  f" -> {'TRAIN' if tr['train_p1'] else 'do not train'}")
 
-# The null: each N1 reference against its own repeats; then each repeated model against itself.
-null = []
-for mode, refs in N1.items():
-    for ref, fmt in refs.items():
-        for x, y in itertools.combinations(N1_REPS, 2):
-            p = pooled(lambda t: n1_label(fmt, t, x), lambda t: n1_label(fmt, t, y), N1_SETS[mode])
-            null.append({"ref": ref, "mode": mode, "a": x, "b": y, "pooled": p})
-repeats = {}
-for group, runs in REPEATS.items():
-    if group not in MODELS:
-        continue
-    g = repeats[group] = {"runs": runs, "self": [], "vs_n1": {}}
-    for mode in ("think", "nothink"):
-        if model_label(group, mode, "v1") is None:
-            continue
-        for x, y in itertools.combinations(runs, 2):
-            for sets in (N1_SETS["think"], TAGS):  # N1's sets, as the null; then all seven
-                p = pooled(lambda t: model_label(x, mode, t), lambda t: model_label(y, mode, t), sets)
-                g["self"].append({"mode": mode, "a": x, "b": y, "sets": len(sets), "pooled": p})
-        for ref, fmt in N1.get(mode, {}).items():  # every run a side, on N1's sets
-            rr = rows_rep([lambda t, x=x: model_label(x, mode, t) for x in runs],
-                          [lambda t, r=r: n1_label(fmt, t, r) for r in N1_REPS], N1_SETS[mode])
-            if rr is not None:
-                ab, bb = sum(r["model_better"] for r in rr), sum(r["ref_better"] for r in rr)
-                g["vs_n1"].setdefault(mode, {})[ref] = {
-                    "rows": rr, "p1": p1(rr),
-                    "pooled": {"model_better": ab, "ref_better": bb, "sign_p": round(sign_p(ab, bb), 4)}}
-reasoning = {"n1": {ref: row_items([lambda t, r=r, f=fmt: n1_label(f, t, r) for r in N1_REPS])
-                    for ref, fmt in N1["think"].items()},
-             "repeats": {g: row_items([lambda t, x=x: model_label(x, "think", t) for x in runs])
-                         for g, runs in REPEATS.items() if g in MODELS},
-             "models": {x: row_items([lambda t, x=x: model_label(x, "think", t)]) for x in MODELS}}
-report["n1"] = {"sets": N1_SETS, "null": null, "repeats": repeats, "reasoning_rows": reasoning}
-json.dump(report, open(os.path.join(R, "s1-compare.json"), "w"), indent=1)
-
-
-def pp(p):
-    return "missing" if p is None else f"{p['model_better']}/{p['ref_better']} p {p['sign_p']}"
-
-
-for model in MODELS:
-    rep = report[model]
-    for mode in ("think", "nothink"):
-        if mode not in rep:
-            continue
-        m = rep[mode]
-        st = m["stats"]
-        print(f"\n== {model}, thinking {'on (4096)' if mode == 'think' else 'off (512)'}: {st['items']} items, "
-              f"{st['truncated_in_think']} truncated in think, {st['mean_completion_tokens']} tokens/item"
-              + (f"; missing sets: {', '.join(m['missing'])}" if m["missing"] else ""))
-        for ref in REFS[mode]:
-            if ref not in m:
-                continue
-            x = m[ref]
-            p = x["pooled"]
-            print(f"  vs {ref:12s} rows win {x['verdicts']['win']} loss {x['verdicts']['loss']} tie {x['verdicts']['tie']};"
-                  f" pooled items {model} +{p['model_better']} / {ref} +{p['ref_better']}, sign p {p['sign_p']}"
-                  + (f"; ref missing: {', '.join(x['missing_ref'])}" if x["missing_ref"] else "")
-                  + (f"; REACHES {ref}: {x['reaches']}" if "reaches" in x else ""))
-            q = x["p1"]
-            print(f"  {'':15s} P1 win {q['win']} loss {q['loss']} tie {q['tie']}, Holm {q['holm']} of {q['tested']}"
-                  f"; wins {', '.join(q['wins']) or '-'}; losses {', '.join(q['losses']) or '-'}"
-                  + (f"; REACHES {ref} by P1: {x['reaches_p1']}" if "reaches_p1" in x else ""))
-        for ref, reps in m["n1"].items():
-            print(f"  vs {ref:12s} N1 repeats, {len(N1_SETS[mode])} sets: "
-                  + "; ".join(f"{rn} {pp(p)}" for rn, p in reps.items()))
-        for key in [k for k in m if k.startswith("base_")]:
-            x = m[key]
-            p = x["pooled"]
-            print(f"  vs {key[5:]:12s} rows win {x['verdicts']['win']} loss {x['verdicts']['loss']} tie {x['verdicts']['tie']};"
-                  f" pooled items {model} +{p['model_better']} / base +{p['ref_better']}, sign p {p['sign_p']};"
-                  f" G6 rule {'PASS' if x['g6_rule']['pass'] else 'FAIL: ' + '; '.join(x['g6_rule']['reasons'])}")
-            q = x["p1"]
-            print(f"  {'':15s} P1 win {q['win']} loss {q['loss']} tie {q['tie']}, Holm {q['holm']} of {q['tested']};"
-                  f" G6 rule by P1 {'PASS' if x['g6_rule_p1']['pass'] else 'FAIL: ' + '; '.join(x['g6_rule_p1']['reasons'])}")
-        for r in m.get("lightning", {}).get("rows", []):
-            print(f"    {r['set']:9s} {r['split'] + '.' + r['metric']:38s} {r['model']:.3f} vs {r['ref']:.3f}"
-                  f"  n={r['n']:3d} {r['items_better']:+4d} {r['verdict']:4s}  items +{r['model_better']}/-{r['ref_better']}"
-                  f" p {r['sign_p']}" + (f"  P1 {r['p1']}" if r["p1"] != "tie" else ""))
-    if "training_rule" in rep:
-        tr = rep["training_rule"]
-        print(f"  TRAINING RULE: lost {len(tr['lost'])} of {len(tr['reasoning_rows_seen'])} reasoning rows "
-              f"({', '.join(tr['lost']) or 'none'}) -> {'TRAIN' if tr['train'] else 'do not train'}"
-              + ("" if tr["complete"] else "  [INCOMPLETE: not every reasoning row ran]"))
-        print(f"  TRAINING RULE by P1: lost {len(tr['lost_p1'])} ({', '.join(tr['lost_p1']) or 'none'})"
-              f" -> {'TRAIN' if tr['train_p1'] else 'do not train'}")
-
-n1 = report["n1"]
-print("\n== The null: each N1 reference against its own repeats (pooled items a/b, sign p)")
-for x in n1["null"]:
-    print(f"  {x['ref']:9s} {x['mode']:7s} {x['a']} vs {x['b']}, {len(N1_SETS[x['mode']])} sets: {pp(x['pooled'])}")
-for group, g in n1["repeats"].items():
-    print(f"\n== {group}: its repeat runs against each other")
-    for x in g["self"]:
-        print(f"  {x['mode']:7s} {x['a']} vs {x['b']}, {x['sets']} sets: {pp(x['pooled'])}")
-    print(f"== {group}, all {len(g['runs'])} runs against all of N1's (each item's mean a side)")
-    for mode, refs in g["vs_n1"].items():
-        for ref, x in refs.items():
-            q = x["p1"]
-            print(f"  {mode:7s} vs {ref:9s} {len(N1_SETS[mode])} sets: P1 win {q['win']} loss {q['loss']} tie {q['tie']},"
-                  f" Holm {q['holm']} of {q['tested']}; pooled items {pp(x['pooled'])}"
-                  f"; wins {', '.join(q['wins']) or '-'}; losses {', '.join(q['losses']) or '-'}")
-            for r in x["rows"]:
-                if r["model_better"] or r["ref_better"]:
-                    print(f"    {r['set']:9s} {r['split'] + '.' + r['metric']:38s} items +{r['model_better']}/-{r['ref_better']}"
-                          f" p {r['sign_p']}" + (f"  P1 {r['p1']}" if r["p1"] != "tie" else ""))
-print("\n== Reasoning rows, thinking on, in items: one run, or mean (range) over repeats")
-tables = [(f"{label} {'N1' if kind == 'n1' else 'x' + str(len(next(iter(rr.values()))['items']))}"
-           if kind != "models" else label, rr)
-          for kind, table in n1["reasoning_rows"].items() for label, rr in table.items() if rr]
-n = {c: x["n"] for _, rr in tables for c, x in rr.items()}
-print(f"  {'':22s}" + "".join(f"{c + ' (' + str(n.get(c, '?')) + ')':>16s}" for _, c, _ in N1_ROWS))
-for label, rr in tables:
-    cells = ["-" if c not in rr else str(rr[c]["items"][0]) if len(rr[c]["items"]) == 1
-             else f"{rr[c]['mean']:.2f} ({min(rr[c]['items'])}-{max(rr[c]['items'])})" for _, c, _ in N1_ROWS]
-    print(f"  {label:22s}" + "".join(f"{c:>16s}" for c in cells))
+    n1 = report["n1"]
+    print("\n== The null: each N1 reference against its own repeats (pooled items a/b, sign p)")
+    for x in n1["null"]:
+        print(f"  {x['ref']:9s} {x['mode']:7s} {x['a']} vs {x['b']}, {len(N1_SETS[x['mode']])} sets: {pp(x['pooled'])}")
+    for group, g in n1["repeats"].items():
+        print(f"\n== {group}: its repeat runs against each other")
+        for x in g["self"]:
+            print(f"  {x['mode']:7s} {x['a']} vs {x['b']}, {x['sets']} sets: {pp(x['pooled'])}")
+        print(f"== {group}, all {len(g['runs'])} runs against all of N1's (each item's mean a side)")
+        for mode, refs in g["vs_n1"].items():
+            for ref, x in refs.items():
+                q = x["p1"]
+                print(f"  {mode:7s} vs {ref:9s} {len(N1_SETS[mode])} sets: P1 win {q['win']} loss {q['loss']} tie {q['tie']},"
+                      f" Holm {q['holm']} of {q['tested']}; pooled items {pp(x['pooled'])}"
+                      f"; wins {', '.join(q['wins']) or '-'}; losses {', '.join(q['losses']) or '-'}")
+                for r in x["rows"]:
+                    if r["model_better"] or r["ref_better"]:
+                        print(f"    {r['set']:9s} {r['split'] + '.' + r['metric']:38s} items +{r['model_better']}/-{r['ref_better']}"
+                              f" p {r['sign_p']}" + (f"  P1 {r['p1']}" if r["p1"] != "tie" else ""))
+    print("\n== Reasoning rows, thinking on, in items: one run, or mean (range) over repeats")
+    tables = [(f"{label} {'N1' if kind == 'n1' else 'x' + str(len(next(iter(rr.values()))['items']))}"
+               if kind != "models" else label, rr)
+              for kind, table in n1["reasoning_rows"].items() for label, rr in table.items() if rr]
+    n = {c: x["n"] for _, rr in tables for c, x in rr.items()}
+    print(f"  {'':22s}" + "".join(f"{c + ' (' + str(n.get(c, '?')) + ')':>16s}" for _, c, _ in N1_ROWS))
+    for label, rr in tables:
+        cells = ["-" if c not in rr else str(rr[c]["items"][0]) if len(rr[c]["items"]) == 1
+                 else f"{rr[c]['mean']:.2f} ({min(rr[c]['items'])}-{max(rr[c]['items'])})" for _, c, _ in N1_ROWS]
+        print(f"  {label:22s}" + "".join(f"{c:>16s}" for c in cells))
