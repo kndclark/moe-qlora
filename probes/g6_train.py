@@ -38,6 +38,11 @@ and train "</think>" + content; "off" records are unchanged. One sequence per re
 history turns read "<think>\n</think>" where the server sends "<think></think>" (design A,
 David 2026-09-27). parity() checks every trained turn against the server's prompt; DRY_RUN
 prints it for both renders, and RENDER=think will not train if it fails.
+RENDER=traceb (gap ledger L9) is RENDER=trace with design B for the records that have no
+trace too: one sequence per trained turn, the server's own prompt for that turn (masked)
+then the turn's trained span from the design-A encoding, so no history is off by a
+newline. A second guard (b_parity) checks every turn's boundary and will not train if
+it fails.
 
 Run (laptop):
   probes/gpurun.sh g6-train /probes/attn_bf16.py g6_train.py g6-train
@@ -73,8 +78,8 @@ label = sys.argv[1]
 DRY = os.environ.get("DRY_RUN") == "1"
 GUARD = os.environ.get("GUARD", "g5")
 RENDER = os.environ.get("RENDER", "g6")
-if RENDER not in ("g6", "think", "trace"):
-    sys.exit(f"RENDER must be g6, think or trace, not {RENDER}")
+if RENDER not in ("g6", "think", "trace", "traceb"):
+    sys.exit(f"RENDER must be g6, think, trace or traceb, not {RENDER}")
 DATASET = os.environ.get("DATASET") or "/gpulab/training/research_dataset_v3.json"
 TARGETS = r".*\.mixer\.(q_proj|k_proj|v_proj|o_proj|in_proj)$|.*\.mixer\.shared_experts\.(up_proj|down_proj)$"
 EPOCHS, LR, PER_STEP, RANK, SEED = 2, 1e-4, 8, 16, 0
@@ -123,7 +128,7 @@ def tools_for(record):
     return TOOLS + record.get("extra_tools", [])
 
 
-def encode(record, how="g6"):
+def encode(record, how="g6", max_len=MAX_LEN):
     text = tok.apply_chat_template(lightning_messages(record["messages"]), tools=tools_for(record), tokenize=False)
     off = record.get("thinking") == "off"
     inserted = 0
@@ -137,7 +142,7 @@ def encode(record, how="g6"):
         # turns read "<think>\n</think>" where the server's history has "<think></think>".
         text = text.replace("<|im_start|>assistant\n<think></think>",
                             "<|im_start|>assistant\n" + think_open + "</think>")
-    ids = tok(text, truncation=True, max_length=MAX_LEN, add_special_tokens=False)["input_ids"]
+    ids = tok(text, truncation=True, max_length=max_len, add_special_tokens=False)["input_ids"]
     full_len = len(tok(text, add_special_tokens=False)["input_ids"])
     labels = [-100] * len(ids)
     masked_think = 0
@@ -239,11 +244,48 @@ def encode_trace(record, st):
     return out
 
 
+def per_turn(rec, d, st):
+    """RENDER=traceb (L9): design B for a record without a trace. For each trained turn of
+    its design-A encoding d (untruncated), the eval server's prompt for that turn as
+    parity() builds it, masked, then that turn's trained span. The boundary from the last
+    assistant header must equal the design-A one, as parity() requires; turns whose
+    history differed under design A are counted as fixed."""
+    msgs = lightning_messages(rec["messages"])
+    ks = [j for j, m in enumerate(msgs) if m["role"] == "assistant"]
+    out = []
+    for k, (h, start) in zip(ks, d["turns"]):
+        end = start
+        while end < len(d["ids"]) and d["labels"][end] != -100:
+            end += 1
+        span = d["ids"][start:end]
+        srv = tok(tok.apply_chat_template(msgs[:k], tools=tools_for(rec), tokenize=False, add_generation_prompt=True,
+                                          enable_thinking=rec.get("thinking") != "off"),
+                  add_special_tokens=False)["input_ids"]
+        sh = max(j for j in range(len(srv)) if srv[j:j + len(assistant_header)] == assistant_header)
+        st["turns"] += 1
+        if srv[sh:] != d["ids"][h:start]:
+            st["boundary_bad"] += 1
+            continue
+        st["history_fixed"] += srv[:sh] != d["ids"][:h]
+        ids = srv + span
+        st["cut"] += len(ids) > MAX_LEN
+        out.append({"ids": ids[:MAX_LEN], "labels": ([-100] * len(srv) + span)[:MAX_LEN],
+                    "truncated": len(ids) > MAX_LEN, "inserted": d["inserted"],
+                    "masked_think": d["masked_think"], "thinking": d["thinking"], "turns": []})
+    return out
+
+
+b_parity = {"turns": 0, "boundary_bad": 0, "history_fixed": 0, "cut": 0}
 trace_parity = {"turns": 0, "prompt_count_ok": 0, "prompt_count_bad": 0, "completion_count_equal": 0,
                 "bad_examples": []}
-if RENDER == "trace":
+if RENDER in ("trace", "traceb"):
     plain = [r for r in records if not r.get("trace")]
-    data = [encode(r, "think") for r in plain]
+    plain_enc = [encode(r, "think") for r in plain]
+    data = list(plain_enc)
+    if RENDER == "traceb":
+        data = [q for r in plain for q in per_turn(r, encode(r, "think", max_len=10 ** 9), b_parity)]
+        b_parity["sequences"] = len(data)
+        b_parity["pass"] = b_parity["boundary_bad"] == 0 and b_parity["turns"] > 0
     for r in records:
         if r.get("trace"):
             data.extend(encode_trace(r, trace_parity))
@@ -252,6 +294,7 @@ if RENDER == "trace":
 else:
     plain = records
     data = [encode(r, RENDER) for r in records]
+    plain_enc = data
 n_items = [sum(l != -100 for l in d["labels"]) for d in data]
 lens = sorted(len(d["ids"]) for d in data)
 res = {"label": label, "model": REPO, "revision": REV, "dataset": DATASET, "guard": GUARD,
@@ -285,30 +328,36 @@ def show(d, width=1600):
     return "".join(out)[-width:]
 
 
-if RENDER in ("think", "trace") or DRY:
-    res["parity"] = parity(plain, data[:len(plain)])
-if RENDER == "trace":
+if RENDER in ("think", "trace", "traceb") or DRY:
+    res["parity"] = parity(plain, plain_enc[:len(plain)])
+if RENDER == "traceb":
+    res["b_parity"] = b_parity
+if RENDER in ("trace", "traceb"):
     res["trace_parity"] = trace_parity
     res["data"]["trace_sequences"] = trace_parity["turns"]
 if DRY:
     print(json.dumps(res["data"], indent=1))
-    for mode in ("default", "off") + (("trace",) if RENDER == "trace" else ()):
+    for mode in ("default", "off") + (("trace",) if RENDER in ("trace", "traceb") else ()):
         d = next(d for d in data if d["thinking"] == mode and not d["truncated"])
         print(f"\n===== thinking={mode} (last 1600 chars; [[masked]])\n{show(d)}")
     # Trap fixture: the other render's guard too. G6's must FAIL (its default records train
     # from "assistant\n"), the think render's must PASS.
-    if RENDER == "trace":
+    if RENDER == "traceb":
+        print(f"\n===== design-B guard: {'PASS' if b_parity['pass'] else 'FAIL'}\n{json.dumps(b_parity, indent=1)}")
+    if RENDER in ("trace", "traceb"):
         print(f"\n===== trace guard (vLLM prompt token counts): {'PASS' if trace_parity['pass'] else 'FAIL'}\n"
               f"{json.dumps(trace_parity, indent=1)}")
-    this = "think" if RENDER == "trace" else RENDER
+    this = "think" if RENDER in ("trace", "traceb") else RENDER
     other = "g6" if this == "think" else "think"
     for how, st in ((this, res["parity"]), (other, parity(plain, [encode(r, other) for r in plain]))):
         print(f"\n===== parity guard, RENDER={how}{' (this run)' if how == RENDER else ''}: "
               f"{'PASS' if st['pass'] else 'FAIL'}\n{json.dumps(st, indent=1)}")
     sys.exit(0)
-if RENDER in ("think", "trace") and not res["parity"]["pass"]:
+if RENDER == "traceb" and not b_parity["pass"]:
+    sys.exit(f"design-B guard FAILED, not training:\n{json.dumps(b_parity, indent=1)}")
+if RENDER in ("think", "trace", "traceb") and not res["parity"]["pass"]:
     sys.exit(f"parity guard FAILED, not training:\n{json.dumps(res['parity'], indent=1)}")
-if RENDER == "trace" and not trace_parity["pass"]:
+if RENDER in ("trace", "traceb") and not trace_parity["pass"]:
     sys.exit(f"trace guard FAILED, not training:\n{json.dumps(trace_parity, indent=1)}")
 
 lean_scan.install()

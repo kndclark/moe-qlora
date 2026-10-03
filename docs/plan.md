@@ -1987,6 +1987,25 @@ the laptop and the desktop in parallel):
 - **L9 render design B.** 588 of 1824 history turns are off by a newline under design A
   (memory: revisit "if Lightning becomes default", which is now). Rebuild the candidate's
   data with design B, train (G6u took 56 min), three repeats in both modes, item by item.
+  - Trainer: `RENDER=traceb` in `probes/g6_train.py` = RENDER=trace, plus design B for
+    the records without a trace: per trained turn, the eval server's prompt for that turn
+    (as `parity()` builds it, masked) then the turn's trained span from the untruncated
+    design-A encoding; a design-B guard checks every boundary and blocks training on a
+    failure. RENDER=trace's dry run with this code equals `results/g6u-dry.log` on every
+    data line (the only differences: gpu-lab's commit in the provenance line, and the
+    attn_bf16 wrapper's banner, which G6u's dry run did not load).
+  - Dry run (MEASURED, `results/g6ub-dry.log`): design-B guard PASS, 1,658 turns, 0 bad
+    boundaries, 422 turns whose history design A had wrong, 0 cut; with the 502 trace
+    turns, 2,160 sequences (G6u 1,347), 1,770,100 tokens (1.29x), 223,029 trained, the
+    same as G6u's. Trace guard PASS; `RENDER=think` parity PASS. Not like for like on
+    steps: more sequences mean more optimizer steps at the same lr (inherent to design B).
+  - Run: `DATASET=/out/research_dataset_g6u.json RENDER=traceb GUARD=hw MAX_LEN=2048
+    probes/gpurun.sh g6ub-train /probes/attn_bf16.py g6_train.py g6ub-train` (about 74 min
+    at G6u's rate, ARITHMETIC); then `LABEL=g6ub probes/g6_eval.sh
+    results/g6ub-train-adapter`, `LABEL=g6ub probes/noise_eval.sh ... "r2 r3"` and the
+    same with `THINK=off`; compare with `probes/n2_items.py` g6ub g6u in both modes.
+  - Decides: design B replaces A only if it wins at least one row and loses none, item by
+    item, in both modes. Otherwise A stays, and the memory note is closed.
 - **L10 upstream, no GPU.** Search for existing issues or fixes: vLLM's CUTLASS FP8
   kernel with no sm_86 gate (G7b), FlashInfer's `.shared::cluster` TMA load on sm_120
   (`probes/ssu_sm120/upstream-issue-draft.md`). Filing is outward-facing: David's go.
@@ -2005,6 +2024,19 @@ named; a row counts only at sign-test p < 0.05. Speed: bench.py c=1 / c=16 p50 d
 and a change counts past 2.0 tok/s (the side quest's bar, triton's own range).
 - L2: `POOL_GPU_UTIL=0.85 G7C_OUT=l2 G7C_EAGER="" G7C_MORE_FLAGS="--max-num-seqs 16"
   probes/g7c_pool.sh`; against G7c2 (`G7C_EAGER` unset keeps G7c's exact flag string).
+  - **L2 RESULT (MEASURED, 2026-10-02 18:50-18:54; `results/l2.log`, `results/l2/`,
+    `results/l2-items.json`): CUDA graphs work pooled and decode 6.7x faster.** Ready in
+    2.2 min; PIECEWISE (7 sizes) and FULL (2) graphs captured on both stages; no error in
+    the log; pool down and desktop `lab up` exit 0. Decode p50: c=1 **198.6 tok/s** (cv
+    0.5%) against G7c2's 29.8; c=16 **85.1 tok/s per request** (cv 4.0%) against 22.75,
+    about 1,360 tok/s aggregate (ARITHMETIC). KV 10.10 / 9.21 GiB (G7c2 10.69 / 9.78):
+    graphs cost about 0.57 GiB per card; vLLM reports util 0.85 acting as 0.8415 / 0.8273.
+    v1 item by item against G7c2: every row p = 1.0 (held_out 7 vs 8 discordant items).
+    Laptop peak 74 C, 134 W. Reading: `--enforce-eager` was a single-card memory choice
+    (G7a) carried into every pooled run, and it cost most of the decode speed.
+  - L2b (added after L2, before running): one card with graphs at 16 seqs, where the
+    capture list stops at 16 and graphs cost 0.2-0.55 GiB here, not G7a's ~2.2 GiB.
+    `l_single.sh` with `L_EAGER=""` on each card, against that card's L4 (eager).
 - L6: `probes/g7d_pool.sh` with the BF16 repo (rev `a9904d24`), `--quantization fp8`,
   thinking off only, into `results/l6/`; the seven sets against G7d's pooled NVFP4 runs.
   (`g7d_pool.sh` gains the variables after G7d finishes: bash reads a running script.)

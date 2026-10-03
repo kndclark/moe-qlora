@@ -7,7 +7,8 @@
 # must have none, e.g. --speculative-config {"method":"mtp","num_speculative_tokens":3}.
 # Outputs: results/lsingle/<LABEL>/{serve.log,bench-c1.json,bench-c16.json,
 #   research-eval-v1-lightning-nothink-<LABEL>.{json,log}}
-# usage: NODE=laptop|desktop LABEL=name [EXTRA="..."] l_single.sh
+# usage: NODE=laptop|desktop LABEL=name [EXTRA="..."] [L_EAGER=""] l_single.sh
+#   L_EAGER="" drops --enforce-eager (L2b: CUDA graphs); unset keeps it.
 set -u
 NODE=${NODE:?laptop or desktop} LABEL=${LABEL:?names the run}
 here=$(cd "$(dirname "$0")/.." && pwd)
@@ -31,7 +32,7 @@ trap stop EXIT
   vllm/vllm-openai:v0.29.0 \
   --model $M --revision bee7596271d1495f6992ae224aefde4410e816b8 --served-model-name lightning-nvfp4 \
   --kv-cache-dtype fp8 --mamba-cache-mode align --moe-backend marlin \
-  --max-model-len 16384 --max-num-seqs 16 --gpu-memory-utilization 0.85 --enforce-eager \
+  --max-model-len 16384 --max-num-seqs 16 --gpu-memory-utilization 0.85 ${L_EAGER---enforce-eager} \
   ${EXTRA:-} >/dev/null || exit 1
 echo "$NODE $LABEL extra: ${EXTRA:-none}"
 t0=$(date +%s)
