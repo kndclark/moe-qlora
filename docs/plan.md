@@ -1854,6 +1854,29 @@ or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a 
 - Expectations: KV per card about 1.7 GiB below G7c's 12.34 / 11.28 GiB (ARITHMETIC:
   0.07 x 24 GiB, if weights and the activation profile are unchanged); the OOM gone
   (INFERENCE: the failed 512 MiB allocation scales with the sequences in flight).
+- **G7C2 RESULT (MEASURED, 2026-10-02 18:04-18:12; `results/g7c2.log`, `results/g7c2/`,
+  `results/g7c2-compare.json` from `probes/g7c2_compare.py`): Lightning pools.** Runner
+  exit 0; `lab pool down` exit 0; desktop `lab up` exit 0, llama-swap active again.
+  1. Serves: both stages loaded through Marlin as in G7c (9.01 GiB weights on the desktop,
+     PP0; 9.71 GiB on the laptop, PP1) and the endpoint answered at 18:06:46, 2.3 min after
+     start. No OOM in the eval or either bench.
+  2. KV: 10.69 GiB on the desktop and 9.78 GiB on the laptop (G7c: 12.34 / 11.28), so
+     1.65 and 1.50 GiB lower against the predicted ~1.7: met. Capacity 2,233,685 tokens,
+     136.3 requests of 16,384 tokens. One card served 83,285 tokens (desktop, G7b) and
+     50,517 (laptop, G6q server): about 27x and 44x (ARITHMETIC). Not like for like: those
+     servers carried the LoRA adapter, the pool ran base.
+  3. v1 thinking off against base's laptop run (one run each, descriptive): 4 of 6 rows
+     within 2 items; 2 rows 3 items higher on the pool, held_out 48 vs 45 /90 and seen_tool
+     11 vs 8 /25; trap 7 vs 9 /15 and trap_control 0 vs 2 /8 sit at the 2-item edge.
+     Statuses 101 answered / 49 truncated / 8 call_limit (laptop 105 / 44 / 9); all 50
+     calls `xml_function`. Elapsed 162 s vs 284 s.
+  4. Decode baseline (bench.py, 200 tokens, 2 repeats): c=1 29.8 tok/s p50 (cv 0.5%),
+     TTFT 51 ms; c=16 22.75 tok/s per request p50 (cv 0.2%), TTFT 146 ms, so about 364
+     tok/s aggregate if all 16 decode together (ARITHMETIC). Max 64 C. There is no
+     single-card Lightning decode bench to set it against; G7c's "slower than one card"
+     expectation stays UNTESTED. The pool ran `--enforce-eager` (the gate's flags).
+  - Not tested here: serving the G6u adapter pooled (the pool mounts only
+    `/srv/model-cache`; writing the adapter there waits for David).
 
 ## Hard stops and rules
 
