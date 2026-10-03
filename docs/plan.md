@@ -1969,9 +1969,24 @@ the laptop and the desktop in parallel):
 - **L10 upstream, no GPU.** Search for existing issues or fixes: vLLM's CUTLASS FP8
   kernel with no sm_86 gate (G7b), FlashInfer's `.shared::cluster` TMA load on sm_120
   (`probes/ssu_sm120/upstream-issue-draft.md`). Filing is outward-facing: David's go.
+  - **L10 RESULT (SOURCED, 2026-10-02):** vLLM fixed it upstream: commit `2bdbbc808`
+    (2026-09-16), "[BugFix] Fix is_supported of cutlass FP8 linear (selected and fails on
+    A100) (#55884)": `is_supported` now calls `cutlass_fp8_supported()`, which reads the
+    device capability. It is on `main`, not in v0.30.0 (whose check is still CUDA-only), so
+    nothing to file and `--linear-backend marlin` stays needed until the next release.
+    FlashInfer is unfixed: `main`'s `kernel_selective_state_update_stp.cuh` still makes 5
+    cluster-form TMA calls and 0 cta-form (latest release v0.7.0.post1, 2026-09-29); no
+    matching issue found in its tracker. Filing the draft stays David's call.
 
 **Needs David's go:** L11 the DFlash draft (1.1 GiB download; every download needs his
 go), only if L3 shows speculative decoding pays here.
+  - David, 2026-10-02: "go ahead with draft". Fetched like G0 (desktop, uid 1000, `hf
+    download --revision` in `gpu-lab:training`): rev `8abcc4db`, 6 files, 28 s; sha256 of
+    `model.safetensors` matches the HF LFS oid (MEASURED). vLLM 0.29.0 carries
+    `v1/spec_decode/dflash.py`, a DSpark proposer and `nemotron_h_mtp.py` (SOURCED, the
+    image). NVIDIA's card recommends DSpark, not DFlash, for low-concurrency serving; its
+    recipe: `--speculative_config.model <draft> --speculative_config.num_speculative_tokens
+    3` with vLLM v0.27.1. DSpark is a second download: not fetched.
 
 **Protocol, no run:** (P1) the item-level bar for every comparison (N2 audit; David's
 call). (P2) the live-metric sets (promql, promqlcat) compare only runs made the same day,
