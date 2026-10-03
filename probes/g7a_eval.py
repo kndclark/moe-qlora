@@ -11,9 +11,19 @@ Two patches, both in the harness's reading of the model's text; the scorer is un
 Tool arguments go back to the template as a mapping without help: vLLM 0.29 json-loads
 assistant tool_call arguments before rendering (entrypoints/chat_utils.py:2043).
 
+Two options of this wrapper (S1, docs/next-model-plan.md), both applied to the chat
+request before /tokenize renders it, and recorded in the output JSON under "wrapper":
+
+  --think-tag         for templates that switch thinking by a tag, not enable_thinking
+                      (Nemotron Nano 9B v2): a system message "/think" or "/no_think"
+                      per --thinking. The template strips the tag from the system text.
+  --chat-kwargs JSON  merged into chat_template_kwargs, e.g. '{"reasoning_effort":"low"}'.
+
   python3 g7a_eval.py --selfcheck
-  python3 g7a_eval.py <research_eval.py args>     (--thinking off|on; default = on here)
+  python3 g7a_eval.py [--think-tag] [--chat-kwargs JSON] <research_eval.py args>
+                      (--thinking off|on; default = on here)
 """
+import json
 import os
 import re
 import sys
@@ -46,6 +56,24 @@ def split_think(text):
     return _split(text)
 
 
+_post = rev.post
+WRAP = {"think_tag": None, "chat_kwargs": {}}
+
+
+def shape(body):
+    """The /tokenize request with this wrapper's options applied (a copy)."""
+    body = dict(body)
+    if WRAP["think_tag"]:
+        body["messages"] = [{"role": "system", "content": WRAP["think_tag"]}] + body["messages"]
+    if WRAP["chat_kwargs"]:
+        body["chat_template_kwargs"] = {**body.get("chat_template_kwargs", {}), **WRAP["chat_kwargs"]}
+    return body
+
+
+def post(base, path, body, *args, **kw):
+    return _post(base, path, shape(body) if path == "/tokenize" else body, *args, **kw)
+
+
 def selfcheck():
     ok = True
 
@@ -72,6 +100,16 @@ def selfcheck():
     THINK_OPEN[0] = False
     check("think off, plain", split_think("Answer."), ("Answer.", False))
     check("think off, same as harness", split_think("<think>x"), _split("<think>x"))
+    nano9b = '<TOOLCALL>[{"name": "bash", "arguments": {"command": "jq --help"}}]</TOOLCALL>'
+    check("nano 9b toolcall", parse_tool_call(nano9b)[:2], ("bash", {"command": "jq --help"}))
+    req = {"messages": [{"role": "user", "content": "q"}], "chat_template_kwargs": {"enable_thinking": False}}
+    check("no options, request unchanged", shape(req), req)
+    WRAP.update(think_tag="/no_think", chat_kwargs={"reasoning_effort": "low"})
+    check("options applied", shape(req), {"messages": [{"role": "system", "content": "/no_think"},
+                                                       {"role": "user", "content": "q"}],
+                                          "chat_template_kwargs": {"enable_thinking": False, "reasoning_effort": "low"}})
+    check("request not mutated", req["messages"], [{"role": "user", "content": "q"}])
+    WRAP.update(think_tag=None, chat_kwargs={})
     print("selfcheck", "PASS" if ok else "FAIL")
     return 0 if ok else 1
 
@@ -82,9 +120,26 @@ if __name__ == "__main__":
     # Lightning's template defaults enable_thinking to True, so the harness's "default"
     # leaves the prompt ending in an open <think> exactly like "on".
     argv = sys.argv[1:]
+    if "--think-tag" in argv:
+        argv.remove("--think-tag")
+        WRAP["think_tag"] = True
+    if "--chat-kwargs" in argv:
+        i = argv.index("--chat-kwargs")
+        WRAP["chat_kwargs"] = json.loads(argv[i + 1])
+        del argv[i:i + 2]
     thinking = argv[argv.index("--thinking") + 1] if "--thinking" in argv else "default"
     THINK_OPEN[0] = thinking in ("on", "default")
+    if WRAP["think_tag"]:
+        if thinking == "default":
+            sys.exit("--think-tag needs --thinking on|off")
+        WRAP["think_tag"] = "/think" if thinking == "on" else "/no_think"
     rev.parse_tool_call = parse_tool_call
     rev.split_think = split_think
+    rev.post = post
     sys.argv = [rev.__file__] + argv
     rev.main()
+    if (WRAP["think_tag"] or WRAP["chat_kwargs"]) and "--out" in argv:
+        out = argv[argv.index("--out") + 1]
+        res = json.load(open(out))
+        res["wrapper"] = WRAP
+        json.dump(res, open(out, "w"), indent=1)

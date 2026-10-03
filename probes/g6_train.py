@@ -52,6 +52,8 @@ Run (laptop):
   MAX_LEN=2048 caps at the length Qwen v3 actually trained at (qlora.py --max-len 2048,
   plan.md "G6P2048"); unset, it is 1024, as G6, G6r and G6p ran.
   DRY_RUN=1 renders and masks the data, prints samples and stops before loading the model.
+  BASE=nano4b trains Nemotron 3 Nano 4B (bf16) instead of Lightning: same data, render,
+  parity guard and optimisation; see TARGETS below. Unset, it is Lightning, as every G6 ran.
 Output: /out/<label>-adapter/ (checkpoint-N per epoch, final adapter at the top),
 /out/<label>.json (rewritten every step).
 """
@@ -82,6 +84,15 @@ if RENDER not in ("g6", "think", "trace", "traceb"):
     sys.exit(f"RENDER must be g6, think, trace or traceb, not {RENDER}")
 DATASET = os.environ.get("DATASET") or "/gpulab/training/research_dataset_v3.json"
 TARGETS = r".*\.mixer\.(q_proj|k_proj|v_proj|o_proj|in_proj)$|.*\.mixer\.shared_experts\.(up_proj|down_proj)$"
+# BASE=nano4b (S1, docs/next-model-plan.md): Nemotron 3 Nano 4B in bf16, loaded whole (no
+# 4-bit, so no Route 1 hook), placement A's analogue: attention, mamba in_proj and the dense
+# MLP layers' up/down_proj (Lightning's shared experts are its only dense MLP path).
+BASE = os.environ.get("BASE", "lightning")
+if BASE == "nano4b":
+    REPO, REV = "nvidia/NVIDIA-Nemotron-3-Nano-4B-BF16", "dfaf35de3e30f1867dd8dbc38a7fc9fb52d3914f"
+    TARGETS = r".*\.mixer\.(q_proj|k_proj|v_proj|o_proj|in_proj|up_proj|down_proj)$"
+elif BASE != "lightning":
+    sys.exit(f"BASE must be lightning or nano4b, not {BASE}")
 EPOCHS, LR, PER_STEP, RANK, SEED = 2, 1e-4, 8, 16, 0
 MAX_LEN = int(os.environ.get("MAX_LEN") or 1024)
 OUT = f"/out/{label}-adapter"
@@ -311,7 +322,7 @@ res = {"label": label, "model": REPO, "revision": REV, "dataset": DATASET, "guar
                 "off_think_blocks_masked": sum(d["masked_think"] for d in data if d["thinking"] == "off"),
                 "default_think_open_masked": sum(d["masked_think"] for d in data if d["thinking"] != "off"),
                 "empty_think_ids": empty_think_ids, "assistant_header_ids": assistant_header},
-       "render": RENDER}
+       "render": RENDER, "base": BASE}
 
 
 def show(d, width=1600):
@@ -402,7 +413,14 @@ def save(path):
 
 
 sampler.phase = "load"
-model, info, load_s = route1.load()
+if BASE == "nano4b":
+    from transformers import AutoModelForCausalLM  # noqa: E402
+    t0 = time.time()
+    model, info = AutoModelForCausalLM.from_pretrained(REPO, revision=REV, dtype=torch.bfloat16,
+                                                       device_map={"": 0}, output_loading_info=True)
+    load_s = time.time() - t0
+else:
+    model, info, load_s = route1.load()
 res["load"] = {"seconds": round(load_s, 1), "hook": route1.hook_summary(),
                "missing_keys": len(info["missing_keys"]), "mamba": route1.mamba_kernels()}
 model.config.use_cache = False
