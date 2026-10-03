@@ -12,7 +12,8 @@ caching_allocator_warmup is disabled, as route1.load() does: it only pre-reserve
 Train: LoRA r16 / alpha 32 / dropout 0.05 on G6q's targets carried over (TARGETS), gradient
 checkpointing (non-reentrant) + enable_input_require_grads, no fp32 upcast, paged AdamW 8-bit
 (lr 1e-4 constant, wd 0, clip 1.0), batch 1, chunked cross-entropy (chunk 256, G6q's F1; the
-loss is chunked_ce.chunked_loss under a Qwen3_5ForCausalLM forward defined here).
+loss is chunked_ce.chunked_loss under a Qwen3_5ForCausalLM forward).
+The render, load, targets and loss live in q38.py, shared with q2_train.py.
 Lengths LENGTHS (512,1024,2048), WARMUP 2 + STEPS 10 each; an OOM ends the sweep.
 
 Data: G6q's records rendered with Qwen3.8's template (thinking-on records at
@@ -38,27 +39,19 @@ import torch
 
 here = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, here)
-sys.path.insert(0, "/gpulab/training")
-from tools import TOOLS  # noqa: E402
-from transformers import AutoConfig, AutoTokenizer  # noqa: E402
+import q38  # noqa: E402  (render, load and loss, shared with q2_train.py)
+from q38 import EFFORT, REPO, REV, TARGETS, counts, gib  # noqa: E402
+from transformers import AutoTokenizer  # noqa: E402
 
 label = sys.argv[1]
-REPO, REV = "Qwen/Qwen3.8-27B", "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0"
 DATASET = os.environ.get("DATASET") or "/out/research_dataset_g6q.json"
 DRY = os.environ.get("DRY_RUN") == "1"
 GUARD = os.environ.get("GUARD", "hw")
 LENGTHS = [int(x) for x in os.environ.get("LENGTHS", "512,1024,2048").split(",")]
 WARMUP, STEPS = 2, 10
 CE_CHUNK = int(os.environ.get("CE_CHUNK", "256"))
-RANK, LR, SEED, EFFORT = 16, 1e-4, 0, "low"
-TARGETS = (r".*\.self_attn\.(q_proj|k_proj|v_proj|o_proj)$"
-           r"|.*\.linear_attn\.(in_proj_qkv|in_proj_z|in_proj_b|in_proj_a)$"
-           r"|.*\.mlp\.(up_proj|down_proj)$")
-GiB = 2**30
-
-
-def gib(n):
-    return round(n / GiB, 3)
+RANK, LR, SEED = 16, 1e-4, 0
+GiB = q38.GiB
 
 
 res = {"label": label, "model": REPO, "revision": REV, "dataset": DATASET, "guard": GUARD,
@@ -77,121 +70,10 @@ def dump():
 # ---------------------------------------------------------------- data
 tok = AutoTokenizer.from_pretrained(REPO, revision=REV)
 records = json.load(open(DATASET))
-HEADER = "<|im_start|>assistant\n"
-THINK_OPEN = "<think>\n"
-OFF_THINK = "<think>\n\n</think>\n\n"
-header_ids = tok.encode(HEADER, add_special_tokens=False)
-think_open_ids = tok.encode(THINK_OPEN, add_special_tokens=False)
-off_think_ids = tok.encode(OFF_THINK, add_special_tokens=False)
-im_end = tok.convert_tokens_to_ids("<|im_end|>")
-
-
-def lightning_messages(msgs):
-    # g6_train.py: the XML tool-call templates want tool-call arguments as objects.
-    out = []
-    for m in msgs:
-        m = dict(m)
-        if m.get("tool_calls"):
-            calls = []
-            for c in m["tool_calls"]:
-                c = json.loads(json.dumps(c))
-                fn = c.get("function", c)
-                if isinstance(fn.get("arguments"), str):
-                    fn["arguments"] = json.loads(fn["arguments"])
-                calls.append(c)
-            m["tool_calls"] = calls
-        out.append(m)
-    return out
-
-
-def tools_for(record):
-    return TOOLS + record.get("extra_tools", [])
-
-
-def kwargs_for(record, effort):
-    if record.get("thinking") == "off":
-        return {"enable_thinking": False}
-    return {"enable_thinking": True, "reasoning_effort": effort}
-
-
-def encode(record, effort):
-    off = record.get("thinking") == "off"
-    text = tok.apply_chat_template(lightning_messages(record["messages"]), tools=tools_for(record),
-                                   tokenize=False, **kwargs_for(record, effort))
-    if off:
-        pieces = [text]
-    else:  # history turns read "<think>\n\n</think>\n\n"; split so "<think>\n" ends a piece
-        marker = HEADER + THINK_OPEN
-        parts = text.split(marker)
-        pieces = [p + marker for p in parts[:-1]] + [parts[-1]]
-    ids = []
-    for p in pieces:
-        if p:
-            ids += tok(p, add_special_tokens=False)["input_ids"]
-    labels = [-100] * len(ids)
-    pre = off_think_ids if off else think_open_ids
-    turns, masked, i = [], 0, 0
-    while i < len(ids):
-        if ids[i:i + len(header_ids)] == header_ids:
-            start = i + len(header_ids)
-            if ids[start:start + len(pre)] == pre:
-                start += len(pre)
-                masked += 1
-            turns.append((i, start))
-            end = start
-            while end < len(ids) and ids[end] != im_end:
-                end += 1
-            end = min(end + 1, len(ids))
-            for j in range(start, end):
-                labels[j] = ids[j]
-            i = end
-        else:
-            i += 1
-    return {"ids": ids, "labels": labels, "turns": turns, "masked": masked, "off": off}
-
-
-def parity(recs, encs, effort):
-    """g6_train.py's guard: every trained turn's header-to-first-trained-token span must equal
-    the eval server's prompt for that turn (history as the harness sends it, no reasoning)."""
-    st = {"turns": 0, "boundary_ok": 0, "boundary_bad": 0, "exact": 0, "history_diff_turns": 0,
-          "bad_examples": []}
-    for rec, d in zip(recs, encs):
-        msgs = lightning_messages(rec["messages"])
-        ks = [j for j, m in enumerate(msgs) if m["role"] == "assistant"]
-        for k, (h, start) in zip(ks, d["turns"]):
-            st["turns"] += 1
-            srv = tok(tok.apply_chat_template(msgs[:k], tools=tools_for(rec), tokenize=False,
-                                              add_generation_prompt=True, **kwargs_for(rec, effort)),
-                      add_special_tokens=False)["input_ids"]
-            sh = max(j for j in range(len(srv)) if srv[j:j + len(header_ids)] == header_ids)
-            if srv[sh:] == d["ids"][h:start]:
-                st["boundary_ok"] += 1
-            else:
-                st["boundary_bad"] += 1
-                if len(st["bad_examples"]) < 3:
-                    st["bad_examples"].append({"turn": k, "server": tok.decode(srv[sh:]),
-                                               "train": tok.decode(d["ids"][h:start])})
-            if srv == d["ids"][:start]:
-                st["exact"] += 1
-            elif srv[:sh] != d["ids"][:h]:
-                st["history_diff_turns"] += 1
-    st["pass"] = st["boundary_bad"] == 0 and st["boundary_ok"] > 0
-    return st
-
-
-def counts(encs):
-    lens = sorted(len(d["ids"]) for d in encs)
-    n = len(lens)
-
-    def pct(q):
-        return lens[min(n - 1, int(q * n))]
-    return {"records": n, "tokens": sum(lens), "assistant_tokens": sum(sum(l != -100 for l in d["labels"]) for d in encs),
-            "p50": pct(0.5), "p90": pct(0.9), "p95": pct(0.95), "max": lens[-1],
-            "over_512": sum(x > 512 for x in lens), "over_1024": sum(x > 1024 for x in lens),
-            "over_2048": sum(x > 2048 for x in lens),
-            "no_trained_tokens": sum(all(l == -100 for l in d["labels"]) for d in encs),
-            "off_records": sum(d["off"] for d in encs),
-            "turns_with_think_masked": sum(d["masked"] for d in encs)}
+render = q38.Render(tok)
+header_ids, think_open_ids, off_think_ids, im_end = (render.header_ids, render.think_open_ids,
+                                                     render.off_think_ids, render.im_end)
+encode, parity = render.encode, render.parity
 
 
 t0 = time.time()
@@ -240,14 +122,9 @@ if not res["parity"]["pass"]:
 
 # ---------------------------------------------------------------- GPU
 import bitsandbytes as bnb  # noqa: E402
-import chunked_ce  # noqa: E402  (its nemotron_h install is not used; only chunked_loss)
 import peft  # noqa: E402
 import route1  # noqa: E402  (Sampler: NVML peaks, thermal guard)
-import transformers.modeling_utils as mu  # noqa: E402
-import transformers.models.qwen3_5.modeling_qwen3_5 as q35  # noqa: E402
 from peft import LoraConfig, get_peft_model  # noqa: E402
-from transformers import BitsAndBytesConfig  # noqa: E402
-from transformers.modeling_outputs import CausalLMOutputWithPast  # noqa: E402
 
 if GUARD == "hw":
     route1.ABORT_REASONS = ("hw_thermal", "hw_power_brake")
@@ -268,47 +145,8 @@ except pynvml.NVMLError as e:
 
 # Kernel path: count calls to the functions the DeltaNet forward looks up at call time.
 calls = {}
-
-
-def counted(name, fn):
-    def wrapper(*a, **k):
-        calls[name] = calls.get(name, 0) + 1
-        return fn(*a, **k)
-    return wrapper
-
-
-kpath = {}
-for name in ("torch_chunk_gated_delta_rule", "torch_recurrent_gated_delta_rule", "causal_conv1d_fn",
-             "causal_conv1d_update"):
-    fn = getattr(q35, name)
-    kpath[name] = {"repr": repr(fn)[:200], "module": getattr(fn, "__module__", None),
-                   "qualname": getattr(fn, "__qualname__", None)}
-    setattr(q35, name, counted(name, fn))
-for pkg in ("fla", "causal_conv1d", "flash_attn", "kernels"):
-    try:
-        __import__(pkg)
-        kpath[pkg] = "importable"
-    except Exception as e:
-        kpath[pkg] = type(e).__name__
-res["kernel_path"] = kpath
-
-_orig_forward = q35.Qwen3_5ForCausalLM.forward
-
-
-def chunked_forward(self, input_ids=None, attention_mask=None, position_ids=None, past_key_values=None,
-                    inputs_embeds=None, labels=None, use_cache=None, logits_to_keep=0, **kwargs):
-    if labels is None or not torch.is_grad_enabled():
-        return _orig_forward(self, input_ids=input_ids, attention_mask=attention_mask, position_ids=position_ids,
-                             past_key_values=past_key_values, inputs_embeds=inputs_embeds, labels=labels,
-                             use_cache=use_cache, logits_to_keep=logits_to_keep, **kwargs)
-    out = self.model(input_ids=input_ids, attention_mask=attention_mask, position_ids=position_ids,
-                     past_key_values=past_key_values, inputs_embeds=inputs_embeds, use_cache=use_cache, **kwargs)
-    calls["chunked_ce"] = calls.get("chunked_ce", 0) + 1
-    loss = chunked_ce.chunked_loss(self.lm_head, out.last_hidden_state, labels, CE_CHUNK)
-    return CausalLMOutputWithPast(loss=loss, logits=None)
-
-
-q35.Qwen3_5ForCausalLM.forward = chunked_forward
+res["kernel_path"] = q38.count_kernel_calls(calls)
+q38.install_chunked_ce(CE_CHUNK, calls)
 
 sampler = route1.Sampler(interval=0.1)
 sampler.start()
@@ -339,51 +177,14 @@ try:
     sampler.phase = "load"
     torch.cuda.init()
     res["gpu"] = torch.cuda.get_device_name()
-    idx_path = os.path.join(os.path.dirname(
-        __import__("huggingface_hub").hf_hub_download(REPO, "config.json", revision=REV)), "model.safetensors.index.json")
-    keys = list(json.load(open(idx_path))["weight_map"])
-    pref = {}
-    for k in keys:
-        p = ("model.language_model" if k.startswith("model.language_model.") else
-             "model.visual" if k.startswith("model.visual.") else
-             "mtp" if k.startswith("mtp.") else k.split(".")[0] if "." in k else k)
-        pref[p] = pref.get(p, 0) + 1
-    res["index_keys_by_prefix"] = pref
-    cfg = AutoConfig.from_pretrained(REPO, revision=REV)
-    tcfg = cfg.text_config
-    mu.caching_allocator_warmup = lambda *a, **k: None
-    bnb_cfg = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4", bnb_4bit_use_double_quant=True,
-                                 bnb_4bit_compute_dtype=torch.bfloat16)
+    res["index_keys_by_prefix"] = q38.index_prefixes()
     torch.cuda.reset_peak_memory_stats()
-    t0 = time.time()
-    model, info = q35.Qwen3_5ForCausalLM.from_pretrained(
-        REPO, revision=REV, config=tcfg, quantization_config=bnb_cfg, dtype=torch.bfloat16,
-        device_map={"": 0}, output_loading_info=True)
-    load_s = time.time() - t0
-    lin4 = [n for n, m in model.named_modules() if isinstance(m, bnb.nn.Linear4bit)]
-    lin16 = [n for n, m in model.named_modules() if type(m) is torch.nn.Linear]
-    packed = sum(p.numel() * p.element_size() for p in model.parameters() if p.dtype == torch.uint8)
-    rest = {}
-    for n, p in model.named_parameters():
-        if p.dtype != torch.uint8:
-            rest[str(p.dtype)] = rest.get(str(p.dtype), 0) + p.numel() * p.element_size()
-    devices = sorted({str(p.device) for p in model.parameters()})
-    res["load"] = {"seconds": round(load_s, 1), "class": type(model).__name__,
-                   "missing_keys": sorted(info["missing_keys"]), "unexpected_keys": sorted(info["unexpected_keys"])[:20],
-                   "n_unexpected": len(info["unexpected_keys"]),
-                   "mismatched_keys": [str(x) for x in info.get("mismatched_keys", [])][:20],
-                   "n_linear4bit": len(lin4), "bf16_linear_modules": lin16,
-                   "visual_modules": sum("visual" in n for n, _ in model.named_modules()),
-                   "mtp_modules": sum(n.startswith("mtp") for n, _ in model.named_modules()),
-                   "param_devices": devices,
-                   "attn_implementation": model.config._attn_implementation,
+    model, info, load_s = q38.load()
+    res["load"] = {"seconds": round(load_s, 1), **q38.inventory(model, info),
                    "torch_peak_allocated_GiB": gib(torch.cuda.max_memory_allocated()),
                    "torch_peak_reserved_GiB": gib(torch.cuda.max_memory_reserved()),
-                   "resident": {"nf4_packed_GiB": gib(packed),
-                                "other_params_GiB": {k: gib(v) for k, v in rest.items()},
-                                "allocated_minus_params_GiB": gib(torch.cuda.memory_allocated() - packed
-                                                                  - sum(rest.values()))},
                    "arithmetic_resident_GiB": 16.44}
+    devices = res["load"]["param_devices"]
     res["load"]["phase_peaks"] = phase_peak("load")
     free()
     res["idle"] = [mem("after load")]

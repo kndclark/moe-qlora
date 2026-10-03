@@ -15,8 +15,9 @@
 #   G7A: more g7a_eval.py options for every eval of this model.
 #   LOW_EFFORT=1 adds a third pass, thinking on with reasoning_effort low, labelled
 #   <TAG>-low (Qwen3.8, whose template defaults to xhigh).
-#   ADAPTER=dir (laptop only) serves a LoRA adapter as <TAG>, the base as <TAG>-base, and
-#   evaluates the adapter (as g6_eval.sh serves its adapters: --max-lora-rank 16).
+#   ADAPTER=dir serves a LoRA adapter as <TAG>, the base as <TAG>-base, and evaluates the
+#   adapter (as g6_eval.sh serves its adapters: --max-lora-rank 16). On the desktop the
+#   adapter is first copied to /tmp/s1-adapter-<TAG> there and its checksum compared.
 #   REP=N files a repeat run under <TAG>-rN (labels, results/s1/, container); the served
 #   name stays <TAG>. s1_compare.py reads it as model <TAG>-rN (or <TAG>-rN-low).
 #   PASSES="think-low ..." runs only the named passes (think, nothink, think-low).
@@ -47,8 +48,14 @@ extra=(${EXTRA:-})
 if [ "$NODE" = desktop ]; then q=(); for w in "${extra[@]}"; do q+=("$(printf %q "$w")"); done; extra=("${q[@]}"); fi
 served=$TAG mount=()
 if [ -n "${ADAPTER:-}" ]; then
-  [ "$NODE" = laptop ] || { echo "ADAPTER is laptop only"; exit 1; }
-  served=$TAG-base mount=(-v "$(realpath "$ADAPTER")":/adapter:ro)
+  src=$(realpath "$ADAPTER")
+  if [ "$NODE" = desktop ]; then  # the container runs there: copy the adapter over, check it
+    src=/tmp/s1-adapter-$ftag
+    ssh llm mkdir -p $src && scp -q "$ADAPTER/adapter_config.json" "$ADAPTER/adapter_model.safetensors" llm:$src/ || exit 1
+    [ "$(ssh llm sha256sum $src/adapter_model.safetensors | cut -d' ' -f1)" = \
+      "$(sha256sum "$ADAPTER/adapter_model.safetensors" | cut -d' ' -f1)" ] || { echo "adapter copy differs"; exit 1; }
+  fi
+  served=$TAG-base mount=(-v "$src":/adapter:ro)
   extra+=(--enable-lora --max-lora-rank 16 --max-loras 1 --lora-modules "$TAG=/adapter")
 fi
 "${run[@]}" run -d --name $name --gpus all --ipc=host -p $port \

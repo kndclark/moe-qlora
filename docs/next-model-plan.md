@@ -667,3 +667,73 @@ What it does not settle:
   32B says the same.
 - **Pool room and fidelity** are not touched here. Whether the NF4 model keeps the base's
   eval rows is a G2-style question this probe does not ask.
+
+## Q2: Qwen3.8-27B on G6q's data, pre-registered 2026-10-03
+
+David, 2026-10-03: "proceed with the Qwen training run on the laptop", after Q1 passed.
+
+### The run: `probes/q2_train.py`, through `probes/gpurun.sh`, `GUARD=hw`
+
+- **Load, render, targets:** Q1's, unchanged: `Qwen/Qwen3.8-27B` @ 1d4bf0f2, NF4 on load,
+  text only, no fp32 upcast, gradient checkpointing, chunked cross-entropy (chunk 256), LoRA
+  r16 on Q1's `TARGETS` (attention q/k/v/o, DeltaNet in_proj_qkv/z/b/a, MLP up/down). Thinking-on
+  records render at `reasoning_effort` low, the effort Qwen3.8 is served at.
+- **Optimisation: G6q's**, as `g6_train.py` runs it: 2 epochs, 8 records per optimizer step at
+  batch 1, the loss normalised over every assistant token in the step, paged AdamW 8-bit,
+  lr 1e-4, weight decay 0, cosine schedule with warmup round(3% of steps), clip 1.0, seed 0,
+  a fresh record order per epoch from `torch.Generator(seed + epoch)`. One sequence per
+  record, cut at 2,048 tokens: none is longer (Q1: max 1,901). 1,248 records make 312 steps.
+- **Before the run:** a `DRY_RUN` that must reproduce Q1's token counts and 2,424/2,424
+  boundary parity, then a 2-step smoke adapter that vLLM v0.29.0 must load on the INT4 base
+  with every trained module applied (no "ignored" LoRA modules), answering one request.
+- **Hard stops:** an OOM or a guard abort ends the run; the adapter so far is saved as
+  `-partial`. Moving any setting after a stop needs David.
+
+```
+DATASET=/out/research_dataset_g6q.json GUARD=hw MAX_LEN=2048 \
+  probes/gpurun.sh q2-train /probes/q2_train.py q2-train
+```
+
+### Eval
+
+`s1_screen.sh` on the desktop 3090 with `ADAPTER=results/q2-train-adapter` on the INT4 base
+(`RedHatAI/Qwen3.8-27B-INT4` @ 91bd022d, util 0.90, fp8 KV, language model only), TAG
+`q38-g6q`, `PASSES="think-low nothink"`: the seven sets thinking on at low effort and
+thinking off, the S1 protocol otherwise.
+
+**Amended before any Q2 eval ran: the desktop, not the laptop.** The smoke adapter's load
+test on the laptop at these flags failed: 0.65 GiB of KV room against the 0.81 GiB one
+request of 16,384 tokens needs ("estimated maximum model length is 9408",
+`results/q2-smoke-vllm.log`). A shorter `--max-model-len` would change the protocol: the
+thinking-on pass allows 4,096 new tokens after prompts of up to 6,099, about 10.2k. The
+same smoke adapter on the desktop at the same flags, 2026-10-03:
+
+- **Room:** 1.15 GiB of KV, 23,130 tokens, 1.41 requests of 16,384; the base alone had 1.63
+  GiB and 31,804 there (S1, r2).
+- **Applied:** at temperature 0 the adapter's token logprobs differ from the base's (mean
+  0.0095, max 0.064 over 44 tokens), while base against base and adapter against adapter
+  are identical. vLLM's DEBUG log skips only modules the adapter does not train (48
+  `out_proj`, 48 `conv1d`, `embed_tokens`, `lm_head`).
+
+Two of base Qwen3.8's three low-effort runs (S1, r2) were served on this card as well.
+
+**A known confound:** the adapter trains against NF4-quantized BF16 weights and is served on
+the W4A16 INT4 build, the only Qwen3.8 that fits one card for serving. Lightning's G6q has
+the same kind of gap (NF4 in training, NVFP4 in serving).
+
+### Readings, CHOSEN before the run
+
+All rows by P1 (sign test p < 0.05 on the row's discordant items, Holm count beside).
+Where a reference has three runs, each item is its mean over them, as `n2_items.py` does;
+Q2 has one run.
+
+1. **Did training help?** Q2 against base Qwen3.8: thinking on against the three low-effort
+   runs (S1, r2, r3), thinking off against S1's one run. G6's rule under P1: it must win
+   held_out and lose none of trap, trap_control, no_tool, task, rocky_task, alert and promql.
+2. **Does it reach G6q?** Thinking on against G6q's three N1 runs, thinking off against its
+   three L7 runs. It reaches G6q if it loses no row and the pooled sign test does not favour
+   G6q at p < 0.05.
+3. **Does it pass G6q?** Same comparison: at least one row won, none lost, and the pooled
+   sign test favouring Q2 at p < 0.05. Only this makes Qwen3.8 + adapter the new candidate
+   on quality alone; room (Qwen3.8 has 0.12x Lightning's KV) and speed (46.7 against ~220
+   tok/s) are reported beside it, not folded in.

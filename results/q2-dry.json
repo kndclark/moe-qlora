@@ -1,0 +1,70 @@
+{
+ "label": "q2-dry",
+ "model": "Qwen/Qwen3.8-27B",
+ "revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+ "dataset": "/out/research_dataset_g6q.json",
+ "guard": "g5",
+ "config": {
+  "epochs": 2,
+  "lr": 0.0001,
+  "records_per_step": 8,
+  "batch": 1,
+  "max_len": 2048,
+  "rank": 16,
+  "alpha": 32,
+  "dropout": 0.05,
+  "seed": 0,
+  "targets": ".*\\.self_attn\\.(q_proj|k_proj|v_proj|o_proj)$|.*\\.linear_attn\\.(in_proj_qkv|in_proj_z|in_proj_b|in_proj_a)$|.*\\.mlp\\.(up_proj|down_proj)$",
+  "clip": 1.0,
+  "warmup_frac": 0.03,
+  "weight_decay": 0.0,
+  "optimizer": "paged_adamw_8bit",
+  "ce_chunk": 256,
+  "reasoning_effort": "low",
+  "fp32_upcast": false,
+  "gradient_checkpointing": "non-reentrant",
+  "checkpoint_every": 52,
+  "smoke_steps": 0
+ },
+ "data": {
+  "records": 1248,
+  "tokens": 1190982,
+  "assistant_tokens": 105943,
+  "p50": 862,
+  "p90": 1500,
+  "max": 1901,
+  "truncated": 0,
+  "no_assistant_tokens": 0,
+  "off_records": 357
+ },
+ "q1_counts": {
+  "records": 1248,
+  "tokens": 1190982,
+  "assistant_tokens": 105943,
+  "p50": 862,
+  "p90": 1500,
+  "p95": 1543,
+  "max": 1901,
+  "over_512": 1102,
+  "over_1024": 491,
+  "over_2048": 0,
+  "no_trained_tokens": 0,
+  "off_records": 357,
+  "turns_with_think_masked": 2424
+ },
+ "parity": {
+  "turns": 2424,
+  "boundary_ok": 2424,
+  "boundary_bad": 0,
+  "exact": 1639,
+  "history_diff_turns": 785,
+  "bad_examples": [],
+  "pass": true
+ },
+ "schedule": {
+  "steps_per_epoch": 156,
+  "total_steps": 312,
+  "warmup_steps": 9
+ },
+ "time": "2026-10-03T15:15:17+0000"
+}
