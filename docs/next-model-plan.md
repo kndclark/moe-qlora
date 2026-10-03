@@ -738,6 +738,59 @@ Q2 has one run.
    on quality alone; room (Qwen3.8 has 0.12x Lightning's KV) and speed (46.7 against ~220
    tok/s) are reported beside it, not folded in.
 
+`probes/q2_compare.py` (`results/q2-compare.json`) computes these; before any Q2 eval ran it
+fixed the one pooled test of readings 2 and 3 as: reaches if neither mode's pooled test nor
+both modes' together favours G6q; passes only if both modes' together favours Q2.
+
+### Q2 results, 2026-10-03
+
+**The run:** 312 of 312 steps in 2.92 h on the laptop, no OOM and no guard abort; loss 1.33
+on step 1 to 0.037 on step 312 (the last 10 steps' mean 0.149 at the end of epoch 1, 0.098 at
+the end of epoch 2); the card peaked at 22.25 GiB (20.68 GiB allocated by torch) and 87 C,
+its thermal target, below the guard's 90; the only throttle flag was `sw_power_cap`, the
+175 W limit (`results/q2-train.json`). Adapter: `results/q2-train-adapter/` (gitignored), with
+checkpoints at steps 52 to 312.
+
+**Served on the desktop** at the pre-registered flags: 17.1 GiB of weights and LoRA, 1.15
+GiB of KV, 23,130 tokens, 1.41 requests of 16,384; decode 38.4 tok/s at c=1 and 32.0 a
+stream at c=16, against the base's 46.8 and 38.1 on the same card (r2). The seven sets took
+767 s thinking on and 753 s thinking off; base Qwen3.8's low-effort pass took 1,551 s on
+this card (r2).
+
+**It no longer thinks.** With thinking on, every turn of v2 (263 of 263) opens with an empty
+`<think>` block and goes straight to the tool call or answer: 86 tokens an item on v2
+against the base's 535 (r2), 78 over all seven sets. G6q's data teaches that: its 891 thinking-on records carry no reasoning,
+the label starts at `</think>`. G6q does the same (271 of 274 v2 turns empty, 85 tokens an
+item, against base Lightning's 737), so the comparison with G6q is like for like.
+
+| reading | thinking on | thinking off | verdict |
+|---|---|---|---|
+| 1. against base Qwen3.8 | P1 win 5, loss 0 (Holm 2 of 20); pooled 122/36 | P1 win 7, loss 0 (Holm 2 of 20); pooled 119/32 | **helped**: G6's rule passes in both |
+| 2. against G6q (N1 x3 / L7 x3) | P1 win 1 (rocky_task 8/1, p 0.039), loss 0 (Holm 0 of 14); pooled 29/22, p 0.40 | P1 win 0, loss 0 (Holm 0 of 20); pooled 23/36, p 0.12 | **reaches G6q** |
+| 3. passes G6q | | | **no**: both modes pooled 52/58, p 0.63 |
+
+- Reading 1's wins are the flag rows (held_out, held_out2, rocky_held_out, seen_tool thinking
+  on) and the traps (rocky_trap; with thinking off also trap, trap2 and trap3). No row is
+  lost; task (4/5 thinking on) and the trap controls (0/4) lean to the base without reaching
+  p < 0.05.
+- Against base Lightning's N1 runs, thinking on: P1 win 4, loss 0, pooled 112/31.
+- **Reasoning rows**, thinking on, in items (one run; three-run means for the rest):
+
+  | | task | rocky_task | promql | alert | trap3 noticed |
+  |---|---|---|---|---|---|
+  | Q2 | 15 | 14 | 14 | 8 | 7 |
+  | base Qwen3.8 low x3 | 17.67 | 13.33 | 13.67 | 9.00 | 7.33 |
+  | G6q N1 x3 | 14.67 | 8.00 | 13.67 | 5.00 | 5.00 |
+  | base Lightning N1 x3 | 13.00 | 12.67 | 12.00 | 6.00 | 3.67 |
+
+  Q2 keeps base Qwen3.8's reasoning rows within a few items while gaining G6q's flag rows;
+  G6q lost rocky_task in training (8.00 against Lightning's 12.67), Q2 did not.
+
+**Verdict by the pre-registered rule: Qwen3.8 + adapter reaches G6q and does not pass it, so
+it is not the new candidate on quality alone.** Beside it, not folded in: it holds 23,130 KV
+tokens on a 3090 against Lightning's ~266k on one card, and decodes at 38 tok/s against
+~225. G6q stays the candidate; Q2 is the stronger reasoner at the same flag accuracy.
+
 ## Memory tiers: RAM for the KV cache and for 70B weights, pre-registered 2026-10-03
 
 David, 2026-10-03, after asking whether the nodes' system RAM can add to their VRAM: "lets
