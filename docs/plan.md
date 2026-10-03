@@ -2005,6 +2005,17 @@ the laptop and the desktop in parallel):
     (trap3). G6u stays on `main` until David decides.
 - **L8 the thinking-on yardstick.** Qwen v3 thinking on at 4096 tokens, five sets x three
   repeats, item by item against G6u's N1 runs (and G6q's if L7 moves).
+  - **First try (MEASURED, 2026-10-02 19:27, chain):** the server did not start: Qwen3-8B
+    at `--max-model-len 16384` needs 2.25 GiB of KV for one request and had 1.97 GiB at
+    util 0.85 (`results/noise/qwenv3-noise-think-serve-l8-oom.log`). The 16,384 was this
+    ledger's choice, to match G6u's thinking-on server; there was no earlier Qwen
+    thinking-on run to copy. An OOM is a hard stop: options put to David were util 0.88
+    or `--max-model-len 14304`, recommending 0.88 (same length as G6u's server).
+  - David, 2026-10-02: "go with your memory setting recommendation for L8". Rerun:
+    `THINK=on N2_UTIL=0.88 probes/n2_qwen.sh "r1 r2 r3"` (`N2_UTIL` defaults to 0.85, so
+    N2's runs reproduce), first in the post-chain session (`results/pool-session.log`).
+  - David, same evening: "in case i step away again, you are approved for recommended
+    training actions throughough the night". Runs taken under it say so here.
 - **L9 render design B.** 588 of 1824 history turns are off by a newline under design A
   (memory: revisit "if Lightning becomes default", which is now). Rebuild the candidate's
   data with design B, train (G6u took 56 min), three repeats in both modes, item by item.

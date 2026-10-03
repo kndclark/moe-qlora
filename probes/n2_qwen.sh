@@ -9,6 +9,8 @@
 # usage: [THINK=on] n2_qwen.sh "r2 r3"
 #   THINK=on (gap ledger L8): thinking on, 4096 tokens, N1's five sets, labels
 #   ...-L-adv3-think-4k-rN, and --max-model-len 16384 (G6u's server) so the answers fit.
+#   N2_UTIL sets --gpu-memory-utilization (default 0.85). L8 runs 0.88 (David, 2026-10-02):
+#   at 0.85 Qwen3-8B had 1.97 GiB of KV and one 16,384-token request needs 2.25.
 set -u
 reps=$1
 here=$(cd "$(dirname "$0")/.." && pwd)
@@ -34,7 +36,7 @@ docker run -d --name "$name" --init --gpus all --ipc=host -v /srv/model-cache:/h
   --lora-modules research-v2=/hf/adapters/qwen3-8b-research-v2 \
   research-v3=/hf/adapters/qwen3-8b-research-v3 \
   research-v3-ep1=/hf/adapters/qwen3-8b-research-v3/checkpoints/checkpoint-119 \
-  --max-model-len $maxlen --gpu-memory-utilization 0.85 >/dev/null || exit 1
+  --max-model-len $maxlen --gpu-memory-utilization ${N2_UTIL:-0.85} >/dev/null || exit 1
 t0=$(date +%s)
 until curl -sf $B/health >/dev/null; do
   if [ "$(docker inspect -f '{{.State.Running}}' "$name" 2>/dev/null)" != true ]; then
