@@ -844,6 +844,27 @@ a run now gets more KV room than r3 had and could be faster for that alone. So K
 flags first, filed as repeat r4 (`TAG=q38-int4 REP=4`), then the same with the RAM tier
 (`TAG=q38-kvo`), back to back; the reading is the RAM-tier arm against r4, with r3 beside.
 
+**K1 result (MEASURED, 2026-10-03): no gain, as predicted.** Both arms 268 MiB of desktop
+apps, KV 20,239 tokens, all 7 sets exit 0, no request preempted in either serve log:
+
+| | r3 | r4 (control) | q38-kvo (RAM tier) |
+|---|---|---|---|
+| KV room, tokens | 19,275 | 20,239 | 20,239 |
+| summed `elapsed_s` | 2,186 | 1,902 | 2,039 |
+| tokens generated | 219,204 | 213,712 | 214,430 |
+| generated per second | 100.3 | 112.4 | 105.2 |
+| decode c=1 / c=16, tok/s | | 42.45 / 38.0 | 42.17 / 37.6 |
+
+- The RAM tier served almost nothing: its hit rate ("External prefix cache hit rate") read
+  0.0 to 2.3%, mostly under 1%; VRAM's read 0.0% in all 225 lines. Answers ran past 1,568
+  tokens, so whole blocks were stored, but almost no later prompt shared them.
+- At equal output (+0.3%) the RAM-tier arm ran 7% longer; the copies out to RAM are a
+  plausible cost, but we have no laptop-to-laptop spread at equal KV to call 7% real.
+- r4 ran 13% faster than r3 with 5% more KV room, the only difference in their flags being
+  the desktop apps' memory. The laptop's eval time follows VRAM KV room (how many requests
+  run at once), which a RAM tier does not add: closing apps did more than 24 GiB of RAM.
+  Against the desktop's 1,558 s (31,804 tokens) the gap narrowed from 628 s to 344 s.
+
 ### W70: training a 70B with its 4-bit weights streamed from RAM
 
 `probes/w70_stream.py` (its docstring has the design). The lab's earlier "70B CPU offload is
