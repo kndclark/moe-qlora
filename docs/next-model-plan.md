@@ -737,3 +737,71 @@ Q2 has one run.
    sign test favouring Q2 at p < 0.05. Only this makes Qwen3.8 + adapter the new candidate
    on quality alone; room (Qwen3.8 has 0.12x Lightning's KV) and speed (46.7 against ~220
    tok/s) are reported beside it, not folded in.
+
+## Memory tiers: RAM for the KV cache and for 70B weights, pre-registered 2026-10-03
+
+David, 2026-10-03, after asking whether the nodes' system RAM can add to their VRAM: "lets
+try 1. Add --kv-offloading-size to laptop Qwen3.8 serving and compare eval wall time ...
+2. Check whether 4-bit weight streaming can train a 70B model on the laptop."
+
+**Measured, both nodes** (`torch` copies of 1 GiB, best of 5, pinned host memory):
+
+| | laptop RTX 5090 Laptop | desktop RTX 3090 |
+|---|---|---|
+| RAM | 61 GiB, 2 x 32 GB DDR5-6400 | 30 GiB, 4 x 8 GB DDR4-2133 |
+| PCIe | Gen5 x16 | Gen3 x16 |
+| RAM to GPU | 51.8 GB/s | 12.2 GB/s |
+| GPU to RAM | 23.6 GB/s | 11.2 GB/s |
+| copy inside VRAM | 717 GB/s | 806 GB/s |
+
+### K1: a RAM tier for Qwen3.8's KV cache on the laptop
+
+r3's command (`NODE=laptop`, util 0.90, fp8 KV, language model only, `PASSES=think-low`)
+plus `--kv-offloading-size 24`: vLLM v0.29.0's native CPU offloading, 24 GiB of RAM. TAG
+`q38-kvo`. It is a prefix tier, keyed by block hash (`OffloadingConnector`, which declares
+hybrid-model support, `SupportsHMA`): a request whose prefix blocks were evicted from VRAM
+loads them back from RAM instead of recomputing them. It does not let more requests run.
+
+**Prediction: no gain.** Every Qwen3.8 serve so far logged a prefix-cache hit rate of 0.0%
+(S1 589 lines, r2 170, r3 244), on the desktop's larger cache too, and none preempted a
+request. vLLM sets Qwen3.8's attention block to 1,568 tokens so that a block's page matches
+a DeltaNet state's ("Setting attention block size to 1568 tokens"); a hit needs a whole
+such block and its saved state. A RAM tier holds what VRAM evicted; nothing hit before
+eviction. **Reading:** the seven sets' summed `elapsed_s` against r3's 2,186 s (2,194 s by
+the screen's clock) and the serve log's hit rate. Below 2,186 s by more than the
+laptop-to-laptop spread we have no measure of yet would be a gain; the hit rate says why.
+
+### W70: training a 70B with its 4-bit weights streamed from RAM
+
+`probes/w70_stream.py` (its docstring has the design). The lab's earlier "70B CPU offload is
+ruled out" came from accelerate keeping offloaded weights in bf16 (gpu-lab 3e41b1e); here
+every layer is NF4 in pinned RAM and is copied to the card only while it computes, the next
+layer's copy overlapping the current layer's work. Base: the GPTQ-INT4 Llama-3.1-70B the
+pool already serves (no download), unpacked and re-quantized to NF4. LoRA and optimisation
+as Q2; data G6q's records in Llama 3.1's template (1,248 render, 1,064,148 tokens, longest
+1,800, none cut).
+
+**Gates, in order:**
+1. `SELFTEST=1` on the first 4 layers: the layer loop streamed equals it resident bitwise
+   (loss and every LoRA gradient), and equals plain autograd to within 2% of the largest
+   gradient; GPTQ's unpacked zeros are all 8 (it is symmetric).
+2. The 80-layer run, `RESIDENT=0` (every layer streamed), `STEPS=6`: step 1 is the 8
+   longest records, then 5 steps in G6q's epoch-0 order. A record's loss must be sane for
+   an instruct model on chat text (below about 3 nats a token; a wrong unpack gives far more).
+3. If 2 fits, `RESIDENT` raised to the most layers that fit, and the speed difference.
+
+**Arithmetic before the run** (to be checked against the run, not trusted):
+- an NF4 layer is 0.41 GiB (855.6M parameters at 4 bits plus an absmax byte per 64), so
+  80 layers are 32.9 GiB of pinned RAM;
+- each record copies every layer twice (forward, then backward), 65.7 GiB, about 1.4 s at
+  51.8 GB/s, so about 11 s per 8-record step;
+- the card holds about 9 GiB besides layers: lm_head 1.96, LoRA r16 (159.9M parameters,
+  fp32 with gradients and 8-bit Adam) 1.5, the kept layer inputs at 1,800 tokens 2.2, one
+  layer's working set about 1, two layers in flight 0.8, CUDA and desktop apps about 1.6;
+  so about 25 to 30 layers could stay resident;
+- compute about 2.5 times Q2's per token (70.6B against 27.8B parameters), so about 80 s a
+  step and about 7 h for G6q's 2 epochs if the copies hide behind it.
+
+**Reading:** it trains on this card if gates 1 and 2 pass with no OOM and no guard abort;
+reported beside it are the peak memory, seconds a step, the copy volume, how much of each
+streamed layer's time the copy adds, and the hours a full run would take.
