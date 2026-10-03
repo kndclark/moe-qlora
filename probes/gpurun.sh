@@ -14,7 +14,7 @@ docker run --rm --init --gpus all --ipc=host -v /srv/model-cache:/hf:ro \
   -v $HOME/gpu-lab/training:/gpulab/training:ro \
   -e PLATFORM_PROFILE=$(cat /sys/firmware/acpi/platform_profile) \
   -e HF_HOME=/hf -e HF_HUB_OFFLINE=1 -e PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
-  -e PYTHONDONTWRITEBYTECODE=1 -e LEAN_LORA -e EXPERT_LORA -e EXPERT_R -e LM_HEAD_LORA -e CE_CHUNK -e DRY_RUN -e GUARD -e RENDER -e DATASET -e MAX_LEN -e BASE -e SMOKE_STEPS -e SELFTEST -e RESIDENT -e LAYERS -e STEPS --user $(id -u):$(id -g) \
+  -e PYTHONDONTWRITEBYTECODE=1 -e LEAN_LORA -e EXPERT_LORA -e EXPERT_R -e LM_HEAD_LORA -e CE_CHUNK -e DRY_RUN -e GUARD -e RENDER -e DATASET -e MAX_LEN -e BASE -e SMOKE_STEPS -e SELFTEST -e LOSSCHECK -e RESIDENT -e LAYERS -e STEPS --user $(id -u):$(id -g) \
   --entrypoint python3 gpu-lab:training "$@" > $repo/results/$label.log 2>&1
 rc=$?
 echo "$stamp" >> $repo/results/$label.log

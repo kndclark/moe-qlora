@@ -64,6 +64,9 @@ TARGETS = r".*\.self_attn\.(q_proj|k_proj|v_proj|o_proj)$|.*\.mlp\.(up_proj|down
 HEADER = "<|start_header_id|>assistant<|end_header_id|>\n\n"
 label = sys.argv[1]
 SELFTEST = os.environ.get("SELFTEST") == "1"
+LOSSCHECK = int(os.environ.get("LOSSCHECK") or 0)  # N records through all 80 layers, bf16 and NF4
+if SELFTEST:  # cuBLAS's deterministic workspace, set before CUDA starts
+    os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
 GUARD = os.environ.get("GUARD", "g5")
 DATASET = os.environ.get("DATASET") or "/out/research_dataset_g6q.json"
 MAX_LEN = int(os.environ.get("MAX_LEN") or 2048)
@@ -217,15 +220,25 @@ def offload(m):
     m._w70_cpu = (cw, ca)
 
 
-sampler.phase = "load"
-t0 = time.time()
-stack = Stack()
 quant_check, zeros_seen = None, set()
-for i in range(L):
+
+
+def make_layer(i, kind="nf4"):
+    """Decoder layer i on the GPU: its linears NF4 (Linear4bit), or kind="bf16", the GPTQ unpack
+    itself in plain nn.Linear (LOSSCHECK's reference)."""
+    global quant_check
     with torch.device("meta"):
         layer = LlamaDecoderLayer(cfg, layer_idx=i)
     for part, names in LIN.items():
         for n in names:
+            if kind == "bf16":
+                W = dequant(f"model.layers.{i}.{part}.{n}")
+                lin = torch.nn.Linear(W.shape[1], W.shape[0], bias=False, device=dev, dtype=torch.bfloat16)
+                lin.weight.data.copy_(W)
+                lin.weight.requires_grad_(False)
+                setattr(getattr(layer, part), n, lin)
+                del W
+                continue
             lin, W = linear4(f"model.layers.{i}.{part}.{n}", zeros_seen)
             if quant_check is None:  # layer 0 q_proj: the dequant's scale and NF4's error on it
                 back = bnb.functional.dequantize_4bit(lin.weight.data, lin.weight.quant_state).float()
@@ -234,30 +247,78 @@ for i in range(L):
                 del back
             setattr(getattr(layer, part), n, lin)
             del W
-            if not SELFTEST and i >= RESIDENT:  # the card cannot hold 80 layers, even briefly
-                offload(lin)
     layer.input_layernorm = norm(f"model.layers.{i}.input_layernorm.weight")
     layer.post_attention_layernorm = norm(f"model.layers.{i}.post_attention_layernorm.weight")
     assert not [n for n, p in layer.named_parameters() if p.is_meta], i
-    stack.layers.append(layer)
-    if i % 10 == 9:
-        torch.cuda.empty_cache()
-        print(f"layer {i + 1}/{L} at {time.time() - t0:.0f}s, GPU {gib(torch.cuda.memory_allocated())} GiB", flush=True)
-del handles
-quant_check["gptq_zeros_seen"] = sorted(zeros_seen)  # sym=True: every zero should be 8
-res["quant_check"] = quant_check
+    return layer
+
+
+sampler.phase = "load"
+t0 = time.time()
 embed = tensor("model.embed_tokens.weight").to(torch.bfloat16)  # RAM; lookup on the CPU
 final_norm = norm("model.norm.weight")
 lm_head = torch.nn.Linear(cfg.hidden_size, cfg.vocab_size, bias=False, device=dev, dtype=torch.bfloat16)
 lm_head.weight.data.copy_(tensor("model.lm_head.weight") if "model.lm_head.weight" in wmap else tensor("lm_head.weight"))
 lm_head.weight.requires_grad_(False)
 rotary = LlamaRotaryEmbedding(cfg).to(dev)
+
+
+def embed_ids(ids):
+    return F.embedding(torch.tensor(ids), embed).to(dev, non_blocking=True).unsqueeze(0)
+
+
+if LOSSCHECK:  # the unpack's proof: every layer built, run on a few records and dropped
+    order0 = torch.randperm(len(data), generator=torch.Generator().manual_seed(SEED)).tolist()
+    picks = [j for j in order0 if data[j] and n_items[j] > 0][:LOSSCHECK]
+    pos = [torch.arange(len(data[j]["ids"]), device=dev).unsqueeze(0) for j in picks]
+    hs = {k: [embed_ids(data[j]["ids"]) for j in picks] for k in ("bf16", "nf4")}
+    pe = [rotary(hs["bf16"][r], pos[r]) for r in range(len(picks))]
+    with torch.no_grad():
+        for i in range(cfg.num_hidden_layers):
+            for kind in hs:
+                layer = make_layer(i, kind)
+                hs[kind] = [layer(h, position_ids=pos[r], position_embeddings=pe[r]) for r, h in enumerate(hs[kind])]
+                del layer
+            if i % 10 == 9:
+                torch.cuda.empty_cache()
+                print(f"losscheck layer {i + 1} at {time.time() - t0:.0f}s", flush=True)
+        out = []
+        for r, j in enumerate(picks):
+            y_all = torch.tensor([data[j]["ids"]], device=dev)
+            y_asst = torch.tensor([data[j]["labels"]], device=dev)
+            row = {"record": j, "tokens": len(data[j]["ids"]), "assistant_tokens": n_items[j]}
+            for kind, h in hs.items():
+                x = final_norm(h[r])
+                row[kind] = {"all": round(chunked_ce.chunked_loss(lm_head, x, y_all, CE_CHUNK).item(), 4),
+                             "assistant": round(chunked_ce.chunked_loss(lm_head, x, y_asst, CE_CHUNK).item(), 4)}
+            out.append(row)
+    quant_check["gptq_zeros_seen"] = sorted(zeros_seen)
+    res.update({"quant_check": quant_check, "losscheck": out, "wall_s": round(time.time() - t0, 1)})
+    sampler.stop = True
+    dump()
+    print(json.dumps(res["losscheck"], indent=1), flush=True)
+    sys.exit(0)
+
+stack = Stack()
+for i in range(L):
+    layer = make_layer(i)
+    if not SELFTEST and i >= RESIDENT:  # the card cannot hold 80 layers, even briefly
+        for m in layer.modules():
+            if isinstance(m, bnb.nn.Linear4bit):
+                offload(m)
+    stack.layers.append(layer)
+    if i % 10 == 9:
+        torch.cuda.empty_cache()
+        print(f"layer {i + 1}/{L} at {time.time() - t0:.0f}s, GPU {gib(torch.cuda.memory_allocated())} GiB", flush=True)
+quant_check["gptq_zeros_seen"] = sorted(zeros_seen)  # sym=True: every zero should be 8
+res["quant_check"] = quant_check
+handles.clear()
 torch.manual_seed(SEED)
 inject_adapter_in_model(LoraConfig(r=RANK, lora_alpha=2 * RANK, lora_dropout=0.05, bias="none",
                                    target_modules=TARGETS), stack)
 for n, p in stack.named_parameters():
-    if "lora_" in n:
-        p.data = p.data.to(dev)
+    if "lora_" in n:  # fp32, as get_peft_model casts them (Q2); inject_adapter_in_model does not
+        p.data = p.data.to(dev, torch.float32)
 params = [p for n, p in stack.named_parameters() if p.requires_grad]
 assert params and all("lora_" in n for n, p in stack.named_parameters() if p.requires_grad)
 res["lora"] = {"trainable_params": sum(p.numel() for p in params), "dtype": str(params[0].dtype)}
@@ -317,10 +378,6 @@ class Streamer:
             for m, cw, ca in self.items[i]:
                 m.weight.data, m.weight.quant_state.absmax = cw, ca
             del self.live[i]
-
-
-def embed_ids(ids):
-    return F.embedding(torch.tensor(ids), embed).to(dev, non_blocking=True).unsqueeze(0)
 
 
 def head_loss(h, labels, scale):
@@ -405,37 +462,54 @@ def zero():
 
 stack.train()
 if SELFTEST:
+    from torch.nn.attention import SDPBackend, sdpa_kernel
     k = next(j for j, d in enumerate(data) if d and n_items[j] > 50)
     ids, labels = data[k]["ids"][:512], data[k]["labels"][:512]
     n = sum(l != -100 for l in labels[1:])
-    out = {}
-    for name, resident in (("plain", range(L)), ("loop_resident", range(L)), ("loop_streamed", ())):
-        st = Streamer(resident)
-        zero()
-        torch.manual_seed(SEED)
-        torch.cuda.manual_seed(SEED)
-        torch.cuda.synchronize()
-        t = time.time()
-        loss = plain_step(ids, labels, 1.0) if name == "plain" else record_step(st, ids, labels, 1.0)
-        torch.cuda.synchronize()
-        out[name] = {"loss": loss, "grads": grads(), "s": round(time.time() - t, 3)}
-        for i in range(L):  # back to all-GPU for the next variant
-            for m, cw, ca in st.items[i]:
-                if cw is not None:
-                    m.weight.data, m.weight.quant_state.absmax = cw.to(dev), ca.to(dev)
 
-    def cmp(a, b):
+    def variants(names):
+        out = {}
+        for name in names:
+            st = Streamer(range(L) if name != "loop_streamed" else ())
+            zero()
+            torch.manual_seed(SEED)
+            torch.cuda.manual_seed(SEED)
+            torch.cuda.synchronize()
+            t = time.time()
+            loss = plain_step(ids, labels, 1.0) if name == "plain" else record_step(st, ids, labels, 1.0)
+            torch.cuda.synchronize()
+            out[name] = {"loss": loss, "grads": grads(), "s": round(time.time() - t, 3)}
+            for i in range(L):  # back to all-GPU for the next variant
+                for m, cw, ca in st.items[i]:
+                    if cw is not None:
+                        m.weight.data, m.weight.quant_state.absmax = cw.to(dev), ca.to(dev)
+                        del m._w70_cpu
+        return out
+
+    def cmp(out, a, b):
         da = [(x - y).abs().max().item() for x, y in zip(out[a]["grads"], out[b]["grads"])]
         ref = max(x.abs().max().item() for x in out[b]["grads"])
         return {"loss_a": out[a]["loss"], "loss_b": out[b]["loss"], "max_abs_grad_diff": max(da),
                 "max_abs_grad": ref, "bitwise": max(da) == 0.0 and out[a]["loss"] == out[b]["loss"]}
-    res["selftest_result"] = {"record": k, "tokens": len(ids), "trained_tokens": n, "layers": L,
-                              "loop_resident_vs_streamed": cmp("loop_resident", "loop_streamed"),
-                              "plain_vs_loop_resident": cmp("plain", "loop_resident"),
-                              "seconds": {x: out[x]["s"] for x in out}}
-    r = res["selftest_result"]
-    r["pass"] = (r["loop_resident_vs_streamed"]["bitwise"]
-                 and r["plain_vs_loop_resident"]["max_abs_grad_diff"] <= 0.02 * r["plain_vs_loop_resident"]["max_abs_grad"])
+
+    names = ("plain", "loop_resident", "loop_resident_again", "loop_streamed")
+    with sdpa_kernel(SDPBackend.MATH):  # deterministic kernels: streamed must equal resident bitwise
+        torch.use_deterministic_algorithms(True, warn_only=True)
+        det = variants(names)
+        torch.use_deterministic_algorithms(False)
+    fast = variants(names[1:])  # the default kernels, as training runs: their run-to-run floor
+    res["selftest_result"] = r = {
+        "record": k, "tokens": len(ids), "trained_tokens": n, "layers": L,
+        "deterministic": {"resident_vs_again": cmp(det, "loop_resident", "loop_resident_again"),
+                          "resident_vs_streamed": cmp(det, "loop_resident", "loop_streamed"),
+                          "plain_vs_loop_resident": cmp(det, "plain", "loop_resident")},
+        "default_kernels": {"resident_vs_again": cmp(fast, "loop_resident", "loop_resident_again"),
+                            "resident_vs_streamed": cmp(fast, "loop_resident", "loop_streamed")},
+        "seconds": {"deterministic": {x: det[x]["s"] for x in det}, "default": {x: fast[x]["s"] for x in fast}}}
+    d = r["deterministic"]
+    r["pass"] = (d["resident_vs_streamed"]["max_abs_grad_diff"] <= d["resident_vs_again"]["max_abs_grad_diff"]
+                 and d["resident_vs_streamed"]["loss_a"] == d["resident_vs_streamed"]["loss_b"]
+                 and d["plain_vs_loop_resident"]["max_abs_grad_diff"] <= 0.02 * d["plain_vs_loop_resident"]["max_abs_grad"])
     res["torch_peak_GiB"] = gib(torch.cuda.max_memory_allocated())
     sampler.stop = True
     res["phase_peaks"] = sampler.report()

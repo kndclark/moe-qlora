@@ -1,0 +1,97 @@
+{
+ "label": "w70-losscheck-desktop",
+ "model": "hugging-quants/Meta-Llama-3.1-70B-Instruct-GPTQ-INT4",
+ "revision": "1b0ae7f9d6da8b79f36fdc24912f950ecb2b6e91",
+ "selftest": false,
+ "guard": "hw",
+ "config": {
+  "max_len": 2048,
+  "resident": 0,
+  "steps": 6,
+  "lr": 0.0001,
+  "records_per_step": 8,
+  "rank": 16,
+  "alpha": 32,
+  "dropout": 0.05,
+  "targets": ".*\\.self_attn\\.(q_proj|k_proj|v_proj|o_proj)$|.*\\.mlp\\.(up_proj|down_proj)$",
+  "ce_chunk": 256,
+  "schedule_steps": 312,
+  "quant": "GPTQ int4 -> bf16 -> NF4 double quant, blocksize 64"
+ },
+ "data": {
+  "records": 1248,
+  "unrenderable": 0,
+  "unrenderable_examples": [],
+  "tokens": 1064148,
+  "assistant_tokens": 87916,
+  "p50": 766,
+  "max_full": 1800,
+  "truncated": 0
+ },
+ "platform_profile": "not passed",
+ "nvml_used_before_cuda_GiB": 0.477,
+ "quant_check": {
+  "W_std": 0.09980439394712448,
+  "W_absmax": 67.0,
+  "nf4_rel_err": 0.032287999987602234,
+  "gptq_zeros_seen": [
+   8
+  ]
+ },
+ "losscheck": [
+  {
+   "record": 1004,
+   "tokens": 548,
+   "assistant_tokens": 57,
+   "bf16": {
+    "all": 2.0747,
+    "assistant": 1.6703
+   },
+   "nf4": {
+    "all": 2.1667,
+    "assistant": 1.9504
+   }
+  },
+  {
+   "record": 187,
+   "tokens": 389,
+   "assistant_tokens": 50,
+   "bf16": {
+    "all": 2.4592,
+    "assistant": 3.7469
+   },
+   "nf4": {
+    "all": 2.4572,
+    "assistant": 3.8571
+   }
+  },
+  {
+   "record": 975,
+   "tokens": 633,
+   "assistant_tokens": 89,
+   "bf16": {
+    "all": 1.8488,
+    "assistant": 1.4982
+   },
+   "nf4": {
+    "all": 1.9155,
+    "assistant": 1.5493
+   }
+  },
+  {
+   "record": 138,
+   "tokens": 806,
+   "assistant_tokens": 81,
+   "bf16": {
+    "all": 1.7397,
+    "assistant": 2.1888
+   },
+   "nf4": {
+    "all": 1.7999,
+    "assistant": 2.2182
+   }
+  }
+ ],
+ "wall_s": 55.8,
+ "time": "2026-10-03T19:29:02+0000"
+}

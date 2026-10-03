@@ -1,0 +1,127 @@
+{
+ "label": "w70-selftest-desktop",
+ "model": "hugging-quants/Meta-Llama-3.1-70B-Instruct-GPTQ-INT4",
+ "revision": "1b0ae7f9d6da8b79f36fdc24912f950ecb2b6e91",
+ "selftest": true,
+ "guard": "hw",
+ "config": {
+  "max_len": 2048,
+  "resident": 0,
+  "steps": 6,
+  "lr": 0.0001,
+  "records_per_step": 8,
+  "rank": 16,
+  "alpha": 32,
+  "dropout": 0.05,
+  "targets": ".*\\.self_attn\\.(q_proj|k_proj|v_proj|o_proj)$|.*\\.mlp\\.(up_proj|down_proj)$",
+  "ce_chunk": 256,
+  "schedule_steps": 312,
+  "quant": "GPTQ int4 -> bf16 -> NF4 double quant, blocksize 64"
+ },
+ "data": {
+  "records": 1248,
+  "unrenderable": 0,
+  "unrenderable_examples": [],
+  "tokens": 1064148,
+  "assistant_tokens": 87916,
+  "p50": 766,
+  "max_full": 1800,
+  "truncated": 0
+ },
+ "platform_profile": "not passed",
+ "nvml_used_before_cuda_GiB": 0.477,
+ "quant_check": {
+  "W_std": 0.09980439394712448,
+  "W_absmax": 67.0,
+  "nf4_rel_err": 0.032287999987602234,
+  "gptq_zeros_seen": [
+   8
+  ]
+ },
+ "lora": {
+  "trainable_params": 7995392,
+  "dtype": "torch.float32"
+ },
+ "load_s_quantize": 3.4,
+ "selftest_result": {
+  "record": 0,
+  "tokens": 512,
+  "trained_tokens": 18,
+  "layers": 4,
+  "deterministic": {
+   "resident_vs_again": {
+    "loss_a": 12.685361862182617,
+    "loss_b": 12.685361862182617,
+    "max_abs_grad_diff": 0.0,
+    "max_abs_grad": 0.6070721745491028,
+    "bitwise": true
+   },
+   "resident_vs_streamed": {
+    "loss_a": 12.685361862182617,
+    "loss_b": 12.685361862182617,
+    "max_abs_grad_diff": 0.0,
+    "max_abs_grad": 0.6070721745491028,
+    "bitwise": true
+   },
+   "plain_vs_loop_resident": {
+    "loss_a": 12.685361862182617,
+    "loss_b": 12.685361862182617,
+    "max_abs_grad_diff": 0.0,
+    "max_abs_grad": 0.6070721745491028,
+    "bitwise": true
+   }
+  },
+  "default_kernels": {
+   "resident_vs_again": {
+    "loss_a": 12.685354232788086,
+    "loss_b": 12.685354232788086,
+    "max_abs_grad_diff": 0.004036962985992432,
+    "max_abs_grad": 0.6061097979545593,
+    "bitwise": false
+   },
+   "resident_vs_streamed": {
+    "loss_a": 12.685354232788086,
+    "loss_b": 12.685354232788086,
+    "max_abs_grad_diff": 0.004065752029418945,
+    "max_abs_grad": 0.6059398055076599,
+    "bitwise": false
+   }
+  },
+  "seconds": {
+   "deterministic": {
+    "plain": 2.194,
+    "loop_resident": 0.337,
+    "loop_resident_again": 0.338,
+    "loop_streamed": 0.424
+   },
+   "default": {
+    "loop_resident": 0.291,
+    "loop_resident_again": 0.289,
+    "loop_streamed": 0.38
+   }
+  },
+  "pass": true
+ },
+ "torch_peak_GiB": 6.234,
+ "phase_peaks": {
+  "init": {
+   "nvml_used_GiB": 0.477,
+   "temp_C": 44,
+   "watts": 28.9,
+   "rss_GiB": 0.979,
+   "samples": 1,
+   "reason_samples": {}
+  },
+  "load": {
+   "nvml_used_GiB": 7.072,
+   "temp_C": 55,
+   "watts": 263.6,
+   "rss_GiB": 8.885,
+   "samples": 39,
+   "reason_samples": {
+    "sw_power_cap": 9
+   }
+  }
+ },
+ "time": "2026-10-03T19:29:38+0000"
+}
