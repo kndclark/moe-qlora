@@ -785,6 +785,12 @@ laptop-to-laptop spread we have no measure of yet would be a gain; the hit rate 
   So no prefix is ever cached, in VRAM or RAM; the laptop's limit is the KV room for the
   requests running (3.6 at a time), which a RAM tier does not add.
 
+**Amended before either arm ran: a control arm.** At launch, desktop apps held 268 MiB of the
+laptop card against about 0.6 GiB during r3, and vLLM charges other clients' memory to KV, so
+a run now gets more KV room than r3 had and could be faster for that alone. So K1 runs r3's
+flags first, filed as repeat r4 (`TAG=q38-int4 REP=4`), then the same with the RAM tier
+(`TAG=q38-kvo`), back to back; the reading is the RAM-tier arm against r4, with r3 beside.
+
 ### W70: training a 70B with its 4-bit weights streamed from RAM
 
 `probes/w70_stream.py` (its docstring has the design). The lab's earlier "70B CPU offload is
