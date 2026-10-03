@@ -1978,6 +1978,24 @@ the laptop and the desktop in parallel):
     cluster-form TMA calls and 0 cta-form (latest release v0.7.0.post1, 2026-09-29); no
     matching issue found in its tracker. Filing the draft stays David's call.
 
+**Run sheet, fixed 2026-10-02 before any of these ran.** Quality: v1 (or the seven
+sets) thinking off, item by item with `probes/pair_items.py` against the reference
+named; a row counts only at sign-test p < 0.05. Speed: bench.py c=1 / c=16 p50 decode,
+and a change counts past 2.0 tok/s (the side quest's bar, triton's own range).
+- L2: `POOL_GPU_UTIL=0.85 G7C_OUT=l2 G7C_EAGER="" G7C_MORE_FLAGS="--max-num-seqs 16"
+  probes/g7c_pool.sh`; against G7c2 (`G7C_EAGER` unset keeps G7c's exact flag string).
+- L6: `probes/g7d_pool.sh` with the BF16 repo (rev `a9904d24`), `--quantization fp8`,
+  thinking off only, into `results/l6/`; the seven sets against G7d's pooled NVFP4 runs.
+  (`g7d_pool.sh` gains the variables after G7d finishes: bash reads a running script.)
+- `probes/l_single.sh` (base, one card, the gate server's flags without LoRA, bench +
+  v1): L4 `NODE=laptop LABEL=l4-laptop` and `NODE=desktop LABEL=l4-desktop
+  EXTRA="--linear-backend marlin"`; L3 `NODE=laptop LABEL=l3-mtp EXTRA='--speculative-config
+  {"method":"mtp","num_speculative_tokens":3}'`; L11 the same with
+  `{"model":"<DFlash repo>","revision":"8abcc4db...","num_speculative_tokens":3}`; L5
+  `NODE=desktop LABEL=l5-desktop-fi EXTRA="--linear-backend marlin --mamba-backend
+  flashinfer --mamba-ssu-algorithm simple"`. L3, L11 against L4-laptop; L5 against
+  L4-desktop; L4 against the pool (G7c2).
+
 **Needs David's go:** L11 the DFlash draft (1.1 GiB download; every download needs his
 go), only if L3 shows speculative decoding pays here.
   - David, 2026-10-02: "go ahead with draft". Fetched like G0 (desktop, uid 1000, `hf

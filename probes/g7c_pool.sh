@@ -8,6 +8,7 @@
 # usage: [POOL_GPU_UTIL=u] [G7C_OUT=dir] [G7C_MORE_FLAGS="..."] g7c_pool.sh
 #   G7C_OUT names the folder under results/ (default g7c); G7C_MORE_FLAGS is appended
 #   to the pool's vLLM flags (G7c2: "--max-num-seqs 16"). Unset = the original G7c run.
+#   G7C_EAGER="" drops --enforce-eager (L2: CUDA graphs); unset keeps it.
 set -u
 here=$(cd "$(dirname "$0")/.." && pwd)
 out=$here/results/${G7C_OUT:-g7c}
@@ -23,7 +24,7 @@ finish() {
 }
 trap finish EXIT
 POOL_MODEL=$M POOL_MAXLEN=16384 POOL_WAIT_SECS=900 \
-POOL_EXTRA_FLAGS="--revision bee7596271d1495f6992ae224aefde4410e816b8 --kv-cache-dtype fp8 --mamba-cache-mode align --moe-backend marlin --linear-backend marlin --enforce-eager${G7C_MORE_FLAGS:+ $G7C_MORE_FLAGS}" \
+POOL_EXTRA_FLAGS="--revision bee7596271d1495f6992ae224aefde4410e816b8 --kv-cache-dtype fp8 --mamba-cache-mode align --moe-backend marlin --linear-backend marlin${G7C_EAGER- --enforce-eager}${G7C_MORE_FLAGS:+ $G7C_MORE_FLAGS}" \
   "$LAB" pool up > "$out/pool-up.log" 2>&1
 rc=$?
 echo "pool up exit $rc $(date +%T)"
