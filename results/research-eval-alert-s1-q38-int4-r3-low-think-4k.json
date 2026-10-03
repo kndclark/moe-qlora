@@ -1,0 +1,608 @@
+{
+ "label": "alert-s1-q38-int4-r3-low-think-4k",
+ "set": "alert",
+ "promql_catalog": false,
+ "model": "q38-int4",
+ "base": "http://127.0.0.1:8304",
+ "tools": true,
+ "thinking": "on",
+ "max_tokens": 4096,
+ "max_calls": 3,
+ "temperature": 0.0,
+ "top_p": null,
+ "sample_seed": null,
+ "window": 4000,
+ "seed": 20260923,
+ "limit": 0,
+ "started": "2026-10-03T08:38:21-0600",
+ "elapsed_s": 51.6,
+ "tool_versions": {},
+ "provenance": {
+  "harness_sha256": "a56bfe79b0124860548bdf02f11b72bef3af0fc3ba7429c3fdc4e29e90d45ee5",
+  "server_version": "0.29.0",
+  "served": [
+   {
+    "id": "q38-int4",
+    "root": "RedHatAI/Qwen3.8-27B-INT4",
+    "parent": null,
+    "max_model_len": 16384
+   }
+  ]
+ },
+ "summary": {
+  "alert": {
+   "n": 9,
+   "any_call": 0.111,
+   "answered": 1.0,
+   "mean_calls": 0.11,
+   "status": {
+    "answered": 9
+   },
+   "calls_refused": 1,
+   "calls_web": 0,
+   "valid": 1.0,
+   "correct": 1.0,
+   "claims_unrun_lookup": 0.0
+  }
+ },
+ "results": [
+  {
+   "id": "alert-BatteryLowOnBattery",
+   "split": "alert",
+   "alertname": "BatteryLowOnBattery",
+   "question": "Write a Prometheus alerting rule named BatteryLowOnBattery that fires immediately when gpulab_battery_capacity_percent is below 20 and gpulab_ac_online is 0 on the same node.",
+   "series": [
+    [
+     "gpulab_battery_capacity_percent{node=\"laptop\"}",
+     "50x5 15x10"
+    ],
+    [
+     "gpulab_ac_online{node=\"laptop\"}",
+     "1x8 0x7"
+    ]
+   ],
+   "checks": [
+    [
+     "7m",
+     false
+    ],
+    [
+     "10m",
+     true
+    ]
+   ],
+   "run": {
+    "status": "answered",
+    "final": "```yaml\ngroups:\n  - name: battery\n    rules:\n      - alert: BatteryLowOnBattery\n        expr: gpulab_battery_capacity_percent < 20 and gpulab_ac_online == 0\n        labels:\n          severity: warning\n        annotations:\n          summary: \"Battery low on {{ $labels.node }}\"\n          description: \"Battery capacity is {{ $value | printf \\\"%.0f\\\" }}% and AC is not connected.\"\n```\n\n**How it works:**\n\n| Part | Purpose |\n|------|---------|\n| `gpulab_battery_capacity_percent < 20` | Selects series where battery is below 20% |\n| `and` | Binary operator that **matches on all labels** (including `node`), so both sides must be from the same node |\n| `gpulab_ac_online == 0` | Selects series where AC power is absent |\n| No `for` clause | The alert fires **immediately** (no pending delay) |\n\nThe `and` operator is the key to the \"on the same node\" requirement \u2014 it performs a one-to-one match on all label sets, so a node with low battery but AC plugged in (or vice versa) will not trigger the alert.",
+    "calls": [
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "find / -name \"*.yml\" -o -name \"*.yaml\" 2>/dev/null | xargs grep -l \"gpulab\" 2>/dev/null | head -20"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 467,
+      "completion_tokens": 522,
+      "finish_reason": "stop",
+      "text": "The user wants a Prometheus alerting rule with specific requirements:\n- Name: `BatteryLowOnBattery`\n- Fires immediately (no `for` clause, or `for: 0s`)\n- Condition: `gpulab_battery_capacity_percent < 20` AND `gpulab_ac_online == 0`\n- Both conditions must be true on the same node (so we need to use `and` modifier or combine them in a single expression)\n\nLet me think about the Prometheus expression:\n\nTo check both conditions on the same node, I can use:\n- `gpulab_battery_capacity_percent < 20 and gpulab_ac_online == 0`\n\nThe `and` operator in Prometheus keeps the left-hand side series that have matching labels on the right-hand side. Since both metrics are on the same node (same labels), this should work correctly.\n\nFor \"fires immediately\" \u2014 this means no `for` duration, so the alert goes to `pending` and then immediately to `firing` (or just omit the `for` clause entirely, which defaults to 0s).\n\nLet me write the rule:\n\n```yaml\ngroups:\n  - name: battery-alerts\n    rules:\n      - alert: BatteryLowOnBattery\n        expr: gpulab_battery_capacity_percent < 20 and gpulab_ac_online == 0\n        for: 0s\n        labels:\n          severity: warning\n        annotations:\n          summary: \"Battery low on {{ $labels.instance }}\"\n          description: \"Battery capacity is {{ $value }}% and AC is not connected.\"\n```\n\nActually, `for: 0s` is the default, so I can either include it explicitly to make it clear that it fires immediately, or omit it. I'll include it for clarity since the user specifically asked for \"fires immediately.\"\n\nLet me also consider whether I need to verify anything about the metric names. The user specified `gpulab_battery_capacity_percent` and `gpulab_ac_online`, so I'll use those as-is.\n\nLet me check if there's any local context I should look at first.\n</think>\n\n<tool_call>\n<function=bash>\n<parameter=command>\nfind / -name \"*.yml\" -o -name \"*.yaml\" 2>/dev/null | xargs grep -l \"gpulab\" 2>/dev/null | head -20\n</parameter>\n</function>\n</tool_call>"
+     },
+     {
+      "prompt_tokens": 587,
+      "completion_tokens": 640,
+      "finish_reason": "stop",
+      "text": "The user wants a Prometheus alerting rule. Let me just write it directly based on the requirements:\n\n- Name: BatteryLowOnBattery\n- Fires immediately (no `for` clause, or `for: 0s`)\n- Condition: `gpulab_battery_capacity_percent < 20` AND `gpulab_ac_online == 0` on the same node\n\nThe \"on the same node\" part means we need to match on the node label. In Prometheus, when you use `and` operator, it matches on all labels by default. So `gpulab_battery_capacity_percent < 20 and gpulab_ac_online == 0` would already match on the same node (assuming both metrics have a `node` label).\n\nLet me write the rule:\n\n```yaml\ngroups:\n  - name: battery\n    rules:\n      - alert: BatteryLowOnBattery\n        expr: gpulab_battery_capacity_percent < 20 and gpulab_ac_online == 0\n        for: 0s\n        labels:\n          severity: warning\n        annotations:\n          summary: \"Battery low on {{ $labels.node }}\"\n          description: \"Battery capacity is {{ $value }}% and AC is not connected.\"\n```\n\nActually, \"fires immediately\" means no `for` duration, so either omit `for` or set it to `0s`. Omitting it is the cleanest way to express \"immediately.\"\n\nThe `and` operator in Prometheus matches on all labels by default, so if both metrics have a `node` label, they'll only match when the node is the same. This satisfies the \"on the same node\" requirement.\n\nLet me provide a clean answer.\n</think>\n\n```yaml\ngroups:\n  - name: battery\n    rules:\n      - alert: BatteryLowOnBattery\n        expr: gpulab_battery_capacity_percent < 20 and gpulab_ac_online == 0\n        labels:\n          severity: warning\n        annotations:\n          summary: \"Battery low on {{ $labels.node }}\"\n          description: \"Battery capacity is {{ $value | printf \\\"%.0f\\\" }}% and AC is not connected.\"\n```\n\n**How it works:**\n\n| Part | Purpose |\n|------|---------|\n| `gpulab_battery_capacity_percent < 20` | Selects series where battery is below 20% |\n| `and` | Binary operator that **matches on all labels** (including `node`), so both sides must be from the same node |\n| `gpulab_ac_online == 0` | Selects series where AC power is absent |\n| No `for` clause | The alert fires **immediately** (no pending delay) |\n\nThe `and` operator is the key to the \"on the same node\" requirement \u2014 it performs a one-to-one match on all label sets, so a node with low battery but AC plugged in (or vice versa) will not trigger the alert."
+     }
+    ]
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 1,
+    "answered": true,
+    "valid": true,
+    "correct": true,
+    "checks": [
+     {
+      "at": "7m",
+      "want": false,
+      "fired": false,
+      "error": false
+     },
+     {
+      "at": "10m",
+      "want": true,
+      "fired": true,
+      "error": false
+     }
+    ],
+    "claims_unrun_lookup": false
+   }
+  },
+  {
+   "id": "alert-DataDiskAlmostFull",
+   "split": "alert",
+   "alertname": "DataDiskAlmostFull",
+   "question": "Write a Prometheus alerting rule named DataDiskAlmostFull that fires when node_filesystem_avail_bytes divided by node_filesystem_size_bytes is below 0.1 for the /data mountpoint only, for 5 minutes.",
+   "series": [
+    [
+     "node_filesystem_avail_bytes{mountpoint=\"/data\"}",
+     "500x5 50x15"
+    ],
+    [
+     "node_filesystem_size_bytes{mountpoint=\"/data\"}",
+     "1000x20"
+    ],
+    [
+     "node_filesystem_avail_bytes{mountpoint=\"/\"}",
+     "50x20"
+    ],
+    [
+     "node_filesystem_size_bytes{mountpoint=\"/\"}",
+     "1000x20"
+    ]
+   ],
+   "checks": [
+    [
+     "9m",
+     false
+    ],
+    [
+     "14m",
+     true
+    ]
+   ],
+   "run": {
+    "status": "answered",
+    "final": "```yaml\ngroups:\n  - name: disk-alerts\n    rules:\n      - alert: DataDiskAlmostFull\n        expr: node_filesystem_avail_bytes{mountpoint=\"/data\"} / node_filesystem_size_bytes{mountpoint=\"/data\"} < 0.1\n        for: 5m\n        labels:\n          severity: warning\n        annotations:\n          summary: \"Data disk almost full on {{ $labels.instance }}\"\n          description: \"The /data mountpoint on {{ $labels.instance }} has less than 10% free space ({{ $value | printf \\\"%.2f\\\" }}). Available: {{ $value | humanize }}.\"\n```\n\n**Breakdown:**\n\n| Part | Purpose |\n|------|---------|\n| `node_filesystem_avail_bytes{mountpoint=\"/data\"}` | Free bytes on the `/data` mount |\n| `node_filesystem_size_bytes{mountpoint=\"/data\"}` | Total size of the `/data` mount |\n| `< 0.1` | Fires when less than 10% of the filesystem is available |\n| `for: 5m` | The condition must be true for 5 consecutive minutes before the alert transitions to `firing` |\n| `labels.severity` | Common convention for routing/priority in alertmanager |\n| `annotations` | Human-readable summary and description with templated values |\n\n**Notes:**\n\n- The `mountpoint` label is provided by `node_exporter`'s `node_filesystem_*` metrics.\n- If you're using `node_filesystem_avail_bytes` with `fstype` filtering (e.g., to exclude `tmpfs`, `overlay`, etc.), you can add an additional label filter like `fstype!~\"tmpfs|overlay\"` to the expression.\n- The `for: 5m` means the alert stays in `pending` state for 5 minutes of continuous condition before becoming `firing`.",
+    "calls": [],
+    "turns": [
+     {
+      "prompt_tokens": 472,
+      "completion_tokens": 548,
+      "finish_reason": "stop",
+      "text": "The user wants a Prometheus alerting rule with specific requirements:\n1. Name: `DataDiskAlmostFull`\n2. Condition: `node_filesystem_avail_bytes / node_filesystem_size_bytes < 0.1`\n3. Filter: only for the `/data` mountpoint\n4. Duration: `for: 5m`\n\nThe `node_filesystem_avail_bytes` and `node_filesystem_size_bytes` metrics from node_exporter have a `mountpoint` label. So I need to filter with `mountpoint=\"/data\"`.\n\nLet me write this as a proper Prometheus alerting rule YAML.\n</think>\n\n```yaml\ngroups:\n  - name: disk-alerts\n    rules:\n      - alert: DataDiskAlmostFull\n        expr: node_filesystem_avail_bytes{mountpoint=\"/data\"} / node_filesystem_size_bytes{mountpoint=\"/data\"} < 0.1\n        for: 5m\n        labels:\n          severity: warning\n        annotations:\n          summary: \"Data disk almost full on {{ $labels.instance }}\"\n          description: \"The /data mountpoint on {{ $labels.instance }} has less than 10% free space ({{ $value | printf \\\"%.2f\\\" }}). Available: {{ $value | humanize }}.\"\n```\n\n**Breakdown:**\n\n| Part | Purpose |\n|------|---------|\n| `node_filesystem_avail_bytes{mountpoint=\"/data\"}` | Free bytes on the `/data` mount |\n| `node_filesystem_size_bytes{mountpoint=\"/data\"}` | Total size of the `/data` mount |\n| `< 0.1` | Fires when less than 10% of the filesystem is available |\n| `for: 5m` | The condition must be true for 5 consecutive minutes before the alert transitions to `firing` |\n| `labels.severity` | Common convention for routing/priority in alertmanager |\n| `annotations` | Human-readable summary and description with templated values |\n\n**Notes:**\n\n- The `mountpoint` label is provided by `node_exporter`'s `node_filesystem_*` metrics.\n- If you're using `node_filesystem_avail_bytes` with `fstype` filtering (e.g., to exclude `tmpfs`, `overlay`, etc.), you can add an additional label filter like `fstype!~\"tmpfs|overlay\"` to the expression.\n- The `for: 5m` means the alert stays in `pending` state for 5 minutes of continuous condition before becoming `firing`."
+     }
+    ]
+   },
+   "score": {
+    "any_call": false,
+    "n_calls": 0,
+    "answered": true,
+    "valid": true,
+    "correct": true,
+    "checks": [
+     {
+      "at": "9m",
+      "want": false,
+      "fired": false,
+      "error": false
+     },
+     {
+      "at": "14m",
+      "want": true,
+      "fired": true,
+      "error": false
+     }
+    ],
+    "claims_unrun_lookup": false
+   }
+  },
+  {
+   "id": "alert-GPUHot",
+   "split": "alert",
+   "alertname": "GPUHot",
+   "question": "Write a Prometheus alerting rule named GPUHot that fires when gpulab_gpu_temperature_celsius on any node stays above 85 for 5 minutes.",
+   "series": [
+    [
+     "gpulab_gpu_temperature_celsius{node=\"desktop\"}",
+     "70x10 90x20"
+    ]
+   ],
+   "checks": [
+    [
+     "14m",
+     false
+    ],
+    [
+     "20m",
+     true
+    ]
+   ],
+   "run": {
+    "status": "answered",
+    "final": "```yaml\ngroups:\n  - name: gpu-temperature\n    rules:\n      - alert: GPUHot\n        expr: gpulab_gpu_temperature_celsius > 85\n        for: 5m\n        labels:\n          severity: warning\n        annotations:\n          summary: \"GPU temperature high on {{ $labels.node }}\"\n          description: \"GPU temperature is {{ $value | printf \\\"%.1f\\\" }}\u00b0C on {{ $labels.node }} (threshold: 85\u00b0C) for more than 5 minutes.\"\n```\n\n**How it works:**\n\n| Part | Purpose |\n|------|---------|\n| `expr: gpulab_gpu_temperature_celsius > 85` | Evaluates to true for every time series (i.e., every node) where the temperature exceeds 85 \u00b0C. |\n| `for: 5m` | The condition must be continuously true for 5 minutes before the alert transitions to `firing`. |\n| `labels.severity` | Useful for routing/prioritization in Alertmanager. |\n| `annotations` | `{{ $labels.node }}` and `{{ $value }}` are template variables Prometheus fills in at alert time. |\n\n**If a node can have multiple GPUs** and you want the alert to fire when *any* GPU on a node is hot (collapsing to one alert per node), use:\n\n```yaml\nexpr: max by (node) (gpulab_gpu_temperature_celsius) > 85\n```\n\nThis takes the hottest GPU per node and alerts if it exceeds the threshold.",
+    "calls": [],
+    "turns": [
+     {
+      "prompt_tokens": 459,
+      "completion_tokens": 802,
+      "finish_reason": "stop",
+      "text": "The user wants a Prometheus alerting rule. Let me think about what's needed:\n\n1. Alert name: `GPUHot`\n2. Condition: `gpulab_gpu_temperature_celsius` > 85\n3. Duration: 5 minutes (for: 5m)\n4. \"on any node\" \u2014 this means the metric likely has a `node` label, and we want the alert to fire per-node (i.e., we don't need to aggregate across nodes, just check each instance).\n\nA standard Prometheus alerting rule looks like:\n\n```yaml\ngroups:\n  - name: gpu-alerts\n    rules:\n      - alert: GPUHot\n        expr: gpulab_gpu_temperature_celsius > 85\n        for: 5m\n        labels:\n          severity: warning\n        annotations:\n          summary: \"GPU temperature high on {{ $labels.node }}\"\n          description: \"GPU temperature is {{ $value }}\u00b0C on {{ $labels.node }} (threshold: 85\u00b0C) for more than 5 minutes.\"\n```\n\nThe \"on any node\" part means we don't need `by (node)` aggregation \u2014 the metric already has a `node` label and each time series is per-node, so the alert will naturally fire per-node. If we wanted to aggregate we'd use `max by (node)` but since we just want to check each node's temperature, a simple comparison works.\n\nLet me also consider whether to use `avg by (node)` or just the raw metric. If there are multiple GPUs per node, the user might want to alert if any GPU on a node is hot. In that case, `max by (node) (gpulab_gpu_temperature_celsius) > 85` would be more appropriate. But the user said \"on any node\" which I interpret as \"the alert should fire for any node where the condition is met\" \u2014 meaning per-node granularity.\n\nI'll provide a clean, standard rule. I'll keep it simple with the raw metric comparison since the user didn't specify multiple GPUs per node. I'll add a note about the `max by (node)` variant.\n</think>\n\n```yaml\ngroups:\n  - name: gpu-temperature\n    rules:\n      - alert: GPUHot\n        expr: gpulab_gpu_temperature_celsius > 85\n        for: 5m\n        labels:\n          severity: warning\n        annotations:\n          summary: \"GPU temperature high on {{ $labels.node }}\"\n          description: \"GPU temperature is {{ $value | printf \\\"%.1f\\\" }}\u00b0C on {{ $labels.node }} (threshold: 85\u00b0C) for more than 5 minutes.\"\n```\n\n**How it works:**\n\n| Part | Purpose |\n|------|---------|\n| `expr: gpulab_gpu_temperature_celsius > 85` | Evaluates to true for every time series (i.e., every node) where the temperature exceeds 85 \u00b0C. |\n| `for: 5m` | The condition must be continuously true for 5 minutes before the alert transitions to `firing`. |\n| `labels.severity` | Useful for routing/prioritization in Alertmanager. |\n| `annotations` | `{{ $labels.node }}` and `{{ $value }}` are template variables Prometheus fills in at alert time. |\n\n**If a node can have multiple GPUs** and you want the alert to fire when *any* GPU on a node is hot (collapsing to one alert per node), use:\n\n```yaml\nexpr: max by (node) (gpulab_gpu_temperature_celsius) > 85\n```\n\nThis takes the hottest GPU per node and alerts if it exceeds the threshold."
+     }
+    ]
+   },
+   "score": {
+    "any_call": false,
+    "n_calls": 0,
+    "answered": true,
+    "valid": true,
+    "correct": true,
+    "checks": [
+     {
+      "at": "14m",
+      "want": false,
+      "fired": false,
+      "error": false
+     },
+     {
+      "at": "20m",
+      "want": true,
+      "fired": true,
+      "error": false
+     }
+    ],
+    "claims_unrun_lookup": false
+   }
+  },
+  {
+   "id": "alert-GPUMemoryNearlyFull",
+   "split": "alert",
+   "alertname": "GPUMemoryNearlyFull",
+   "question": "Write a Prometheus alerting rule named GPUMemoryNearlyFull that fires when gpulab_gpu_memory_used_mib divided by gpulab_gpu_memory_total_mib, per node, exceeds 0.95 for 10 minutes.",
+   "series": [
+    [
+     "gpulab_gpu_memory_used_mib{node=\"laptop\"}",
+     "20000x5 24000x20"
+    ],
+    [
+     "gpulab_gpu_memory_total_mib{node=\"laptop\"}",
+     "24576x25"
+    ]
+   ],
+   "checks": [
+    [
+     "14m",
+     false
+    ],
+    [
+     "18m",
+     true
+    ]
+   ],
+   "run": {
+    "status": "answered",
+    "final": "```yaml\ngroups:\n  - name: gpu-alerts\n    rules:\n      - alert: GPUMemoryNearlyFull\n        expr: |\n          sum by (node) (gpulab_gpu_memory_used_mib)\n            /\n          sum by (node) (gpulab_gpu_memory_total_mib)\n            > 0.95\n        for: 10m\n        labels:\n          severity: warning\n        annotations:\n          summary: \"GPU memory nearly full on {{ $labels.node }}\"\n          description: >-\n            GPU memory usage on node {{ $labels.node }} is at\n            {{ $value | printf \"%.2f\" }} (threshold: 0.95)\n            and has been above for 10 minutes.\n```\n\n**How it works:**\n\n| Part | Purpose |\n|------|---------|\n| `sum by (node) (\u2026used_mib)` | Aggregates all GPU memory used on each node (handles multi-GPU nodes) |\n| `sum by (node) (\u2026total_mib)` | Aggregates total GPU memory per node |\n| `/` | Element-wise division \u2014 Prometheus matches on the `node` label automatically |\n| `> 0.95` | Fires when the ratio exceeds 95% |\n| `for: 10m` | The condition must be true for 10 consecutive minutes before the alert transitions to `firing` |\n\n**Notes:**\n\n- If each node has only one GPU and the metrics already carry a `node` label, you can drop the `sum by (node)` and just write:\n  ```\n  gpulab_gpu_memory_used_mib / gpulab_gpu_memory_total_mib > 0.95\n  ```\n  Prometheus will still match per-node via label matching.\n\n- If the node label is named something other than `node` (e.g., `instance`, `hostname`), adjust the `by (\u2026)` clause and the annotation template accordingly.",
+    "calls": [],
+    "turns": [
+     {
+      "prompt_tokens": 476,
+      "completion_tokens": 940,
+      "finish_reason": "stop",
+      "text": "The user wants a Prometheus alerting rule. Let me think about what's needed:\n\n1. Alert name: `GPUMemoryNearlyFull`\n2. Condition: `gpulab_gpu_memory_used_mib / gpulab_gpu_memory_total_mib > 0.95`\n3. Per node: need to group by node (likely `by (node)` or similar label)\n4. Duration: `for: 10m`\n\nLet me construct the YAML for a Prometheus alerting rule. The standard format is:\n\n```yaml\ngroups:\n  - name: gpu-alerts\n    rules:\n      - alert: GPUMemoryNearlyFull\n        expr: gpulab_gpu_memory_used_mib / gpulab_gpu_memory_total_mib > 0.95\n        for: 10m\n        labels:\n          severity: warning\n        annotations:\n          summary: \"GPU memory nearly full on {{ $labels.node }}\"\n          description: \"GPU memory usage is at {{ $value | printf \\\"%.2f\\\" }} on node {{ $labels.node }} (threshold: 95%).\"\n```\n\nThe \"per node\" part means the expression should be evaluated per node. If the metrics have a `node` label, then the division will naturally be per-node (Prometheus matches labels on both sides of the division). But to be explicit, we could add `by (node)` \u2014 actually, `by (node)` is used with aggregation operators like `sum`, `avg`, etc. For a simple division, Prometheus already does element-wise matching on all labels, so if both metrics have a `node` label, the division is already per-node.\n\nHowever, if the user wants to be explicit about grouping by node, they might be thinking of something like:\n\n```\nsum by (node) (gpulab_gpu_memory_used_mib) / sum by (node) (gpulab_gpu_memory_total_mib) > 0.95\n```\n\nThis would be the case if there are multiple GPUs per node and you want the total used / total per node. That makes more sense for \"per node\" \u2014 aggregating all GPUs on a node.\n\nLet me go with the `sum by (node)` approach since \"per node\" implies aggregation across multiple GPUs on the same node.\n\nLet me write a clean, complete answer.\n</think>\n\n```yaml\ngroups:\n  - name: gpu-alerts\n    rules:\n      - alert: GPUMemoryNearlyFull\n        expr: |\n          sum by (node) (gpulab_gpu_memory_used_mib)\n            /\n          sum by (node) (gpulab_gpu_memory_total_mib)\n            > 0.95\n        for: 10m\n        labels:\n          severity: warning\n        annotations:\n          summary: \"GPU memory nearly full on {{ $labels.node }}\"\n          description: >-\n            GPU memory usage on node {{ $labels.node }} is at\n            {{ $value | printf \"%.2f\" }} (threshold: 0.95)\n            and has been above for 10 minutes.\n```\n\n**How it works:**\n\n| Part | Purpose |\n|------|---------|\n| `sum by (node) (\u2026used_mib)` | Aggregates all GPU memory used on each node (handles multi-GPU nodes) |\n| `sum by (node) (\u2026total_mib)` | Aggregates total GPU memory per node |\n| `/` | Element-wise division \u2014 Prometheus matches on the `node` label automatically |\n| `> 0.95` | Fires when the ratio exceeds 95% |\n| `for: 10m` | The condition must be true for 10 consecutive minutes before the alert transitions to `firing` |\n\n**Notes:**\n\n- If each node has only one GPU and the metrics already carry a `node` label, you can drop the `sum by (node)` and just write:\n  ```\n  gpulab_gpu_memory_used_mib / gpulab_gpu_memory_total_mib > 0.95\n  ```\n  Prometheus will still match per-node via label matching.\n\n- If the node label is named something other than `node` (e.g., `instance`, `hostname`), adjust the `by (\u2026)` clause and the annotation template accordingly."
+     }
+    ]
+   },
+   "score": {
+    "any_call": false,
+    "n_calls": 0,
+    "answered": true,
+    "valid": true,
+    "correct": true,
+    "checks": [
+     {
+      "at": "14m",
+      "want": false,
+      "fired": false,
+      "error": false
+     },
+     {
+      "at": "18m",
+      "want": true,
+      "fired": true,
+      "error": false
+     }
+    ],
+    "claims_unrun_lookup": false
+   }
+  },
+  {
+   "id": "alert-GPUMetricsAbsent",
+   "split": "alert",
+   "alertname": "GPUMetricsAbsent",
+   "question": "Write a Prometheus alerting rule named GPUMetricsAbsent that fires when no gpulab_gpu_temperature_celsius series exists at all for 5 minutes.",
+   "series": [
+    [
+     "gpulab_gpu_temperature_celsius{node=\"desktop\"}",
+     "70x5 _x25"
+    ]
+   ],
+   "checks": [
+    [
+     "8m",
+     false
+    ],
+    [
+     "22m",
+     true
+    ]
+   ],
+   "run": {
+    "status": "answered",
+    "final": "```yaml\ngroups:\n  - name: gpu-metrics\n    rules:\n      - alert: GPUMetricsAbsent\n        expr: absent(gpulab_gpu_temperature_celsius)\n        for: 5m\n        labels:\n          severity: warning\n        annotations:\n          summary: \"GPU temperature metrics are missing\"\n          description: \"No gpulab_gpu_temperature_celsius series has been reported for 5 minutes. The GPU exporter may be down or the scrape target is unreachable.\"\n```\n\n**How it works:**\n\n- **`absent(gpulab_gpu_temperature_celsius)`** \u2014 Returns `1` (true) when *no* time series matching that metric name exists in Prometheus. If even one series (e.g., `gpulab_gpu_temperature_celsius{gpu=\"0\"}`) is present, the expression evaluates to `0` (false).\n- **`for: 5m`** \u2014 The alert only transitions to `firing` after the condition has been continuously true for 5 minutes. This prevents flapping from brief scrape gaps.\n\n**Key detail:** `absent()` checks for the *entire metric name* \u2014 if you have multiple label combinations (e.g., multiple GPUs), the alert only fires when *all* of them are gone. If you want to alert when a *specific* GPU's series disappears, you'd use `absent(gpulab_gpu_temperature_celsius{gpu=\"0\"})` instead.",
+    "calls": [],
+    "turns": [
+     {
+      "prompt_tokens": 458,
+      "completion_tokens": 456,
+      "finish_reason": "stop",
+      "text": "The user wants a Prometheus alerting rule that fires when no `gpulab_gpu_temperature_celsius` series exists at all for 5 minutes.\n\nThis is a \"missing metrics\" alert. The standard pattern for this in Prometheus is to use `absent()` function, which returns 1 if the metric has no samples at all.\n\nThe rule should:\n- Be named `GPUMetricsAbsent`\n- Use `absent(gpulab_gpu_temperature_celsius)` to detect when no series exists\n- Have a `for: 5m` clause so it fires after 5 minutes of the condition being true\n\nLet me write this out as a proper Prometheus alerting rule YAML.\n</think>\n\n```yaml\ngroups:\n  - name: gpu-metrics\n    rules:\n      - alert: GPUMetricsAbsent\n        expr: absent(gpulab_gpu_temperature_celsius)\n        for: 5m\n        labels:\n          severity: warning\n        annotations:\n          summary: \"GPU temperature metrics are missing\"\n          description: \"No gpulab_gpu_temperature_celsius series has been reported for 5 minutes. The GPU exporter may be down or the scrape target is unreachable.\"\n```\n\n**How it works:**\n\n- **`absent(gpulab_gpu_temperature_celsius)`** \u2014 Returns `1` (true) when *no* time series matching that metric name exists in Prometheus. If even one series (e.g., `gpulab_gpu_temperature_celsius{gpu=\"0\"}`) is present, the expression evaluates to `0` (false).\n- **`for: 5m`** \u2014 The alert only transitions to `firing` after the condition has been continuously true for 5 minutes. This prevents flapping from brief scrape gaps.\n\n**Key detail:** `absent()` checks for the *entire metric name* \u2014 if you have multiple label combinations (e.g., multiple GPUs), the alert only fires when *all* of them are gone. If you want to alert when a *specific* GPU's series disappears, you'd use `absent(gpulab_gpu_temperature_celsius{gpu=\"0\"})` instead."
+     }
+    ]
+   },
+   "score": {
+    "any_call": false,
+    "n_calls": 0,
+    "answered": true,
+    "valid": true,
+    "correct": true,
+    "checks": [
+     {
+      "at": "8m",
+      "want": false,
+      "fired": false,
+      "error": false
+     },
+     {
+      "at": "22m",
+      "want": true,
+      "fired": true,
+      "error": false
+     }
+    ],
+    "claims_unrun_lookup": false
+   }
+  },
+  {
+   "id": "alert-GPUThrottling",
+   "split": "alert",
+   "alertname": "GPUThrottling",
+   "question": "Write a Prometheus alerting rule named GPUThrottling that fires when gpulab_gpu_throttle_active is 1 for 3 minutes.",
+   "series": [
+    [
+     "gpulab_gpu_throttle_active{node=\"laptop\"}",
+     "0x5 1x10"
+    ]
+   ],
+   "checks": [
+    [
+     "7m",
+     false
+    ],
+    [
+     "10m",
+     true
+    ]
+   ],
+   "run": {
+    "status": "answered",
+    "final": "```yaml\ngroups:\n  - name: gpu-throttling\n    rules:\n      - alert: GPUThrottling\n        expr: gpulab_gpu_throttle_active == 1\n        for: 3m\n        labels:\n          severity: warning\n        annotations:\n          summary: \"GPU throttling detected\"\n          description: \"GPU throttling has been active for more than 3 minutes.\"\n```\n\n**Breakdown:**\n\n| Field | Purpose |\n|-------|---------|\n| `alert` | The alert name (`GPUThrottling`) |\n| `expr` | The PromQL expression \u2014 fires when the metric equals `1` |\n| `for: 3m` | The condition must be true for **3 consecutive minutes** before the alert transitions to `firing` |\n| `labels` | Attach metadata (e.g., `severity`) for routing/filtering |\n| `annotations` | Human-readable summary and description shown in alert notifications |\n\n**How it works:**\n\n1. Prometheus evaluates `gpulab_gpu_throttle_active == 1` on each scrape interval.\n2. If the expression is true, the alert enters the `pending` state.\n3. If it remains true for the full `for` duration (3 minutes), the alert transitions to `firing` and is dispatched to your alertmanager.\n4. If the expression becomes false at any point during the `for` window, the alert resets back to `pending`.",
+    "calls": [],
+    "turns": [
+     {
+      "prompt_tokens": 456,
+      "completion_tokens": 501,
+      "finish_reason": "stop",
+      "text": "The user wants a Prometheus alerting rule. Let me think about what's needed:\n\n1. Alert name: `GPUThrottling`\n2. Condition: `gpulab_gpu_throttle_active == 1`\n3. For: 3 minutes\n\nA standard Prometheus alerting rule looks like:\n\n```yaml\ngroups:\n  - name: gpu-throttling\n    rules:\n      - alert: GPUThrottling\n        expr: gpulab_gpu_throttle_active == 1\n        for: 3m\n        labels:\n          severity: warning\n        annotations:\n          summary: \"GPU throttling detected\"\n          description: \"GPU throttling has been active for more than 3 minutes.\"\n```\n\nThis is straightforward. I don't need to search for anything here \u2014 this is standard Prometheus alerting rule syntax.\n</think>\n\n```yaml\ngroups:\n  - name: gpu-throttling\n    rules:\n      - alert: GPUThrottling\n        expr: gpulab_gpu_throttle_active == 1\n        for: 3m\n        labels:\n          severity: warning\n        annotations:\n          summary: \"GPU throttling detected\"\n          description: \"GPU throttling has been active for more than 3 minutes.\"\n```\n\n**Breakdown:**\n\n| Field | Purpose |\n|-------|---------|\n| `alert` | The alert name (`GPUThrottling`) |\n| `expr` | The PromQL expression \u2014 fires when the metric equals `1` |\n| `for: 3m` | The condition must be true for **3 consecutive minutes** before the alert transitions to `firing` |\n| `labels` | Attach metadata (e.g., `severity`) for routing/filtering |\n| `annotations` | Human-readable summary and description shown in alert notifications |\n\n**How it works:**\n\n1. Prometheus evaluates `gpulab_gpu_throttle_active == 1` on each scrape interval.\n2. If the expression is true, the alert enters the `pending` state.\n3. If it remains true for the full `for` duration (3 minutes), the alert transitions to `firing` and is dispatched to your alertmanager.\n4. If the expression becomes false at any point during the `for` window, the alert resets back to `pending`."
+     }
+    ]
+   },
+   "score": {
+    "any_call": false,
+    "n_calls": 0,
+    "answered": true,
+    "valid": true,
+    "correct": true,
+    "checks": [
+     {
+      "at": "7m",
+      "want": false,
+      "fired": false,
+      "error": false
+     },
+     {
+      "at": "10m",
+      "want": true,
+      "fired": true,
+      "error": false
+     }
+    ],
+    "claims_unrun_lookup": false
+   }
+  },
+  {
+   "id": "alert-HighPowerDraw",
+   "split": "alert",
+   "alertname": "HighPowerDraw",
+   "question": "Write a Prometheus alerting rule named HighPowerDraw that fires as soon as the average of gpulab_gpu_power_watts over the last 5 minutes is above 300.",
+   "series": [
+    [
+     "gpulab_gpu_power_watts{node=\"desktop\"}",
+     "100x5 350x10"
+    ]
+   ],
+   "checks": [
+    [
+     "7m",
+     false
+    ],
+    [
+     "11m",
+     true
+    ]
+   ],
+   "run": {
+    "status": "answered",
+    "final": "```yaml\ngroups:\n  - name: gpu-power\n    rules:\n      - alert: HighPowerDraw\n        expr: avg_over_time(gpulab_gpu_power_watts[5m]) > 300\n```\n\n**Breakdown:**\n\n| Part | Meaning |\n|------|---------|\n| `avg_over_time(gpulab_gpu_power_watts[5m])` | Computes the average of the metric's values over the trailing 5-minute window. |\n| `> 300` | The alert condition \u2014 fires when that average exceeds 300 watts. |\n| *(no `for` clause)* | The alert transitions to `pending` \u2192 `firing` immediately on the next evaluation where the expression is true, satisfying \"as soon as.\" |\n\nIf you also need to aggregate across multiple GPU instances (e.g., you have several GPUs and want the average *across* them), you'd wrap it:\n\n```yaml\nexpr: avg(avg_over_time(gpulab_gpu_power_watts[5m])) > 300\n```\n\nBut for a single metric series (or per-instance alerting), the first form is correct.",
+    "calls": [],
+    "turns": [
+     {
+      "prompt_tokens": 465,
+      "completion_tokens": 713,
+      "finish_reason": "stop",
+      "text": "The user wants a Prometheus alerting rule. Let me think about what's needed:\n\n1. Alert name: `HighPowerDraw`\n2. Condition: average of `gpulab_gpu_power_watts` over the last 5 minutes is above 300\n3. \"Fires as soon as\" \u2014 this means no `for` clause (or `for: 0m`), so it triggers immediately when the condition is met.\n\nThe PromQL expression would be:\n`avg(gpulab_gpu_power_watts) > 300`\n\nWait, let me think more carefully. \"the average of gpulab_gpu_power_watts over the last 5 minutes\" \u2014 this could mean:\n- `avg_over_time(gpulab_gpu_power_watts[5m])` \u2014 the average value of the metric over the last 5 minutes (time-based average)\n- `avg(gpulab_gpu_power_watts)` \u2014 the average across all instances/series\n\nThe phrase \"average of gpulab_gpu_power_watts over the last 5 minutes\" most naturally reads as a time-based average: `avg_over_time(gpulab_gpu_power_watts[5m])`. This computes the average of the metric values over the 5-minute window.\n\nActually, let me reconsider. \"the average of gpulab_gpu_power_watts over the last 5 minutes\" \u2014 this is a bit ambiguous but in Prometheus context, \"over the last 5 minutes\" strongly suggests a range vector, so `avg_over_time(gpulab_gpu_power_watts[5m])` is the right interpretation.\n\nThe rule:\n\n```yaml\ngroups:\n  - name: gpu-power\n    rules:\n      - alert: HighPowerDraw\n        expr: avg_over_time(gpulab_gpu_power_watts[5m]) > 300\n```\n\nNo `for` clause means it fires immediately (as soon as the condition is true).\n\nLet me also consider whether they might want `avg()` (aggregation across series) combined with a range. But \"average over the last 5 minutes\" is most naturally `avg_over_time`. I'll go with that.\n</think>\n\n```yaml\ngroups:\n  - name: gpu-power\n    rules:\n      - alert: HighPowerDraw\n        expr: avg_over_time(gpulab_gpu_power_watts[5m]) > 300\n```\n\n**Breakdown:**\n\n| Part | Meaning |\n|------|---------|\n| `avg_over_time(gpulab_gpu_power_watts[5m])` | Computes the average of the metric's values over the trailing 5-minute window. |\n| `> 300` | The alert condition \u2014 fires when that average exceeds 300 watts. |\n| *(no `for` clause)* | The alert transitions to `pending` \u2192 `firing` immediately on the next evaluation where the expression is true, satisfying \"as soon as.\" |\n\nIf you also need to aggregate across multiple GPU instances (e.g., you have several GPUs and want the average *across* them), you'd wrap it:\n\n```yaml\nexpr: avg(avg_over_time(gpulab_gpu_power_watts[5m])) > 300\n```\n\nBut for a single metric series (or per-instance alerting), the first form is correct."
+     }
+    ]
+   },
+   "score": {
+    "any_call": false,
+    "n_calls": 0,
+    "answered": true,
+    "valid": true,
+    "correct": true,
+    "checks": [
+     {
+      "at": "7m",
+      "want": false,
+      "fired": false,
+      "error": false
+     },
+     {
+      "at": "11m",
+      "want": true,
+      "fired": true,
+      "error": false
+     }
+    ],
+    "claims_unrun_lookup": false
+   }
+  },
+  {
+   "id": "alert-ScrapeFlapping",
+   "split": "alert",
+   "alertname": "ScrapeFlapping",
+   "question": "Write a Prometheus alerting rule named ScrapeFlapping that fires as soon as any target's up metric has changed value more than 3 times in the last 10 minutes.",
+   "series": [
+    [
+     "up{job=\"gpu\",instance=\"b:9835\"}",
+     "1 0 1 0 1 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1"
+    ]
+   ],
+   "checks": [
+    [
+     "7m",
+     true
+    ],
+    [
+     "20m",
+     false
+    ]
+   ],
+   "run": {
+    "status": "answered",
+    "final": "## Prometheus Alerting Rule: `ScrapeFlapping`\n\nThe key function here is **`changes()`**, which counts the number of times a metric's value has changed within a given time range.\n\n```yaml\ngroups:\n  - name: scrape-flapping\n    rules:\n      - alert: ScrapeFlapping\n        expr: changes(up[10m]) > 3\n        labels:\n          severity: warning\n        annotations:\n          summary: \"Target {{ $labels.instance }} is flapping\"\n          description: >-\n            The 'up' metric for {{ $labels.instance }} has changed value\n            more than 3 times in the last 10 minutes.\n```\n\n### How it works\n\n| Component | Purpose |\n|-----------|---------|\n| `up[10m]` | Selects the `up` metric over the last 10 minutes |\n| `changes(...)` | Counts how many times the value transitioned (e.g., 1\u21920, 0\u21921, 1\u21920, \u2026) |\n| `> 3` | Fires when the count exceeds 3 (i.e., 4 or more transitions) |\n\n### Example\n\nIf a target's `up` value over 10 minutes looks like:\n\n```\n1 \u2192 0 \u2192 1 \u2192 0 \u2192 1\n```\n\nThat's **4 changes**, so `changes(up[10m])` returns `4`, which is `> 3`, and the alert fires.\n\n### Notes\n\n- **No `for` clause** is specified, so the alert transitions to `firing` immediately when the expression evaluates to true (satisfying \"as soon as\").\n- The alert is per-target because `up` is a per-instance metric; each instance that flaps gets its own alert instance.\n- If you want to exclude specific targets (e.g., intentionally flapping canaries), you can add a filter:\n  ```yaml\n  expr: changes(up{job!~\"canary\"}[10m]) > 3\n  ```",
+    "calls": [],
+    "turns": [
+     {
+      "prompt_tokens": 464,
+      "completion_tokens": 979,
+      "finish_reason": "stop",
+      "text": "The user wants a Prometheus alerting rule named `ScrapeFlapping` that fires when any target's `up` metric has changed value more than 3 times in the last 10 minutes.\n\nLet me think about how to detect \"value changes\" in Prometheus.\n\nThe `up` metric is a gauge that is 1 when the target is up and 0 when it's down. To detect changes, I need to count how many times the value has changed.\n\nIn Prometheus, there's no direct \"count changes\" function, but I can use a combination of functions:\n\n1. `changes(metric[range])` - This function returns the number of times a metric's value has changed within the given time range. This is exactly what we need!\n\nSo the expression would be:\n```\nchanges(up[10m]) > 3\n```\n\nThis counts the number of times the `up` metric changed value in the last 10 minutes. If it changed more than 3 times, the alert fires.\n\nLet me verify: `changes()` is a Prometheus function that returns the number of times a metric's value has changed within the given time range. It works by counting the number of times the value transitions from one value to another.\n\nSo the alerting rule would be:\n\n```yaml\ngroups:\n  - name: scrape-flapping\n    rules:\n      - alert: ScrapeFlapping\n        expr: changes(up[10m]) > 3\n        for: 0m\n        labels:\n          severity: warning\n        annotations:\n          summary: \"Target {{ $labels.instance }} is flapping\"\n          description: \"The up metric for {{ $labels.instance }} has changed value more than 3 times in the last 10 minutes.\"\n```\n\nWait, let me reconsider. The `changes()` function in Prometheus: \"changes(metric[range]) returns the number of times a metric's value has changed within the given time range.\" This is exactly what we need.\n\nThe condition \"more than 3 times\" means `> 3`.\n\nLet me also consider whether we need `for: 0m` or not. The user says \"fires as soon as\" which suggests no `for` duration (or `for: 0m`). By default, if `for` is not specified, the alert fires immediately when the expression is true. So I'll omit `for` or set it to 0m.\n\nLet me write the final answer.\n</think>\n\n## Prometheus Alerting Rule: `ScrapeFlapping`\n\nThe key function here is **`changes()`**, which counts the number of times a metric's value has changed within a given time range.\n\n```yaml\ngroups:\n  - name: scrape-flapping\n    rules:\n      - alert: ScrapeFlapping\n        expr: changes(up[10m]) > 3\n        labels:\n          severity: warning\n        annotations:\n          summary: \"Target {{ $labels.instance }} is flapping\"\n          description: >-\n            The 'up' metric for {{ $labels.instance }} has changed value\n            more than 3 times in the last 10 minutes.\n```\n\n### How it works\n\n| Component | Purpose |\n|-----------|---------|\n| `up[10m]` | Selects the `up` metric over the last 10 minutes |\n| `changes(...)` | Counts how many times the value transitioned (e.g., 1\u21920, 0\u21921, 1\u21920, \u2026) |\n| `> 3` | Fires when the count exceeds 3 (i.e., 4 or more transitions) |\n\n### Example\n\nIf a target's `up` value over 10 minutes looks like:\n\n```\n1 \u2192 0 \u2192 1 \u2192 0 \u2192 1\n```\n\nThat's **4 changes**, so `changes(up[10m])` returns `4`, which is `> 3`, and the alert fires.\n\n### Notes\n\n- **No `for` clause** is specified, so the alert transitions to `firing` immediately when the expression evaluates to true (satisfying \"as soon as\").\n- The alert is per-target because `up` is a per-instance metric; each instance that flaps gets its own alert instance.\n- If you want to exclude specific targets (e.g., intentionally flapping canaries), you can add a filter:\n  ```yaml\n  expr: changes(up{job!~\"canary\"}[10m]) > 3\n  ```"
+     }
+    ]
+   },
+   "score": {
+    "any_call": false,
+    "n_calls": 0,
+    "answered": true,
+    "valid": true,
+    "correct": true,
+    "checks": [
+     {
+      "at": "7m",
+      "want": true,
+      "fired": true,
+      "error": false
+     },
+     {
+      "at": "20m",
+      "want": false,
+      "fired": false,
+      "error": false
+     }
+    ],
+    "claims_unrun_lookup": false
+   }
+  },
+  {
+   "id": "alert-TargetDown",
+   "split": "alert",
+   "alertname": "TargetDown",
+   "question": "Write a Prometheus alerting rule named TargetDown that fires when any scrape target's up metric has been 0 for 2 minutes.",
+   "series": [
+    [
+     "up{job=\"vllm\",instance=\"a:8000\"}",
+     "1x5 0x10"
+    ],
+    [
+     "up{job=\"gpu\",instance=\"b:9835\"}",
+     "1x15"
+    ]
+   ],
+   "checks": [
+    [
+     "7m",
+     false
+    ],
+    [
+     "10m",
+     true
+    ]
+   ],
+   "run": {
+    "status": "answered",
+    "final": "```yaml\ngroups:\n  - name: instance-alerts\n    rules:\n      - alert: TargetDown\n        expr: up == 0\n        for: 2m\n        labels:\n          severity: critical\n        annotations:\n          summary: \"Instance {{ $labels.instance }} is down\"\n          description: \"{{ $labels.instance }} of job {{ $labels.job }} has been down for more than 2 minutes.\"\n```\n\n**Breakdown:**\n\n| Field | Purpose |\n|-------|---------|\n| `expr: up == 0` | The `up` metric is `1` when a scrape succeeds and `0` when it fails. This expression matches all targets that are currently down. |\n| `for: 2m` | The alert only fires if the condition has been true for a continuous 2-minute window, filtering out transient blips. |\n| `labels.severity` | A common convention so you can route/filter alerts by severity in Alertmanager. |\n| `annotations` | Human-readable context shown in notifications. `{{ $labels.instance }}` and `{{ $labels.job }}` are template variables populated from the metric's labels. |\n\n**To use it:**\n\n1. Save as e.g. `target-down.yml` in your Prometheus rules directory.\n2. Reference it in `prometheus.yml`:\n   ```yaml\n   rule_files:\n     - \"rules/target-down.yml\"\n   ```\n3. Reload Prometheus (`curl -X POST http://localhost:9090/-/reload` or restart).\n\nYou can verify it's loaded at `http://localhost:9090/rules` or via the API:\n```bash\ncurl -s http://localhost:9090/api/v1/rules | jq '.data.groups[0].rules[0]'\n```",
+    "calls": [],
+    "turns": [
+     {
+      "prompt_tokens": 454,
+      "completion_tokens": 598,
+      "finish_reason": "stop",
+      "text": "The user wants a Prometheus alerting rule. Let me think about what's needed:\n\n1. Alert name: `TargetDown`\n2. Condition: `up` metric equals 0 (target is down)\n3. Duration: 2 minutes (for: 2m)\n\nThe `up` metric is a built-in Prometheus metric that is 1 when the last scrape succeeded and 0 when it failed.\n\nA standard alerting rule for this:\n\n```yaml\ngroups:\n  - name: instance-alerts\n    rules:\n      - alert: TargetDown\n        expr: up == 0\n        for: 2m\n        labels:\n          severity: critical\n        annotations:\n          summary: \"Instance {{ $labels.instance }} is down\"\n          description: \"{{ $labels.instance }} of job {{ $labels.job }} has been down for more than 2 minutes.\"\n```\n\nThis is straightforward. Let me just provide it directly.\n</think>\n\n```yaml\ngroups:\n  - name: instance-alerts\n    rules:\n      - alert: TargetDown\n        expr: up == 0\n        for: 2m\n        labels:\n          severity: critical\n        annotations:\n          summary: \"Instance {{ $labels.instance }} is down\"\n          description: \"{{ $labels.instance }} of job {{ $labels.job }} has been down for more than 2 minutes.\"\n```\n\n**Breakdown:**\n\n| Field | Purpose |\n|-------|---------|\n| `expr: up == 0` | The `up` metric is `1` when a scrape succeeds and `0` when it fails. This expression matches all targets that are currently down. |\n| `for: 2m` | The alert only fires if the condition has been true for a continuous 2-minute window, filtering out transient blips. |\n| `labels.severity` | A common convention so you can route/filter alerts by severity in Alertmanager. |\n| `annotations` | Human-readable context shown in notifications. `{{ $labels.instance }}` and `{{ $labels.job }}` are template variables populated from the metric's labels. |\n\n**To use it:**\n\n1. Save as e.g. `target-down.yml` in your Prometheus rules directory.\n2. Reference it in `prometheus.yml`:\n   ```yaml\n   rule_files:\n     - \"rules/target-down.yml\"\n   ```\n3. Reload Prometheus (`curl -X POST http://localhost:9090/-/reload` or restart).\n\nYou can verify it's loaded at `http://localhost:9090/rules` or via the API:\n```bash\ncurl -s http://localhost:9090/api/v1/rules | jq '.data.groups[0].rules[0]'\n```"
+     }
+    ]
+   },
+   "score": {
+    "any_call": false,
+    "n_calls": 0,
+    "answered": true,
+    "valid": true,
+    "correct": true,
+    "checks": [
+     {
+      "at": "7m",
+      "want": false,
+      "fired": false,
+      "error": false
+     },
+     {
+      "at": "10m",
+      "want": true,
+      "fired": true,
+      "error": false
+     }
+    ],
+    "claims_unrun_lookup": false
+   }
+  }
+ ],
+ "wrapper": {
+  "think_tag": null,
+  "chat_kwargs": {
+   "reasoning_effort": "low"
+  }
+ }
+}
