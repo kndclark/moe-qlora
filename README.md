@@ -12,6 +12,9 @@ pooling and eval infrastructure lives in the companion repo,
 
 ## Where to read
 
+- `docs/lightning-training.md` is the summary: the training recipe, the data,
+  how adapters are judged, every version's result, and how to serve the
+  candidate (G6q, with G6u as the backup).
 - `docs/plan.md` is the record. Every gate is pre-registered (question,
   run, threshold, expectations) before it runs, and its result is written
   underneath with the files it came from. Claims are tagged MEASURED,

@@ -2352,7 +2352,12 @@ running.
   rule); L11 (DSpark +70% at c=1 on one 3090 with bf16 KV; DFlash -28%; no draft pools).
   Serving config moves no quality row (the noise band above).
 - Adopted: P1 (item-level bar), CUDA graphs on the pool.
-- Needs David: (1) the candidate: G6q over G6u on `main` (L8's matrix); (2) how Lightning
+- Decided (David, 2026-10-02: "we can replace G6u with q but maybe u can have a place as a
+  backup"): **G6q is the candidate, G6u the backup**; `docs/lightning-training.md` is the
+  summary, and G6q is staged at `/srv/model-cache/adapters/lightning-g6q` (sha256
+  `60a68252...` on the laptop, the desktop and the mirror; `G7D_ADAPTER=g6q` serves it
+  pooled).
+- Needs David: (2) how Lightning
   serves, if it joins the front door: one 3090 with graphs, bf16 KV and DSpark for one
   user at a time (366.8 tok/s, 34k tokens of KV), or the pool for long and concurrent
   work (209.6 tok/s, 1.6M tokens); (3) gpu-lab `pool-up-fail-fast` into `main` (a push

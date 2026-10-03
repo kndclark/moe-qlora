@@ -16,6 +16,8 @@
 #   per layer; MTP's layer is unquantized, and the speculative config's moe_backend did not
 #   reach it in v0.29.0). L_MODEL names the served model that bench and v1 call (default
 #   lightning-nvfp4); with --lora-modules in EXTRA it can name the adapter.
+#   L_IMAGE picks the vllm/vllm-openai tag (default v0.29.0; vLLM #59770 reports v0.29 decoding
+#   Lightning ~16% slower than v0.28.0 on sm_121).
 set -u
 NODE=${NODE:?laptop or desktop} LABEL=${LABEL:?names the run}
 here=$(cd "$(dirname "$0")/.." && pwd)
@@ -38,7 +40,7 @@ extra=(${EXTRA:-})
 if [ "$NODE" = desktop ]; then q=(); for w in "${extra[@]}"; do q+=("$(printf %q "$w")"); done; extra=("${q[@]}"); fi
 "${run[@]}" run -d --name $name --gpus all --ipc=host -p $port \
   -v /srv/model-cache:/hf:ro -e HF_HOME=/hf -e HF_HUB_OFFLINE=1 \
-  vllm/vllm-openai:v0.29.0 \
+  vllm/vllm-openai:${L_IMAGE:-v0.29.0} \
   --model $M --revision bee7596271d1495f6992ae224aefde4410e816b8 --served-model-name lightning-nvfp4 \
   --kv-cache-dtype fp8 --mamba-cache-mode align ${L_MOE---moe-backend marlin} \
   --max-model-len 16384 --max-num-seqs 16 --gpu-memory-utilization ${L_UTIL:-0.85} ${L_EAGER---enforce-eager} \
