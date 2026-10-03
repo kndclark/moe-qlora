@@ -2360,9 +2360,24 @@ running.
 - Needs David: (2) how Lightning
   serves, if it joins the front door: one 3090 with graphs, bf16 KV and DSpark for one
   user at a time (366.8 tok/s, 34k tokens of KV), or the pool for long and concurrent
-  work (209.6 tok/s, 1.6M tokens); (3) gpu-lab `pool-up-fail-fast` into `main` (a push
-  deploys); (4) optional: vLLM v0.28 against v0.29 decode (vLLM #59770 reports Lightning
-  decode 16% slower on DGX Spark since v0.29.0), a new image download.
+  work (209.6 tok/s, 1.6M tokens); (3) gpu-lab `pool-up-fail-fast`: merged and deployed
+  (7309c75, David: "yes merge the fix"); (4) vLLM v0.28 against v0.29: run, below.
+- **vLLM v0.28.0 vs v0.29.0 (MEASURED, 2026-10-02 23:27-23:42; David: "go ahead and check
+  vLLM"; `results/vcheck-{laptop,desktop,laptop-r2}.log`, `results/lsingle/vcheck-*`,
+  `results/vcheck-{laptop,desktop}-items.json`):** base Lightning, graphs, fp8 KV,
+  `probes/l_single.sh` with `L_IMAGE` the only change, back to back. vLLM #59770 reports
+  v0.29 decoding ~16% slower on DGX Spark (sm_121). Here it is ~4%: desktop (util 0.92)
+  c=1 217.9 (v0.28) vs 208.6 (v0.29; 208.8 at L2b), every run cv <= 0.5%; laptop (util
+  0.90) 226.6 and 230.4 (v0.28) vs 216.6 and 219.0 (v0.29, and 224.6 at L2b), the second
+  pair run v0.29 first on a cool card (55 C) and v0.28 second at 71 C. c=16 equal within
+  its cv (desktop 103.0 vs 99.4, laptop 89.8/92.2 vs 89.6/89.0). v1 item by item: no row
+  differs (desktop held_out 10-15 p 0.42; laptop, two runs a side, 10-13 p 0.68). Same
+  kernels both versions (Marlin FP8/NVFP4 linears, FlashInfer attention, Triton SSU);
+  v0.28.0 runs the V1 model runner for this model and v0.29.0 the V2 (serve logs). KV:
+  v0.28 gives the laptop 1.48 GiB vs 1.31 and the desktop 2.04 vs 2.34. Reading: the
+  regression is real on both our cards but a quarter of Spark's; 4% does not pay for
+  leaving the lab's pinned version (DSpark and pooled LoRA were measured on v0.29), so
+  v0.29.0 stays. The runner is a lead, untested here (the issue rules it out on Spark).
 - Waiting on upstream, no action: pooled drafts (DSpark/DFlash need `SupportsPP`, MTP's
   PP warmup hangs); recheck on the next vLLM image.
 - No further training is recommended: render is closed (L9) and the data lever is spent

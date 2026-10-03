@@ -164,6 +164,8 @@ The base set is `--kv-cache-dtype fp8 --mamba-cache-mode align --moe-backend mar
 - The 3090 needs `--linear-backend marlin`, or vLLM picks a CUTLASS FP8 kernel sm_86
   cannot run.
 - A LoRA adapter costs 16-17% of decode speed.
+- vLLM v0.28.0 decodes ~4% faster for one user on both cards, with the same answers (vLLM
+  #59770; plan.md "vLLM v0.28.0 vs v0.29.0"). v0.29.0 stays the pin.
 - G6q and G6u share every flag and the same adapter size, so G6u's speed figures carry
   over (INFERENCE; G6q has not been benchmarked).
 
