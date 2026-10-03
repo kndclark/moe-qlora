@@ -5,10 +5,12 @@
 # (against base's laptop run, results/research-eval-v1-lightning-nothink-g6srv.json), and
 # gpu-lab bench/bench.py decode at c=1 and c=16. Always ends with `lab pool down` and then
 # `lab up` on the desktop, which pool down does not do (it leaves llama-swap stopped).
-# usage: g7c_pool.sh
+# usage: [POOL_GPU_UTIL=u] [G7C_OUT=dir] [G7C_MORE_FLAGS="..."] g7c_pool.sh
+#   G7C_OUT names the folder under results/ (default g7c); G7C_MORE_FLAGS is appended
+#   to the pool's vLLM flags (G7c2: "--max-num-seqs 16"). Unset = the original G7c run.
 set -u
 here=$(cd "$(dirname "$0")/.." && pwd)
-out=$here/results/g7c
+out=$here/results/${G7C_OUT:-g7c}
 mkdir -p "$out"
 LAB=/home/david/gpu-lab/bin/lab
 M=nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4
@@ -21,7 +23,7 @@ finish() {
 }
 trap finish EXIT
 POOL_MODEL=$M POOL_MAXLEN=16384 POOL_WAIT_SECS=900 \
-POOL_EXTRA_FLAGS="--revision bee7596271d1495f6992ae224aefde4410e816b8 --kv-cache-dtype fp8 --mamba-cache-mode align --moe-backend marlin --linear-backend marlin --enforce-eager" \
+POOL_EXTRA_FLAGS="--revision bee7596271d1495f6992ae224aefde4410e816b8 --kv-cache-dtype fp8 --mamba-cache-mode align --moe-backend marlin --linear-backend marlin --enforce-eager${G7C_MORE_FLAGS:+ $G7C_MORE_FLAGS}" \
   "$LAB" pool up > "$out/pool-up.log" 2>&1
 rc=$?
 echo "pool up exit $rc $(date +%T)"

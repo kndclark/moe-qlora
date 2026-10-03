@@ -1839,6 +1839,22 @@ or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a 
   - Proposed next (David's call, since it moves thresholds after an OOM): the same run
     with `--max-num-seqs 16` in `POOL_EXTRA_FLAGS` and `POOL_GPU_UTIL=0.85`.
 
+### G7c2: G7c at the single-card server's limits, pre-registered 2026-10-02
+- Why: G7c OOMed in the laptop stage's Mamba state passing at gpu util 0.92 and vLLM's
+  default 256 seqs; the single-card gate server runs 0.85 and `--max-num-seqs 16`. Moving
+  thresholds after an OOM is a hard stop; David authorized it 2026-10-02: "proceed with
+  all remaining nemotron 3.5 lightning tests (g7c, etc.)".
+- Run: `POOL_GPU_UTIL=0.85 G7C_OUT=g7c2 G7C_MORE_FLAGS="--max-num-seqs 16"
+  probes/g7c_pool.sh > results/g7c2.log 2>&1`. Everything else as G7c: same revision,
+  flags, v1 eval (concurrency 16, thinking off) and bench at c=1 and c=16. The two new
+  variables default to G7c's exact flag string. Laptop GPU 323 MiB before start
+  (gnome-shell + terminal only); gpu-lab cc8e7a5 on both nodes.
+- What it decides: G7c's four questions. If it OOMs again: recorded, no third design
+  without David.
+- Expectations: KV per card about 1.7 GiB below G7c's 12.34 / 11.28 GiB (ARITHMETIC:
+  0.07 x 24 GiB, if weights and the activation profile are unchanged); the OOM gone
+  (INFERENCE: the failed 512 MiB allocation scales with the sequences in flight).
+
 ## Hard stops and rules
 
 - No edits to `~/gpu-lab` until the feasibility verdict. Probes and results stay in this
