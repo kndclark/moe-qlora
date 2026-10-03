@@ -1878,6 +1878,28 @@ or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a 
   - Not tested here: serving the G6u adapter pooled (the pool mounts only
     `/srv/model-cache`; writing the adapter there waits for David).
 
+### G7d: the G6u adapter on the pool, pre-registered 2026-10-02
+- Why: G7c2 showed base Lightning pools; the candidate is G6u, and whether a LoRA adapter
+  serves through pipeline parallel across sm_86 + sm_120 is UNKNOWN. Writing the shared
+  model cache waited for David; 2026-10-02: "yes adapter on the pool".
+- Setup (MEASURED): G7b's two files (`adapter_config.json`, `adapter_model.safetensors`)
+  copied to `/srv/model-cache/adapters/lightning-g6u` on the desktop, mode 644, then
+  `lab mirror sync adapters` to the laptop's mirror; sha256 of the weights `a53ab31c...`
+  on the source, the desktop and the mirror.
+- Run: `probes/g7d_pool.sh > results/g7d.log 2>&1`: G7c2's pool (util 0.85,
+  `--max-num-seqs 16`, the Lightning flags + `--linear-backend marlin`) plus G7b's
+  `--enable-lora --max-lora-rank 16 --max-loras 1`, module `g6u` from
+  `/hf/adapters/lightning-g6u`; then G7b's seven thinking-off sets and G7b-think's five
+  thinking-on sets, same eval flags, against the pool.
+- Compare: `RUN_DIR=g7d RUN_TAG=pool probes/g7b_compare.py` (and `MODE=think`) against
+  the laptop's three runs per row (N2 off, N1 on); the two new variables default to G7b's
+  paths, which reproduce `results/g7b-compare.json` and `g7b-think-compare.json` exactly.
+- What it decides: (1) LoRA serves pooled or not; a failure is recorded with its error, no
+  retry without David; (2) G7b's bar: rows more than 2 items outside the laptop's range
+  (G7b: 0 of 22 off, 0 of 14 on); (3) KV with LoRA against G7c2's 10.69 / 9.78 GiB.
+- Expectations (INFERENCE): it serves; 0 rows more than 2 items outside, as on the
+  desktop; KV a little below G7c2's (LoRA buffers).
+
 ## Hard stops and rules
 
 - No edits to `~/gpu-lab` until the feasibility verdict. Probes and results stay in this

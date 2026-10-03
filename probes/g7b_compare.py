@@ -5,6 +5,7 @@ the laptop's [min, max]; per set: call formats, unparsed turns, statuses, elapse
 
 usage: python3 probes/g7b_compare.py OUT.json LABEL
        MODE=think python3 probes/g7b_compare.py OUT.json LABEL   (G7b-think: N1's five sets)
+       RUN_DIR=g7d RUN_TAG=pool ...   (G7d: the pooled runs; defaults g7b / desk)
 """
 import collections
 import json
@@ -17,6 +18,8 @@ from noise_summary import headline  # noqa: E402  (guarded by __main__, safe to 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODE = os.environ.get("MODE", "nothink")
 SUFFIX = "think-4k" if MODE == "think" else "nothink"
+RUN_DIR = os.environ.get("RUN_DIR", "g7b")
+RUN_TAG = os.environ.get("RUN_TAG", "desk")
 TAGS = (["v2", "rocky", "promqlcat", "alert", "trap3"] if MODE == "think"
         else ["v1", "v2", "rocky", "promqlcat", "general", "alert", "trap3"])
 
@@ -31,7 +34,7 @@ def main():
     out_path, label = sys.argv[1], sys.argv[2]
     rows, sets = [], {}
     for tag in TAGS:
-        desk = json.load(open(os.path.join(REPO, "results", "g7b", f"research-eval-{tag}-lightning-{label}-{SUFFIX}-desk.json")))
+        desk = json.load(open(os.path.join(REPO, "results", RUN_DIR, f"research-eval-{tag}-lightning-{label}-{SUFFIX}-{RUN_TAG}.json")))
         lap = [json.load(open(os.path.join(REPO, "results", f"research-eval-{tag}-lightning-{label}-{SUFFIX}.json")))]
         lap += [json.load(open(os.path.join(REPO, "results", "noise", f"research-eval-{tag}-lightning-{label}-{SUFFIX}-{r}.json")))
                 for r in ("r2", "r3")]
