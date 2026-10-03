@@ -1893,6 +1893,10 @@ or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a 
      11 vs 8 /25; trap 7 vs 9 /15 and trap_control 0 vs 2 /8 sit at the 2-item edge.
      Statuses 101 answered / 49 truncated / 8 call_limit (laptop 105 / 44 / 9); all 50
      calls `xml_function`. Elapsed 162 s vs 284 s.
+     Item by item (`probes/pair_items.py`, `results/g7c2-items.json`, added 2026-10-02):
+     held_out differs on 21 items, 12 for the pool and 9 for the laptop (sign test p 0.66);
+     seen_tool 4-1 (0.38); trap 1-3; trap_control 2-0. Base Lightning moves that much
+     between two single runs, so neither 3-item gap is a pooled effect.
   4. Decode baseline (bench.py, 200 tokens, 2 repeats): c=1 29.8 tok/s p50 (cv 0.5%),
      TTFT 51 ms; c=16 22.75 tok/s per request p50 (cv 0.2%), TTFT 146 ms, so about 364
      tok/s aggregate if all 16 decode together (ARITHMETIC). Max 64 C. There is no
