@@ -1977,6 +1977,16 @@ the laptop and the desktop in parallel):
   with vLLM's load-time `--quantization fp8` (~31 GB: pooled only) plus the adapter; the
   seven thinking-off sets item by item against G7d (NVFP4, same pool). If nemotron_h's
   MoE has no online FP8 path, the error is the result.
+  - **L6 RESULT (MEASURED, 2026-10-02 18:55-19:01; `results/l6.log`, `results/l6/`,
+    `results/l6-items/`): no measurable cost from serving on NVFP4.** vLLM's load-time
+    FP8 of the BF16 checkpoint serves pooled with the adapter (weights 16.82 GiB on the
+    laptop stage against NVFP4's 9.71; KV 3.99 / 2.51 GiB, 573,440 tokens; no error;
+    pool down and desktop `lab up` exit 0). Seven sets thinking off, item by item against
+    G7d (NVFP4, same pool, same adapter and settings): no row past 2 discordant items,
+    every sign test p >= 0.5; over all rows FP8 is better on 8 items and NVFP4 on 8.
+    Reading: at this eval's resolution the adapter loses nothing between FP8 and NVFP4
+    serving. FP8 is nearer the BF16 + NF4 training precision but not equal to it, so
+    the residual gap to BF16 is bounded, not measured; BF16 itself does not fit the pool.
 - **L7 the candidate, item by item.** Thinking on, G6q beats G6u on 2 rows (held_out2 8-1,
   p 0.039; rocky_trap 9-1, p 0.021) and G6u beats G6q on none (rocky_task 11-3, p 0.057;
   `results/n1-items-g6u-g6q.json`; G6u vs G6t: 1-0 for G6u; vs base: 6-0). Thinking off,
