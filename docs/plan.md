@@ -1698,6 +1698,29 @@ or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a 
     which is at its ceiling (89.67 of 90); on the task, tool and trap rows it is
     clearly ahead. Whether "below on none" was the right bar for a 90-item row at a
     ceiling is David's call; the rule as written is not met.
+- **N2 held_out audit (POST HOC, 2026-10-02; `probes/n2_items.py`, `results/n2-items.json`;
+  David: "yes check N2 holdout").** N2's verdict above stands as recorded; this re-reads it.
+  - The item is a real error, not a scorer artifact. `held_out-patch-5` asks for "back up
+    mismatches only if otherwise requested", verbatim `patch --help`'s line for
+    `--no-backup-if-mismatch`; the line above it is `--backup-if-mismatch  Back up if the
+    patch does not match exactly.` G6u runs `patch --help` and cites that neighbour, with
+    its real description, 3 of 3. It is not a habit with `--no-` flags: of the 16 v1 items
+    whose answer is a `--no-` form, G6u gets 14 in all three repeats (Qwen v3 16). The other
+    miss, `held_out-file-5`, is tool choice: 2 of 3 runs look up `tar`, not `file`.
+  - The rule is the problem. At temperature 0 an item a model misses is missed every run, so
+    one repeatable item sits "beyond the spread" however small the row's difference. The
+    item question: on held_out the models differ on 3 of 90 items, 1 for G6u and 2 for Qwen
+    v3, exact two-sided sign test p = 1.0. A tie, not a loss.
+  - The same test both ways, 20 rows with per-item scores (`correct_where_scorable` has no
+    per-item key): p < 0.05 for G6u on alert (8 items to 0, p 0.008) and trap3 noticed (7 to
+    0, p 0.016); for Qwen v3 on none. Four of N2's six wins lean G6u but are not decisive
+    item by item: rocky_task 8-2 (0.11), promql 6-1 (0.13), trap 2-0, trap2 2-0 (0.5).
+    Corrected for 20 rows (Holm), no single row is significant. Over all discordant items
+    G6u is better on 43 and Qwen v3 on 16 (POST HOC, rows pooled).
+  - Reading: under an item-level bar G6u beats Qwen v3 thinking off on 2 rows and is below
+    on none, so the clause holds, with 2 wins rather than 6. Proposed for every comparison
+    from here (David's call): a row is a win or a loss only when its discordant items give
+    a two-sided sign test p < 0.05, pre-registered, with the pooled discordant count beside.
 
 ### G7: serving on vLLM 0.29 (laptop)
 - Base NVFP4, then base + LoRA, then merge if needed. UNKNOWN:
