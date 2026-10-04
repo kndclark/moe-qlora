@@ -1498,3 +1498,135 @@ David, 2026-10-03: "i want to go into testing out serving the 70B on the laptop 
    - the eval's wall time against L70m's.
 3. **If neither arm starts,** the result is that the 70B does not serve on one card in vLLM
    0.29.0 with these backends, with the error lines.
+
+### O70 result (MEASURED, 2026-10-03): the 70B serves on one card, about 18 times slower a stream
+
+**The short answer.** The laptop's card alone serves the 70B with vLLM's `uva` backend, at
+1.1 tokens a second for each request. The pool gives 19.6. `prefetch` runs twice as fast as
+`uva` but needs more RAM than the laptop has. Its answers match the pool's: no score row is
+won or lost, and 451 of 478 transcripts are the same word for word.
+
+**Same-day reference: the pool, serving as L70m did** (`results/o70/pool/`), before it went
+down.
+
+**uva started first time** (`results/o70/uva/`).
+- Ready in 150 s.
+- 21.54 GiB of weights in RAM, 15.48 GiB on the card.
+- KV 5.56 GiB, 18,208 tokens; the pool had 17,952.
+- RAM: `free`'s shared column went from 0 to 25.45 GiB, 1.18 times the offload. INFERENCE:
+  that is the pinned pages. About 30 GiB stayed available.
+
+**prefetch did not start** (`results/o70/prefetch/serve.log`).
+- **The error:** `AssertionError: CPU storage for self_attn.qkv_proj.qzeros is not pinned!`
+- **The cause, found in the container:**
+  - For symmetric GPTQ, vLLM's Marlin path replaces `qzeros` with an empty tensor
+    (`marlin.py:214`).
+  - PyTorch reports an empty tensor as not pinned, even one allocated pinned (checked on
+    this card).
+  - `prefetch.py:537` asserts that every offloaded tensor is pinned.
+- This is a bug in vLLM 0.29.0. It was not reported upstream.
+
+**prefetch-qs: a disclosed deviation**, prefetch with `--offload-params qweight scales`
+(`results/o70/prefetch-qs/`).
+- **Why it is close to the arm as planned:** of each offloaded layer it moves the packed
+  weights and their scales, nearly all its bytes. The rest, the empty `qzeros` among it,
+  stays on the card.
+- **It started:**
+  - ready in 121 s;
+  - 55 layers offloaded, 24.27 GB (vLLM's decimal GB: 22.60 GiB), into a 0.88 GB buffer;
+  - 14.25 GiB on the card; KV 5.87 GiB, 19,216 tokens.
+- **Decode was 2.0 to 2.1 tok/s for one request** (vLLM's 10-second averages; bench.py never
+  finished). That is 24.27 GB × 2.1 ≈ 51 GB/s (ARITHMETIC), the laptop's measured copy
+  rate.
+- **It needed too much RAM.**
+  - The shared column reached 53.28 GiB, 2.36 times the offload, with 1.7 GiB available.
+  - INFERENCE: PyTorch keeps the pinned copies made while loading, as well as the final
+    ones.
+  - About 90 s into the bench, decode fell to 0 to 1.3 tok/s.
+  - Claude Code's memory guard then killed the runner, and its exit trap removed the
+    container.
+- **Treated as a hard stop:** the arm was not retried. The faster arm cannot serve on this
+  laptop, so the correctness eval and the graphs try ran on `uva` instead. That too is a
+  deviation.
+
+**Speed** (gpu-lab `bench.py`, 200 tokens, warm-up discarded, 2 repeats; decode is the mean
+per request, TTFT the median)
+
+| | c=1 decode | c=1 TTFT | c=4 decode | c=4 TTFT | c=16 decode | c=16 TTFT | c=16 summed |
+|---|---|---|---|---|---|---|---|
+| pool (two cards) | 19.6 | 0.11 s | 18.4 | 0.14 s | 15.3 | 0.19 s | ≈245 |
+| uva (one card) | 1.07 | 1.72 s | 1.09 | 2.16 s | 1.09 | 2.74 s | 17.1 |
+| prefetch-qs (one card) | 2.0–2.1 | n/a | n/a | n/a | n/a | n/a | n/a |
+
+- **Notes on the table:**
+  - The pool's summed figure is 16 × 15.3 (ARITHMETIC).
+  - uva's summed figure is vLLM's own 10-second average while 16 requests ran; with 4
+    running it was 4.3.
+- **Against the expectations:**
+  - **Single stream:** prefetch reached the cap the arithmetic set (2.2), at the full copy
+    rate. uva reached half of it: 21.54 GiB × 1.07 ≈ 25 GB/s.
+    - INFERENCE: this is the difference between reading RAM in place from inside the
+      kernels and bulk copies.
+  - **Concurrency, as expected:** each uva step costs the same with 1, 4 or 16 requests.
+    Summed decode grows with them: 1.1, 4.3, 17.1.
+  - **uva's prefill, as feared:** during the eval, vLLM took in prompts at a median 71 tok/s
+    (its 10-second averages with any prefill: 90th percentile 106, peak 193; 512-token
+    chunks).
+    - INFERENCE: Marlin reads each weight over PCIe more than once when many prompt tokens
+      share a pass.
+    - At 100 tok/s a 1,000-token prompt takes about 10 s to read (ARITHMETIC).
+- **Graphs: they did not fit** (`results/o70/uva-graphs/serve.log`).
+  - They were tried on `uva`, a disclosed deviation, because `prefetch` cannot run here.
+  - At the same offload, KV fell from 5.56 GiB to 0.96 GiB. One 8,192-token request needs
+    2.5 GiB, so after 341 s the engine refused to start; vLLM put the longest request that
+    would fit at 3,136 tokens.
+  - Capturing the graphs took 218 s and, by vLLM's count, 0.73 GiB. Where the rest of the
+    4.6 GiB went was not traced.
+  - Not retried, as pre-registered.
+  - INFERENCE: with each uva step spending about 0.9 s on PCIe, graphs had little to save
+    in any case.
+
+**Correctness (Reading 1)** (`results/o70-uva-eval-compare.json`; labels
+`{set}-s1-o70-uva-eval-nothink`)
+
+**It serves the same answers, by the pre-registered rule.**
+- No row is a P1 win or loss against the pool's L70m: 22 ties, Holm 0 of 20.
+- Pooled items: one card better on 2, the pool on 4, sign p 0.69.
+- 451 of 478 transcripts are identical word for word, final answer and every call.
+- One card answered 474 items, with 4 at the call limit and none truncated. The pool's
+  figures were 473, 4 and 1.
+
+**Where the transcripts differ, and why.**
+- **Six sets call only tools whose output is fixed:** help text, and `web_search`, which
+  always answers "unavailable".
+  - On both sides, every turn up to the first difference got a prompt of the same length:
+    1,072 of 1,072. So the model saw the same inputs.
+  - 444 of 460 of their transcripts are identical. The other 16 come from rounding, not
+    from the inputs: the pool runs half the layers on the 3090, and batches of 16 items
+    form differently in every run.
+  - Run-to-run drift exists even on one card: four Qwen3.8 runs on the laptop agree on 37
+    to 49 of 158 v1 transcripts. Those runs think, so their outputs are far longer. So the
+    16 cannot be put on the 3090 alone.
+  - Their score changes: one card better on 1 item, the pool on 3 (v1 held_out 0/2,
+    rocky_held_out 1/0, rocky_task 0/1).
+- **promqlcat reads live Prometheus:** 7 of 18 identical.
+  - Its two runs were hours apart. Five turns got prompts of a different length, each right
+    after a `promql` call: `up == 0`, GPU memory, and the vLLM queue gauges, which held
+    the pool's own values during L70m.
+  - Its two score changes, one each way, follow such calls. So that row measures the
+    environment, not the card.
+- `probes/o70_compare.py` prints these input counts beside the identical count.
+
+**Reading 2: speed.**
+- Per request, one card is about 18 times slower than the pool (19.6 / 1.07).
+- At 16 requests, the sum is about 14 times lower (≈245 / 17.1).
+- The eval took 6,171 s summed over the seven sets on one card, against 641 s for L70m on
+  the pool: 9.6 times longer. That is less than the 18 times of a single stream, because
+  the eval runs 16 items at once.
+
+**What it changes:**
+- The pool stays the 70B's serving path. One card can stand in when the desktop is away, at
+  about one token a second a request.
+- **prefetch measured twice that, but needs less in RAM.** Two options, neither run here:
+  - a smaller offload, which leaves less KV;
+  - a vLLM that frees the pinned copies made while loading.

@@ -6,7 +6,8 @@
 # The pool must be down: the laptop's card is its second stage.
 # Records under results/o70/<ARM>/: serve.log, kv.txt, mem.txt, bench-c{1,4,16}.{json,log};
 #   with EVAL=1 the seven sets too (l70_eval.sh, TAG=o70-<ARM>, Meta's tool format).
-# usage: ARM=uva OFFLOAD="--cpu-offload-gb 21.5" [EAGER=1] [EVAL=1] o70_serve.sh
+# usage: ARM=uva OFFLOAD="--cpu-offload-gb 21.5" [EAGER=1] [BENCH="1 4 16"] [EVAL=1] o70_serve.sh
+#   BENCH lists the bench concurrencies; BENCH="" goes straight to the eval.
 set -u
 ARM=${ARM:?names the arm} OFFLOAD=${OFFLOAD:?vLLM offload flags}
 MODEL=hugging-quants/Meta-Llama-3.1-70B-Instruct-GPTQ-INT4 REV=1b0ae7f9d6da8b79f36fdc24912f950ecb2b6e91
@@ -44,7 +45,7 @@ echo "ready in $(( $(date +%s)-t0 ))s"
 docker logs $name 2>&1 | grep -E "Available KV cache memory|GPU KV cache size|Maximum concurrency|Model loading took|offloaded|Offloader" \
   | sed 's/^.*\] //' | cut -c1-200 | tee "$out/kv.txt"
 { nvidia-smi --query-gpu=memory.used,memory.total,temperature.gpu,power.draw --format=csv; free -m; } > "$out/mem.txt"
-for c in 1 4 16; do
+for c in ${BENCH-1 4 16}; do
   [ -f "$out/bench-c$c.json" ] && continue
   python3 /home/david/gpu-lab/bench/bench.py --base $B --model $MODEL --concurrency $c --repeats 2 \
     --label "o70 $ARM c=$c" --json-out "$out/bench-c$c.json" > "$out/bench-c$c.log" 2>&1

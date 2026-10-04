@@ -1,7 +1,10 @@
 """O70's correctness reading (docs/next-model-plan.md): the 70B on the laptop's one card (TAG
 o70-<arm>) against the same weights pooled across both cards (l70m), both in Meta's tool format,
 on the seven sets. Every row by P1 (sign p < 0.05 on discordant items), Holm beside; plus how many
-items have the same transcript word for word (final answer and every call), and wall time a set.
+items have the same transcript word for word (final answer and every call), whether each turn
+up to the first difference got a prompt of the same length, and wall time a set. Help text and
+web_search (always "unavailable") are fixed, so there equal lengths mean the same tool output;
+promql reads live Prometheus, whose answers change between runs, so there they do not.
 
 usage: python3 probes/o70_compare.py o70-<arm> [ref]    (ref default l70m)
 Writes results/<tag>-compare.json.
@@ -25,6 +28,15 @@ def same(a, b):
         [(c["name"], c["args"]) for c in b["calls"]]
 
 
+def inputs(a, b):  # turns up to the first that differs, and how many had equal prompt lengths:
+    n = eq = 0     # equal lengths mean the tool outputs fed back were the same on both sides
+    for x, y in zip(a["turns"], b["turns"]):
+        n, eq = n + 1, eq + (x["prompt_tokens"] == y["prompt_tokens"])
+        if x["text"] != y["text"]:
+            break
+    return n, eq
+
+
 rows = rows_rep(me, ref, TAGS)
 report = {"tag": TAG, "ref": REF, "missing": [t for t in TAGS if not load(me[0](t))]}
 if rows is not None:
@@ -38,7 +50,9 @@ for t in TAGS:
         continue
     bid = {r["id"]: r["run"] for r in b["results"]}
     n = sum(same(r["run"], bid[r["id"]]) for r in a["results"] if r["id"] in bid)
+    io = [inputs(r["run"], bid[r["id"]]) for r in a["results"] if r["id"] in bid]
     report["sets"][t] = {"items": len(a["results"]), "identical": n,
+                         "turns_compared": sum(x for x, _ in io), "same_prompt_len": sum(y for _, y in io),
                          "elapsed_s": a.get("elapsed_s"), "ref_elapsed_s": b.get("elapsed_s"),
                          "status": {s: sum(r["run"]["status"] == s for r in a["results"])
                                     for s in ("answered", "call_limit", "truncated", "context_exhausted", "error")}}
@@ -55,6 +69,9 @@ if "p1" in report:
                   f" p {r['sign_p']}" + (f"  P1 {r['p1']}" if r["p1"] != "tie" else ""))
 tot = sum(s["items"] for s in report["sets"].values())
 same_n = sum(s["identical"] for s in report["sets"].values())
-print(f"  identical transcripts {same_n}/{tot}")
+tc = sum(s["turns_compared"] for s in report["sets"].values())
+tl = sum(s["same_prompt_len"] for s in report["sets"].values())
+print(f"  identical transcripts {same_n}/{tot}; turns up to the first difference with the same prompt length {tl}/{tc}")
 for t, s in report["sets"].items():
-    print(f"    {t:9s} identical {s['identical']:3d}/{s['items']:3d}  wall {s['elapsed_s']}s (ref {s['ref_elapsed_s']}s)  {s['status']}")
+    print(f"    {t:9s} identical {s['identical']:3d}/{s['items']:3d}  same input {s['same_prompt_len']}/{s['turns_compared']}"
+          f"  wall {s['elapsed_s']}s (ref {s['ref_elapsed_s']}s)  {s['status']}")
