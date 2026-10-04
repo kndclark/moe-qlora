@@ -13,8 +13,11 @@ Reading 1, "clearly ahead somewhere that matters": at least one of task, rocky_t
 alert a P1 win against all three comparators on the same row, and none of the four a P1 loss
 against any. Flag and trap rows are reported, not counted: G6q's data adds them.
 
+L70m (the same, pre-registered 2026-10-03): TAG l70m, Llama prompted in Meta's documented JSON
+tool format. Its readings are L70's, plus the format effect: TAG against l70, every row.
+
 usage: python3 probes/l70_compare.py [TAG]    (default l70)
-Writes results/l70-compare.json.
+Writes results/<TAG>-compare.json.
 """
 import collections
 import json
@@ -87,6 +90,8 @@ report = {"tag": TAG, "missing": [t for t in TAGS if t not in have],
                     "elapsed_s": {t: d.get("elapsed_s") for t, d in have.items()}},
           "refs": {name: compare(parts) for name, parts in {**REFS, **BESIDE}.items()}}
 
+if TAG != "l70":  # L70m's second reading: the format effect, one run a side
+    report["vs_l70"] = compare([(side(["l70"], "nothink"), TAGS)])
 ref = report["refs"]
 if all(ref[n] for n in REFS):
     per = {}
@@ -104,7 +109,8 @@ rate_sides = {TAG: ME, "g6q_off_x3": sides["g6q_off_x3"], "g6q_on_r1": n1_side(N
               "qwen38_low_x3": sides["qwen38_low_x3"], "lightning_off": [lambda t: f"{t}-lightning-nothink"]}
 report["rates"] = {f"{s}.{m}": {k: rate(v, t, s, m) for k, v in rate_sides.items()} for t, s, m in RATES}
 # POST-HOC, chosen after the run and outside the rule: the 70B with no tools offered (label
-# {set}-l70-notools-nothink, --no-tools, otherwise the same), against its own run with tools
+# {set}-l70-notools-nothink, --no-tools, otherwise the same; L70's runs whatever TAG is, as
+# with no tools there is no tool format), against TAG's run with tools
 # and the comparators' runs with tools. It asks whether the reasoning rows are missing or masked
 # by the tool reflex; it is not a like-for-like comparison, as the references could look up.
 NT_SETS = ["v2", "rocky", "alert", "general", "trap3"]
@@ -149,8 +155,18 @@ for label, rr in report["reasoning_items"].items():
 print("\n== Rates (no per-item scores, or over-triggering): mean over a side's runs")
 for row, v in report["rates"].items():
     print(f"  {row:36s} " + "  ".join(f"{k} {x}" for k, x in v.items()))
+if report.get("vs_l70"):
+    x = report["vs_l70"]
+    q = x["p1"]
+    print(f"\n== Format effect: {TAG} against l70, one run a side, every row")
+    print(f"  P1 win {q['win']} loss {q['loss']} tie {q['tie']}, Holm {q['holm']} of {q['tested']};"
+          f" pooled items {pp(x['pooled'])}; wins {', '.join(q['wins']) or '-'}; losses {', '.join(q['losses']) or '-'}")
+    for r in x["rows"]:
+        print(f"    {r['set']:9s} {r['split'] + '.' + r['metric']:38s} items +{r['model_better']}/-{r['ref_better']}"
+              f" p {r['sign_p']}" + (f"  P1 {r['p1']}" if r["p1"] != "tie" else ""))
 if "posthoc_notools" in report:
-    print(f"\n== POST-HOC, outside the rule: {TAG} with no tools offered ({', '.join(NT_SETS)}), P1 rows that matter")
+    print(f"\n== POST-HOC, outside the rule: the 70B with no tools offered (L70's runs: {', '.join(NT_SETS)}),"
+          f" against {TAG} with tools and the comparators, P1 rows that matter")
     for name, x in report["posthoc_notools"].items():
         q = x["p1"]
         print(f"  vs {name:14s} P1 win {q['win']} loss {q['loss']} tie {q['tie']}, Holm {q['holm']} of {q['tested']};"

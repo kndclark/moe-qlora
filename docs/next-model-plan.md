@@ -1140,3 +1140,130 @@ could look things up.
 - **On this evidence a 70B adapter is a long shot.** The pre-registered branch, weakness
   targeting on G6q, stands.
 - **One-card 70B serving is a separate question.** It was not measured here.
+
+## L70m: the 70B in Meta's documented tool format, pre-registered 2026-10-03
+
+David, 2026-10-03: "are we sure we're actually testing/evaluating 70B properly? are the
+tests/formats/tool calls we ran nemotron and qwen against the same ones that are optimal for
+llama? or are we 'testing how well a fish climbs a tree'", then: "if it turns out we need to
+tune our test formats for llama (while maintaining the same integrity and rigor) then we
+should do that and re-run the first set of tests we ran".
+
+### Why: L70 prompted Llama in a format the others never saw
+
+The harness sends no system prompt. It renders each model's own chat template through
+vLLM's `/tokenize`, so each model gets its template's tool wording:
+
+- **Qwen3.8 and Lightning:** the tools sit in the system turn, with "If you choose to call a
+  function ONLY reply in the following format" and "If there is no function call available,
+  answer the question like normal". Tool output goes back raw.
+- **Llama 3.1, HF template (the build's `tokenizer_config.json`), as L70 ran it:** the tools
+  sit in the first user turn, under "Given the following functions, please respond with a
+  JSON for a function call with its proper arguments that best answers the given prompt."
+  - That asks for a call on every question and offers no way to answer directly.
+  - Tool output goes back through `tojson`, so each `--help` page reached the 70B as one
+    JSON-quoted string.
+
+L70's audit blamed the tool reflex partly on that wording. It is not Meta's documented
+format, so L70 measured Llama on a prompt the other models were not given.
+
+### The one change
+
+Llama's prompt follows **Meta's documented JSON tool calling**, chosen from Meta's documents
+before any result.
+
+- **Source:** llama-models `models/llama3_1/prompt_format.md` @ 8d29d93f (2024-09-25, raw
+  file sha256 7f85a2e5...c616a4), section "JSON based tool calling":
+  - a system turn: "Environment: ipython", "Cutting Knowledge Date: December 2023", "Today
+    Date: 21 September 2024", "You are a helpful assistant.";
+  - the tools in a user turn: "Answer the user's question by making use of the following
+    functions if needed. If none of the function can be used, please say so. Here is a list
+    of functions in JSON format:", the tools, then "Return function calls in JSON format.";
+  - the question in a user turn of its own.
+- **Not the doc's `<function>` format.** Meta presents it as "an example of how you could
+  also write custom instructions", not as the primary format.
+- **Where the doc shows one turn only, Meta's reference code at the same commit decides:**
+  - tools one newline apart (`prompt_templates/system_prompts.py`, JsonCustomToolGenerator);
+  - a prior call replayed as `<|python_tag|>` + `{"type": "function", "name": ...,
+    "parameters": ...}` + `<|eom_id|>` (`api/chat_format.py` encode_message,
+    `api/tool_utils.py` encode_tool_call);
+  - tool output as an `ipython` turn, raw.
+- **One departure, to keep the test the same for every model.** The tools are the harness's
+  own schemas, laid out as Meta's generator lays them out (indent 4, `required` on one line).
+  The generator also rewrites every parameter as `"type": "object"` inside a list; that is
+  not copied, so Llama sees the parameter types the other models see.
+- **Checked offline before the run:**
+  - rendering Meta's own example through the code gives the doc's text byte for byte, bar
+    the code fence's trailing newline (the reference encoder ends a header with "\n\n");
+  - `--selfcheck` asserts the exact text of a first turn and of a two-call history, typed
+    out by hand, and fails when a separator or the date is changed.
+
+**Everything else is L70's:**
+- same model revision and pool flags, maxlen 8,192;
+- the seven sets, items, scorer, allowlist and tool schema text;
+- `--max-calls 3 --temperature 0 --window 4000 --seed 20260923 --concurrency 16`;
+- thinking off, 512 tokens a turn;
+- promql with `--promql-catalog`.
+
+Labels `{set}-s1-l70m-nothink`.
+
+### Implementation
+
+- `probes/g7a_eval.py --render llama31-meta-json`.
+  - Builds the text client-side and sends `/tokenize` `{"prompt": text,
+    "add_special_tokens": false}`.
+  - vLLM 0.29 refuses a per-request `chat_template` unless the server runs with
+    `--trust-request-chat-template`, so rendering client-side keeps the pool exactly as L70
+    served it.
+  - Recorded in each output's `"wrapper"`.
+- Requests without tools keep the server's template. Every set offers tools, so none in
+  L70m.
+- **Parsing is unchanged.**
+  - With special tokens skipped, `<|python_tag|>{...}<|eom_id|>` reaches the harness as the
+    bare JSON that `parse_tool_call` already reads.
+  - `<|eom_id|>` (128008) is one of the build's stop ids (`generation_config.json`).
+  - A reply that is not a call is scored as an answer, as for every model. That includes
+    Python after `<|python_tag|>`: Meta notes "Environment: ipython" also turns on the code
+    interpreter. Such replies are counted and reported, not retried.
+- Run: `TAG=l70m ARGS="--render llama31-meta-json" probes/l70_eval.sh`.
+- Compare: `python3 probes/l70_compare.py l70m`, which writes `results/l70m-compare.json`.
+
+### Gates before scoring (stop at the first that fails; do not score)
+
+1. `--selfcheck` passes (`l70_eval.sh` runs it).
+2. One rendered prompt's tokens include 128006 (`<|start_header_id|>`) and exactly one
+   128000 (`<|begin_of_text|>`).
+3. One raw first-turn completion with `"skip_special_tokens": false`, on v2 items in order
+   until one calls a tool. The call must begin with `<|python_tag|>` and stop on
+   `<|eom_id|>`, either in the text or as `stop_reason` 128008. If it does not, stop and
+   amend this pre-registration before scoring.
+4. The rendered text of one item is diffed against the stock template's
+   (`/tokenize` then `/detokenize`), and the diff is kept with the results.
+5. One warm-up request, discarded. Then a smoke run, `--limit 1` on v2 into a scratch
+   directory, must show a parsed call and a final answer.
+
+### Readings, CHOSEN before the run
+
+1. **L70's two readings, word for word**, against the same three comparators: G6q off
+   (L7 x3), G6q on (N1 x3, r1 on v1 and general) and Qwen3.8 low (x3). P1 decides; Holm and
+   the pooled sign test sit beside. L70m's verdict replaces L70's.
+2. **The format effect:** L70m against L70, every row. P1 on one run a side, Holm beside.
+   Reported, not a rule.
+3. **From now on, Meta's format is the 70B's eval format, whatever the outcome**, because
+   it was chosen on documentation, not on scores. The one-card serving test uses L70m's
+   sets as its correctness workload.
+
+Reported beside, as for L70:
+- each comparator's full row table;
+- the reasoning rows in items;
+- truncated and context-exhausted items;
+- tool calls on no_tool and general;
+- refused and `web_search` calls;
+- `<|python_tag|>` replies that are not a JSON call;
+- wall time per set.
+
+The no-tools runs are not repeated: with no tools there is no tool wording to fix. The stock
+template then sends Meta's turn structure. Its one addition is a dated system turn ("Cutting
+Knowledge Date: December 2023", "Today Date: 26 Jul 2024"), the same lines Meta's reference
+`SystemDefaultGenerator` writes. L70's POST-HOC no-tools comparison is re-read against
+L70m's run with tools.
