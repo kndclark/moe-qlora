@@ -950,3 +950,91 @@ Gates 2 and 3 both ran 6 steps with no OOM and no guard abort (`results/w70-r0.*
   GiB could not pin all 80 layers (32.9 GiB; arithmetic, not run).
 - This is a fit-and-speed probe: no adapter was saved and nothing was evaluated. A full run
   needs an adapter-saving path and a Llama-3.1-70B eval plan before it means anything.
+
+## L70: untrained Llama-3.1-70B on the seven sets, pre-registered 2026-10-03
+
+David, 2026-10-03: "ok we can proceed with measuring untrained 70B. from there we can either
+test serving the 70B on one card and then proceed to weakness targeting or proceed to weakness
+targeting and serve the 70B but i do want to eventually try serving the 70B on the laptop".
+
+W70 showed a 70B adapter can be trained on the laptop (about 4.6 h for G6q's data). L70 asks
+whether one is worth building: how does the untrained 70B stand against G6q, the candidate,
+and Qwen3.8-27B, the other base? If it is not clearly ahead somewhere that matters, weakness
+targeting goes to G6q. David picks the branch after the result.
+
+### Model and serving
+
+- `hugging-quants/Meta-Llama-3.1-70B-Instruct-GPTQ-INT4` @ 1b0ae7f9, the same revision in
+  both nodes' caches, no download. This is the build the lab's September 70B evals used and
+  W70 trained.
+- Served across both cards by gpu-lab `bin/lab pool up`: vLLM 0.29.0 (`gpu-lab:vllm-ray`),
+  pipeline parallel over the cable, the desktop 3090 and the laptop's 5090. Flags:
+  `--enforce-eager` (the engine will not start without it: gpu-lab's pooled-70B notes),
+  util 0.92 and a 512-token prefill batch (bin/lab's measured defaults), maxlen 8,192.
+- **Why maxlen 8,192, not S1's 16,384:** at 4,096 the pool held 16,320 KV tokens
+  (MEASURED, 2026-09), fewer than one 16,384-token sequence, so vLLM would refuse. In
+  earlier runs of these sets the longest prompt was 2,508 tokens (G6q, rocky), so 8,192
+  leaves every turn its full 512 tokens. The KV line the engine logs at this maxlen is
+  recorded with the results.
+- Laptop GPU apps closed before `pool up`: vLLM counts their memory against KV.
+
+### Protocol
+
+- **One pass: thinking off, 512 tokens a turn.** Llama 3.1 has no thinking mode. With
+  `--thinking on`, `g7a_eval.py`'s `split_think` reads any reply without `</think>` as
+  truncated mid-think, which would score every 70B answer as empty. `--thinking off` sends
+  `enable_thinking: false`, which Llama's template ignores, and leaves the harness's own
+  `split_think`.
+- Otherwise S1's protocol: `probes/g7a_eval.py`, gated by `--selfcheck`, `--max-calls 3
+  --temperature 0 --window 4000 --seed 20260923 --concurrency 16`, the promql set with
+  `--promql-catalog` against the desktop's Prometheus. Labels `{set}-s1-l70-nothink`.
+- Tool calls come back as Llama's JSON (`{"name": ..., "parameters": ...}`), which
+  `research_eval.parse_tool_call` reads; it scored the September 70B runs. Tool output goes
+  back through Llama's template as `ipython` turns.
+- **Before the full run:** one warm-up request, discarded (an eager 70B's first request
+  is slow); then a smoke run, `--limit 1` on v2, whose turns must show a parsed tool call
+  and a final answer. If the smoke run fails, stop and fix the harness. Do not score.
+
+### Comparators
+
+1. **G6q, thinking off:** its three L7 runs, all seven sets. This is the like-for-like
+   comparison: neither side thinks.
+2. **G6q, thinking on:** its three N1 runs on N1's five sets (v2, rocky, promqlcat, alert,
+   trap3). On v1 and general it has one run (G6's gate run).
+3. **Qwen3.8-27B INT4, thinking on at low effort:** its three runs (S1, r2, r3), all seven
+   sets.
+
+Beside them, outside the rule: base Lightning (N1 x3 thinking on, five sets; one run
+thinking off, seven sets) and the 70B's September v1 results.
+
+Every row is judged by P1: a win or a loss only at two-sided sign p < 0.05 on the
+discordant items, with each item's score the mean over that side's runs
+(`s1_compare.rows_rep`). The Holm count is beside, over the 20 rows with per-item scores.
+`general.correct_where_scorable` and `no_tool.correct_where_scorable` have none, so they
+are reported as rates only. `probes/l70_compare.py` computes all of this and writes
+`results/l70-compare.json`.
+
+### Readings, CHOSEN before the run
+
+The rows that matter are the reasoning rows, which training here has not been shown to
+add: task, rocky_task, promql and alert, scored per item, plus general as a rate. G6q's
+data reliably adds the flag and trap rows: Q2 and N4 both gained them. So a 70B loss to G6q
+on those rows is expected, and an adapter would close it. Those rows are reported, but they
+do not count against the 70B.
+
+1. **Clearly ahead somewhere that matters, so a 70B adapter is worth building:** at least
+   one of task, rocky_task, promql or alert is a P1 win against all three comparators, on
+   the same row, and none of those four rows is a P1 loss against any of them.
+2. **Otherwise: not clearly ahead.** Weakness targeting goes to G6q.
+
+Reported beside the readings, not folded in:
+- the pooled sign test per comparator;
+- each comparator's full row table;
+- the reasoning rows in items, beside N1's table;
+- items that ended `truncated` (512 tokens hit) or `context_exhausted`;
+- how often a tool was called on no_tool and general (September: 20 of 20 no-tool
+  questions);
+- wall time per set.
+
+The weakness-targeting step that follows must pre-register "no row lost" on all seven sets
+(memory: targeted data needs controls). That rule is not L70's.
