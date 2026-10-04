@@ -125,12 +125,14 @@ beside it (P1, `probes/pair_items.py`). A single run at p < 0.05 is a lead, not 
 | G6r | design-A thinking render | fail / fail | fewer turns stuck in an unclosed `<think>` (64 to 24); task rows unchanged |
 | G6p | + 200 task records | fail / **pass** | task rows recover; promql gets worse (bash lookups instead of the promql tool) |
 | G6p2048 | max length 2,048 | fail / pass | same as G6p |
-| **G6q** | + 98 tool-choice records | **pass / pass** | first to pass thinking on; promql 0.833 and alert 7/9 thinking on; vs Qwen v3 off: 2 W, 0 L |
+| **G6q** | + 98 tool-choice records | **pass / pass** | first to pass thinking on; thinking on, gate run / N1 mean of 3: promql 15/18 / 13.7, alert 7/9 / 5.0 (runs 7, 3, 5); vs Qwen v3 off: 2 W, 0 L |
 | G6t | + base reasoning traces | pass / pass | reasons on 447 of 970 thinking-on turns (G6q: 0 of 919); task wins vs base |
-| G6u | + more traces | pass / pass | task 0.95 and trap3 noticed 0.75 thinking on; was on `main` from fa7a944 |
+| G6u | + more traces | pass / pass | thinking on, gate run / N1 mean of 3: task 19/20 / 17.7, trap3 noticed 9/12 / 8.0; was on `main` from fa7a944 |
 | G6v | trap traces | not trained | 0 of 424 attempts accepted: it looks up the tool, then double-checks with web_search |
 | G6w | web_search-failure data | pass / pass | dropped: fabricates more on trap3, trails on promql; web_search on traps only 72 to 62 of 123 |
 | G6ub | G6u with design-B render | not a gate run | lost alert thinking on 0-8 (p 0.008): it fell back on bash help lookups; design A stays |
+
+Gate-run figures are single runs; the N1 means are from `results/n1-summary.json`.
 
 **Choosing the candidate (L7, L8; item level, three repeats a side):**
 
