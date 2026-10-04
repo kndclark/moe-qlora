@@ -57,10 +57,10 @@ BESIDE = {
 }
 
 
-def compare(parts):
+def compare(parts, me=ME, keep=TAGS):
     rr = []
     for fbs, sets in parts:
-        got = rows_rep(ME, fbs, sets)
+        got = rows_rep(me, fbs, [t for t in sets if t in keep])
         if got is None:
             return None
         rr += got
@@ -103,6 +103,15 @@ report["reasoning_items"] = {k: row_items(v) for k, v in sides.items()}
 rate_sides = {TAG: ME, "g6q_off_x3": sides["g6q_off_x3"], "g6q_on_r1": n1_side(N1["think"]["g6q"], ["r1"]),
               "qwen38_low_x3": sides["qwen38_low_x3"], "lightning_off": [lambda t: f"{t}-lightning-nothink"]}
 report["rates"] = {f"{s}.{m}": {k: rate(v, t, s, m) for k, v in rate_sides.items()} for t, s, m in RATES}
+# POST-HOC, chosen after the run and outside the rule: the 70B with no tools offered (label
+# {set}-l70-notools-nothink, --no-tools, otherwise the same), against its own run with tools
+# and the comparators' runs with tools. It asks whether the reasoning rows are missing or masked
+# by the tool reflex; it is not a like-for-like comparison, as the references could look up.
+NT_SETS = ["v2", "rocky", "alert", "general", "trap3"]
+NT = [lambda t: f"{t}-l70-notools-nothink"]
+if all(load(NT[0](t)) for t in NT_SETS):
+    report["posthoc_notools"] = {name: compare(parts, NT, NT_SETS)
+                                 for name, parts in {f"{TAG}_tools": [(ME, TAGS)], **REFS}.items()}
 json.dump(report, open(os.path.join(R, f"{TAG}-compare.json"), "w"), indent=1)
 
 
@@ -140,3 +149,13 @@ for label, rr in report["reasoning_items"].items():
 print("\n== Rates (no per-item scores, or over-triggering): mean over a side's runs")
 for row, v in report["rates"].items():
     print(f"  {row:36s} " + "  ".join(f"{k} {x}" for k, x in v.items()))
+if "posthoc_notools" in report:
+    print(f"\n== POST-HOC, outside the rule: {TAG} with no tools offered ({', '.join(NT_SETS)}), P1 rows that matter")
+    for name, x in report["posthoc_notools"].items():
+        q = x["p1"]
+        print(f"  vs {name:14s} P1 win {q['win']} loss {q['loss']} tie {q['tie']}, Holm {q['holm']} of {q['tested']};"
+              f" pooled items {pp(x['pooled'])}; wins {', '.join(q['wins']) or '-'}; losses {', '.join(q['losses']) or '-'}")
+        for r in x["rows"]:
+            if r["split"] in ("task", "rocky_task", "alert", "trap3"):
+                print(f"    {r['set']:9s} {r['split'] + '.' + r['metric']:38s} items +{r['model_better']}/-{r['ref_better']}"
+                      f" p {r['sign_p']}" + (f"  P1 {r['p1']}" if r["p1"] != "tie" else ""))

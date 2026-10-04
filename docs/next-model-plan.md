@@ -1038,3 +1038,105 @@ Reported beside the readings, not folded in:
 
 The weakness-targeting step that follows must pre-register "no row lost" on all seven sets
 (memory: targeted data needs controls). That rule is not L70's.
+
+### L70 result (MEASURED, 2026-10-03): not clearly ahead, so weakness targeting goes to G6q
+
+**Served as pre-registered.** The pool came up at maxlen 8,192 with `--enforce-eager`:
+- weights: 18.44 GiB a stage;
+- KV: 3.04 and 2.74 GiB of room, 17,952 tokens, 2.19 requests of 8,192
+  (`results/s1/l70/kv.txt`);
+- concurrency: up to 15 requests ran at once, KV peaked near 44%, and generation reached
+  65 to 80 tok/s summed over all requests. KV room was never the limit.
+
+**The run.** The seven sets took 690 s (`results/s1/l70/run.log`).
+- Of 478 items, 414 ended in an answer and 64 at the 3-call limit.
+- No turn reached 512 tokens. The longest prompt was 1,887 tokens. No item ran out of
+  context.
+- Smoke run: tool calls parsed and every item ended, as the gate required.
+- **Reproducible:** today's v1 matches the September run (`gpu-lab
+  bench/results/research-eval-70b-tools.json`, same flags) on every metric:
+  - held_out 74.4%;
+  - seen_tool 76%;
+  - trap 100%;
+  - trap_control 12.5%;
+  - no_tool over-trigger 100%.
+
+  154 of 158 transcripts are identical word for word.
+
+| comparator | P1 rows | Holm | pooled items (70B / ref) | reasoning rows lost |
+|---|---|---|---|---|
+| G6q thinking off (L7 x3) | win 0, loss 6 | 4 of 20 | 18/170 | task 1/11, alert 0/6 |
+| G6q thinking on (N1 x3; r1 on v1, general) | win 0, loss 8 | 4 of 20 | 18/166 | task 1/10, alert 0/6 |
+| Qwen3.8 low (x3) | win 1 (rocky_held_out 19/6), loss 5 | 3 of 20 | 79/157 | task 1/13, rocky_task 2/11, alert 0/8 |
+| base Lightning on (N1 x3, five sets) | win 1, loss 2 | 0 of 14 | 70/68 | rocky_task 3/12, alert 1/8 |
+| base Lightning off (one run) | win 6, loss 3 | 7 of 20 | 149/120 | task 0/10 |
+
+Reasoning rows in items, beside N1's table:
+
+| | task | rocky_task | promql | alert | trap3 noticed |
+|---|---|---|---|---|---|
+| **70B, tools, thinking off** | **6** | **5** | **12** | **1** | **7** |
+| G6q off x3 | 15.00 | 9.00 | 15.33 | 6.00 | 5.67 |
+| G6q on N1 x3 | 14.67 | 8.00 | 13.67 | 5.00 | 5.00 |
+| Qwen3.8 low x3 | 17.67 | 13.33 | 13.67 | 9.00 | 7.33 |
+| base Lightning on N1 x3 | 13.00 | 12.67 | 12.00 | 6.00 | 3.67 |
+
+**Reading 1, by the pre-registered rule: not clearly ahead.**
+- No reasoning row is won against all three comparators.
+- task and alert are lost to all three, and rocky_task to Qwen3.8 low (`results/l70-compare.json`).
+- Weakness targeting goes to G6q.
+
+**Why it loses: the tool reflex** (audited, item by item).
+- **It runs the answer instead of looking it up.** It treats `bash` as an executor:
+  `chronyc sources`, `mount -o remount,ro /dev/sda1 /mnt`, `dnf repolist`, and alert rules
+  written into `cat << EOF > rules.yaml`.
+- **The harness refuses those.** It allows only `--help`, `-h` and `man` lookups. 293 of
+  the 70B's 774 calls were refused, and 121 were `web_search` calls answered "unavailable".
+- **It does not recover well.** It retries until the call limit (64 items), or answers
+  with a remark about the refusal ("The provided code is not valid Python code ...").
+- **It calls a tool on every question that needs none:** 45 of 45 general and 20 of 20
+  no_tool. It answers 5 of the 45 general questions correctly.
+- **Two things invite this behaviour, and neither is a harness bug.**
+  - The harness describes `bash` as "Execute a bash command in the terminal ... run CLI
+    commands with --help or man, inspect files, check configurations, or examine system
+    status". The other models read that as "look it up".
+  - Llama 3.1's own template, as vLLM renders it, puts the tools in the first user turn
+    under "Given the following functions, please respond with a JSON for a function call
+    with its proper arguments that best answers the given prompt."
+- **promql:** 5 of its 24 calls were cut short at a quote. The model itself closes the JSON
+  string at a label's inner quote (`{"query": "up{job="}}`); escaping quotes inside an
+  argument is a cost of Llama's JSON call format.
+
+**POST-HOC diagnostic, chosen after the run and outside the rule.** The same 70B with no
+tools offered (`--no-tools`, memory only) on v2, rocky, alert, general and trap3
+(`{set}-l70-notools-nothink`). This is one run, and not like for like: the comparators
+could look things up.
+
+| | task | rocky_task | alert | general correct | held_out2 | rocky_held_out | trap3 fabricated |
+|---|---|---|---|---|---|---|---|
+| 70B with tools | 6 | 5 | 1 | 5/45 | 46/70 | 47/56 | 0/12 |
+| 70B memory only | 17 | 16 | 6 | 45/45 | 27/70 | 24/56 | 5/12 |
+
+- **Against its own run with tools:** P1 wins on task (11/0) and rocky_task (13/2), with
+  alert leaning the same way (5/0, p 0.062). It loses the flag rows held_out2 and
+  rocky_held_out, since it can no longer look anything up.
+- **Against the comparators with tools:**
+  - no reasoning row is lost to any of them;
+  - rocky_task is a P1 win against G6q thinking on (10/1, p 0.012) and leans to it against
+    G6q off (9/2, p 0.065);
+  - against Qwen3.8 low it is level on every reasoning row (task 3/3, rocky_task 6/2,
+    alert 0/3).
+
+**What this means for the branch (INFERENCE, not measured).**
+- **The 70B has the reasoning; its tool behaviour hides it.** Tool behaviour is what LoRA
+  changes here (Phase 2b), and G6q's data already renders in Llama's template (W70: 1,248
+  records). So a 70B adapter would aim at the right weakness.
+- **But its ceiling looks like Qwen3.8's, not above it.** Memory-only, it is level with
+  Qwen3.8 low on the reasoning rows, and Q2 already measured that pairing: Qwen3.8 + G6q's
+  data reaches G6q and does not pass it.
+- **The costs are higher.** The 70B is 2.5 times the parameters, serves only pooled
+  (17,952 KV tokens across both cards, about 19 tok/s for one user), and invents answers
+  from memory (trap3 fabricated 5/12).
+- **On this evidence a 70B adapter is a long shot.** The pre-registered branch, weakness
+  targeting on G6q, stands.
+- **One-card 70B serving is a separate question.** It was not measured here.
