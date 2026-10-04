@@ -171,6 +171,31 @@ Audit fix 3, §6 and §8.4; research #1, §6.2 and §6.3.
   kind of six, +0.037 against a +0.033 total; G6q leads trap by 0.157). A 9-item row
   deciding the served model is the case for 1.1's 30+.
 
+**Dry run, thinking off** [measured: `MODE=nothink decision_rule.py --served g6q g6q g6u`,
+3 repeats of all 7 sets per arm; the same 545 item-rows and 149 clusters]:
+
+| arm | primary | flag-lookup | trap | no_tool | live | alert | trap3 | completion tokens / item | eval minutes |
+|---|---|---|---|---|---|---|---|---|---|
+| base | 0.570 | 0.468 | 0.563 | 0.994 | 0.241 | 0.556 | 0.597 | 294 | 34.5 |
+| G6q | 0.852 | 0.887 | 0.971 | 1.000 | 0.852 | 0.667 | 0.736 | 76 | 16.5 |
+| G6u | 0.874 | 0.871 | 0.977 | 0.990 | 0.741 | 0.667 | 1.000 | 79 | 17.5 |
+
+- Both beat the base (G6q +0.282, G6u +0.304, Holm 0.001) with no row flag. **The rule
+  serves G6u**: G6q - G6u is [-0.086, +0.035], not shown non-inferior, and G6q writes
+  0.96x G6u's tokens (0.99x at the bound), so there is no cost case either.
+- G6u is one item from a flag on v2 task (20 items): base 16, 13, 16; G6u 14, 12, 13; a
+  drop of exactly 2.0 against a threshold of more than 2. On the three two-repeat subsets
+  the rule serves G6u, G6q, G6u: without r2, base's dip leaves, the drop is 2.5 and the
+  range 1, so G6u is flagged [measured, `REPS`]. That is the case for three repeats.
+- **Off against on, per arm** [measured: `probes/mode_compare.py ARM`, this rule with the
+  arm's thinking-on run as the anchor]: base -0.125 [-0.181, -0.065], 6 row flags; G6q
+  +0.042 [-0.021, +0.105], no flag, 76 against 77 tokens; G6u +0.031 [-0.035, +0.099],
+  one flag (v2 task 19, 17, 17 to 14, 12, 13), 79 against 381 tokens. On dev, thinking
+  lifts the base and does not measurably lift either adapter, and it costs G6u 4.8x the
+  tokens. **G6q's 5.0x cost lead over G6u exists only with thinking on.** These sets
+  have no reasoning-required slice (1.7), so this shows the eval does not need thinking,
+  not that the lab's traffic does [inference].
+
 **Gaps in today's tools** [code, audit §8.4]:
 - `pair_items.py` marks raw p < 0.05 and computes **no Holm**. With 22 rows on the 7 sets
   [measured], about one raw "<" is expected under the null [arithmetic].
@@ -710,12 +735,17 @@ data it has not seen.
 
 - **Download go**, per dataset: When2Call first (4.1); any other row in the volume table.
 - **Is reasoning needed?** If yes, train the mix (3.3). If no, serve thinking off and drop
-  thinking-on as the primary mode.
+  thinking-on as the primary mode. On dev, thinking off is not measurably worse for
+  either adapter on the primary metric (G6u loses 4.67 items of v2 task), at 4.8x fewer
+  tokens for G6u; the base needs thinking (1.3). The dev sets cannot show a reasoning
+  need (1.7).
 - **Who writes the locked test set** (1.1), and an agreement that its items are never read
   per item during data work.
 - **G6q or G6u until the locked test.** L7/L8 chose G6q; the dev dry run of 1.3's rule
   picks G6u, because G6q carries a rocky_task flag. G6q writes 5.0x fewer tokens at a
-  primary metric the dry run cannot separate (1.3, 1.8). Both are dev numbers.
+  primary metric the dry run cannot separate (1.3, 1.8). With thinking off, the two
+  cost the same and the rule again picks G6u, so G6q's cost case depends on serving
+  thinking on. Both are dev numbers.
 - **The non-inferiority margin** (default 0.02 on the primary metric). It is the score
   David will give up for a cheaper model. On dev, G6q would need a margin above 0.094
   even with its flag cleared (1.3).
