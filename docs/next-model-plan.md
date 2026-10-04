@@ -1267,3 +1267,85 @@ template then sends Meta's turn structure. Its one addition is a dated system tu
 Knowledge Date: December 2023", "Today Date: 26 Jul 2024"), the same lines Meta's reference
 `SystemDefaultGenerator` writes. L70's POST-HOC no-tools comparison is re-read against
 L70m's run with tools.
+
+## O70: the 70B on the laptop's one card, pre-registered 2026-10-03
+
+David, 2026-10-03: "i want to go into testing out serving the 70B on the laptop only next".
+
+### Why part of it must live in RAM
+
+- **Weights, read from the safetensors headers:** 37.07 GiB in all.
+  - 80 decoder layers of 0.414 GiB each, 33.16 GiB together;
+  - the bf16 embedding and LM head, 1.96 GiB each. Neither backend below moves those.
+- **The card:** 24,463 MiB. At util 0.92 vLLM may use 21.98 GiB.
+- **RAM:** 61 GiB, 56 free. RAM to GPU runs at 51.8 GB/s (MEASURED, memory-tiers).
+
+### Arms: vLLM 0.29.0's two weight-offload backends, neither run here before
+
+- **uva:** `--cpu-offload-gb 21.5`.
+  - Parameters move to pinned RAM in layer order until 21.5 GiB are there, about 52
+    layers.
+  - Kernels read them in place across PCIe, every forward pass
+    (`model_executor/offloader/uva.py`).
+- **prefetch:** `--offload-group-size 16 --offload-num-in-group 11
+  --offload-prefetch-step 2`.
+  - The last 11 layers of every 16 sit in pinned RAM: 55 layers, 22.8 GiB.
+  - Each is copied back ahead of use, on a side stream, into two layer-sized GPU buffers
+    (0.83 GiB) (`prefetch.py`).
+  - Net, about 21.9 GiB off the card, close to uva's.
+- **Why 21.5 GiB (ARITHMETIC).**
+  - Start from the 21.98 GiB budget.
+  - Take off about 0.8 GiB of overhead: what the pool's laptop stage left over,
+    21.98 − 18.44 − 2.74.
+  - Take off 3.91 GiB for the embedding and head. That leaves 17.3 GiB for layers and KV.
+  - KV like the pool's is 17,952 tokens × 0.3125 MiB = 5.5 GiB. That leaves 11.8 GiB of
+    layers on the card, 28 of 80.
+- **Fit is read, not predicted** (memory: pooled-70b-needs-enforce-eager). If an arm
+  refuses to start for lack of KV room for one 8,192-token request, its offload goes up by
+  about 2 GiB (5 layers) and it is retried, at most twice. A CUDA out-of-memory is a hard
+  stop for that arm.
+- **Eager vs graphs.** Both arms run eager (`--enforce-eager`), as the pool does. Graphs
+  are then tried once on the faster arm, at the same offload. If graphs do not fit, that is
+  reported and not retried.
+- **Everything else is the pool's L70 serving:**
+  - same revision, vLLM v0.29.0;
+  - maxlen 8,192, util 0.92, prefill batch 512, `--no-enable-flashinfer-autotune`;
+  - the laptop at max-power during the run, as S1's runner sets it;
+  - only the terminal on the GPU.
+- Runner: `probes/o70_serve.sh`.
+
+### Expectation (ARITHMETIC and INFERENCE, not a rule)
+
+- **Single stream (ARITHMETIC).** Every forward pass moves about 21.5 GiB across PCIe:
+  about 0.45 s at 51.8 GB/s. That caps single-stream decode near 2.2 tok/s, against the
+  pool's 19.
+- **Concurrency (INFERENCE).** A pass costs about the same however many sequences share it,
+  so summed tok/s should grow with concurrency until KV is full.
+- **uva's prefill (INFERENCE).** Its kernels may read a weight more than once when many
+  prompt tokens share a pass, so its time to first token on long prompts may be worse.
+
+### Measurements
+
+- Whether each arm starts.
+- The engine's KV lines, GPU memory and RAM used.
+- gpu-lab `bench.py`, warm-up discarded, 2 repeats: time to first token (TTFT) and decode
+  tok/s at concurrency 1, 4 and 16, and summed tok/s.
+- **Same-day reference:** the same bench against the pool before it goes down, serving as
+  L70m did.
+- **Correctness, on the faster arm** (single-stream decode; TTFT breaks a tie):
+  - L70m's seven sets, same flags, Meta's format (`EVAL=1`, labels
+    `{set}-s1-o70-<arm>-nothink`);
+  - against the pool's L70m, with `probes/o70_compare.py`.
+
+### Readings, CHOSEN before the run
+
+1. **It serves the same answers** if no row is a P1 win or loss against the pool's L70m.
+   - The weights are the same. Only the kernels' card differs: in the pool, half the layers
+     run on the 3090 (sm_86).
+   - So some greedy transcripts may still diverge. The count of identical ones is reported
+     beside.
+2. **Speed is reported, not judged:**
+   - single-stream tok/s, TTFT and summed tok/s, against the pool's same-day numbers;
+   - the eval's wall time against L70m's.
+3. **If neither arm starts,** the result is that the 70B does not serve on one card in vLLM
+   0.29.0 with these backends, with the error lines.
