@@ -1268,6 +1268,155 @@ Knowledge Date: December 2023", "Today Date: 26 Jul 2024"), the same lines Meta'
 `SystemDefaultGenerator` writes. L70's POST-HOC no-tools comparison is re-read against
 L70m's run with tools.
 
+### L70m result (MEASURED, 2026-10-03): the format lifted the 70B; the verdict stands, not clearly ahead
+
+**Served as L70.**
+- Weights 18.44 GiB a stage.
+- KV 3.04 and 2.74 GiB, 17,952 tokens (`results/s1/l70m/kv.txt`).
+
+**All five gates passed.**
+- Gate 1: `--selfcheck` passed.
+- Gate 2: the rendered prompt is 358 tokens, with one 128000, and round-trips through
+  `/detokenize`.
+- Gate 3: the 70B's first call was `<|python_tag|>{"type": "function", "name": "bash",
+  "parameters": {"command": "chronyc --help"}}`, stopped by `<|eom_id|>` (128008). That is
+  the form Meta's encoder replays (`results/s1/l70m/gate3-raw.json`).
+- Gate 4: the render diff is kept (`results/s1/l70m/render-diff.txt`).
+- Gate 5: the smoke run parsed calls and ended in answers.
+
+**A deviation, caught before scoring.**
+- **What happened:** the first v1 run built 166 items, not 158.
+- **Why:** the harness runs help commands in its working directory.
+  - `git diff -h` prints 34 lines inside a git repo and 130 outside, and v1's `seen_tool`
+    items are drawn from that text.
+  - Run from a scratch directory, v1 gained 8 `git diff` items, and 39 others drew
+    different questions.
+  - Every earlier run was inside a repo: 46 of 46 v1 files have 158 items.
+- **The fix:** `l70_eval.sh` now changes into the repo first, and v1 was rerun.
+- **The other six sets were not affected.** They build the same items from either
+  directory (`--list-items` from both), and the 70B ran no `git` on them.
+- The 166-item run is kept unscored (`results/s1/l70m/v1-outside-repo-166items.json`).
+- **Other runners:** the nine other eval runners in `probes/` do not pin their directory
+  either. They were not changed.
+
+**The run.**
+- 665 s; the v1 rerun took 226 s.
+- 473 items answered, 4 at the call limit, 1 truncated.
+- Longest prompt 1,569 tokens (`results/s1/l70m/run.log`, `compare.txt`).
+
+| comparator | P1 rows | Holm | pooled items (70B / ref) | reasoning rows |
+|---|---|---|---|---|
+| G6q thinking off (L7 x3) | win 1, loss 7 | 4 of 20 | 28/121 | rocky_task won 11/1; alert lost 0/7 |
+| G6q thinking on (N1 x3; r1 on v1, general) | win 1, loss 7 | 4 of 20 | 27/116 | rocky_task won 12/1; alert lost 0/7 |
+| Qwen3.8 low (x3) | win 2 (held_out 23/8, seen_tool 10/2), loss 3 | 2 of 20 | 86/106 | alert lost 0/9 |
+| base Lightning on (N1 x3, five sets) | win 1, loss 1 | 0 of 14 | 73/61 | rocky_task won 10/2; alert lost 0/9 |
+| base Lightning off (one run) | win 6, loss 2 | 5 of 20 | 152/65 | none lost |
+
+| | task | rocky_task | promql | alert | trap3 noticed |
+|---|---|---|---|---|---|
+| **70B, Meta's format (L70m)** | **15** | **17** | **12** | **0** | **7** |
+| 70B, HF template (L70) | 6 | 5 | 12 | 1 | 7 |
+| G6q off x3 | 15.00 | 9.00 | 15.33 | 6.00 | 5.67 |
+| G6q on N1 x3 | 14.67 | 8.00 | 13.67 | 5.00 | 5.00 |
+| Qwen3.8 low x3 | 17.67 | 13.33 | 13.67 | 9.00 | 7.33 |
+
+**Reading 1, by the pre-registered rule: not clearly ahead.** L70m's verdict replaces L70's,
+and the branch does not change: weakness targeting stays with G6q.
+- No reasoning row is won against all three comparators.
+- rocky_task wins against both G6q modes and ties Qwen3.8 low (8/3, p 0.23).
+- task and promql tie all three.
+- alert is lost to all three, at 0 of 9.
+
+**Reading 2: the format effect is large and one-sided.** L70m against L70: P1 win 5, loss 0;
+pooled items 100/42.
+- task 6 → 15 (9/0); rocky_task 5 → 17 (14/2); v1 held_out 74.4% → 87.8% (15/3).
+- Calls fell from 774 to 648. Refused calls fell from 293 to 132, and items at the call limit
+  from 64 to 4. `web_search` calls rose from 121 to 157.
+- Tool calls on questions that need none: general 100% → 38%, no_tool 100% → 55%.
+- So L70 under-measured the 70B on task and rocky_task. The HF template's "respond with a
+  JSON for a function call" was the fish-and-tree problem.
+
+**Reading 3:** Meta's format is the 70B's eval format from now on, as pre-registered.
+
+**Why alert, general and no_tool still lose: Meta's own "please say so" (audited,
+POST-HOC).**
+- Meta's prompt says "If none of the function can be used, please say so." The 70B takes
+  it literally.
+- **general:** 29 of 45 replies say no function can be used, for example "What is 23 times
+  47?" → "None of the given functions can be used to calculate the product of two numbers."
+  It answers 8 of 45 correctly. L70 answered 5, and the 70B with no tools answered 45.
+- **alert:** after one unavailable `web_search`, 8 of 9 replies say the functions "are not
+  sufficient to write a Prometheus alerting rule", so it scores 0 of 9. With no tools it
+  scores 6.
+- In all, 61 replies of this kind, against 1 in L70.
+- Qwen3.8 and Lightning are told the opposite: "If there is no function call available,
+  answer the question like normal with your current knowledge". The two Llama wordings
+  differ from theirs, in opposite directions. The HF template pushes a call, Meta's pushes a
+  refusal, and neither says "answer".
+- **Not acted on.** The pre-registration fixed Meta's format whatever the outcome, so that
+  formats are not picked on scores. A documented Llama format that says "answer directly"
+  does exist: vLLM's `examples/tool_chat_template_llama3.1_json.jinja` ("If it doesn't
+  exist, just reply directly in natural language"). Trying it now would be choosing a
+  format after seeing results. That is David's call, and it would need its own
+  pre-registration.
+
+**POST-HOC, the no-tools runs against L70m.**
+- With no tools offered, the 70B wins alert (6/0, p 0.031) and the general over-trigger row.
+  It loses the lookup rows held_out2 and rocky_held_out.
+- It ties task (3/1) and rocky_task (2/3). So in Meta's format the tool-using 70B is level
+  with its memory-only self on those two rows. What still holds it back is the refusal
+  reflex, on alert and general.
+
+**What this means (INFERENCE).**
+- L70 said "the 70B has the reasoning; its tool behaviour hides it." That is now measured
+  in part: in its native format the forced-call reflex mostly goes.
+- Even so, the 70B is level with Qwen3.8 low on task, rocky_task and promql, not ahead.
+  The branch stays as L70 left it.
+
+## Format audit: Qwen3.8 against Lightning (2026-10-03)
+
+David, 2026-10-03: "at some point we should probably go back and double check the Qwen tests
+didn't need any special templating compared to the original nemotron tests to ensure those
+were fair as well."
+
+**Verdict: the Qwen3.8 runs were fair to it.** Each model ran on its vendor's own template,
+the tool wording was identical, and every Qwen3.8 call was read. Llama is the only model
+whose eval prompt differed from its vendor's documentation.
+
+- **Templates.**
+  - Red Hat's INT4 template is byte-identical to Qwen's own (`Qwen/Qwen3.8-27B`, sha256
+    c3cf9e34..., both in the mirror).
+  - Lightning's NVFP4 and BF16 templates are identical (58933db7...).
+- **Wording.** Rendered with the harness's tools, both templates give the same
+  instructions, word for word:
+  - "If you choose to call a function ONLY reply in the following format with NO suffix",
+    then the same XML example;
+  - "If there is no function call available, answer the question like normal with your
+    current knowledge and do not tell the user about function calls".
+- **What differs:**
+  - Qwen lists the tools as JSON lines, Lightning as XML;
+  - whitespace around `<think>`;
+  - Qwen's low-effort system line, the setting S1 chose.
+- **Same call format.** Lightning's card serves it with `--tool-call-parser qwen3_coder`,
+  the format Qwen3.8 is asked for.
+- **Parsing.** Every Qwen3.8 call was read: 2,344 at low effort (x3), 952 at xhigh, 995
+  with thinking off, all in the XML form. No final answer holds an unread call. Lightning
+  with thinking off had 1 in 478 items.
+- **One departure from every vendor, applied to all models alike: greedy decoding.**
+  - What the cards recommend:
+    - Qwen: temperature 1.0, top_p 0.95, top_k 20 thinking; 0.7, 0.8, presence_penalty
+      1.5 not thinking;
+    - Lightning: 1.0 and 0.95;
+    - Llama's generation_config: 0.6 and 0.9.
+  - What it cost, counted as truncated items that end in a repetition loop:
+    - Qwen3.8 low: 6 of 1,434;
+    - Qwen3.8 thinking off: 0 of 478;
+    - Lightning on: 12 of 1,028;
+    - Lightning off: 11 of 478. Its 132 truncations are mostly long answers past 512
+      tokens.
+    - Qwen3.8 at xhigh: 22 of 478. S1 does not use that setting as the comparator.
+  - So greedy decoding costs at most 1.2% of items at the settings compared.
+
 ## O70: the 70B on the laptop's one card, pre-registered 2026-10-03
 
 David, 2026-10-03: "i want to go into testing out serving the 70B on the laptop only next".

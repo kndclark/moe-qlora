@@ -12,6 +12,10 @@ set -u
 TAG=${TAG:-l70} B=${B:-http://lab-desktop:8200}
 MODEL=hugging-quants/Meta-Llama-3.1-70B-Instruct-GPTQ-INT4
 here=$(cd "$(dirname "$0")/.." && pwd)
+# The harness runs help commands in its working directory, and `git diff -h` prints 34 lines
+# inside a git repo but 130 outside, which adds 8 seen_tool items to v1 (166, not 158) and
+# changes what a model's git lookups return. Every earlier eval ran inside a repo.
+cd "$here" || exit 1
 out=${OUT:-$here/results}
 mkdir -p "$out"
 python3 "$here/probes/g7a_eval.py" --selfcheck | tail -1 | grep -qx "selfcheck PASS" || { echo "g7a_eval.py --selfcheck failed"; exit 4; }
