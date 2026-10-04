@@ -1342,7 +1342,7 @@ pooled items 100/42.
 POST-HOC).**
 - Meta's prompt says "If none of the function can be used, please say so." The 70B takes
   it literally.
-- **general:** 29 of 45 replies say no function can be used, for example "What is 23 times
+- **general:** 31 of 45 replies say no function can be used, for example "What is 23 times
   47?" → "None of the given functions can be used to calculate the product of two numbers."
   It answers 8 of 45 correctly. L70 answered 5, and the 70B with no tools answered 45.
 - **alert:** after one unavailable `web_search`, 8 of 9 replies say the functions "are not
