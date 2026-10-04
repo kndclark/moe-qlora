@@ -9,7 +9,8 @@ Date: 2026-10-04. A synthesis of two reports written the same day:
 
 Label key: **[measured]** observed on our files or hardware; **[sourced]** from a cited
 source in the research note; **[arithmetic]** computed here; **[inference]** judgement, not
-tested. Nothing in this note was trained or evaluated; it plans work, it reports none.
+tested. Nothing was trained for this note. The one evaluation is the decision rule's dry
+run (1.3), on existing result files plus the repeats it needed.
 
 ## Bottom line
 
@@ -22,7 +23,12 @@ tested. Nothing in this note was trained or evaluated; it plans work, it reports
    10 adapters were ranked on those items [inference, audit §8.5]. On the rows that decide
    the choice, one adapter's run-to-run spread is as wide as the gate's band: G6q alert gave
    7, 3 and 5 of 9 on three identical runs [measured, `results/n1-summary.json`].
-3. **So the order is: measure, then data, then recipe, then new methods.** More data
+3. **G6q is not better than the base everywhere.** On rocky_task it scores 8.0 of 20
+   against the base's 12.7, outside both arms' spread; on alert it is 5.0 against 6.0,
+   inside the noise [measured, N1 means, `results/n1-summary.json`]. Every comparison
+   therefore carries the base as an anchor (1.3), and the locked test can return "serve the
+   base" (see "Exit criteria").
+4. **So the order is: measure, then data, then recipe, then new methods.** More data
    cannot show up as progress until the eval can see it, and more of the same templates
    makes things worse (Tier 2.1). Real data volume comes from verified own-domain records
    plus licensed external sets used as controls and replay (see "Data volume").
@@ -40,7 +46,28 @@ Audit fix 1 and §8.5; research #2 and §6.4.
 - **Who writes it** [inference]: a different generator, or a session with no access to
   `results/`. Same-author paraphrase leaks with zero string overlap [sourced, research
   §2.2, arXiv 2311.04850].
-- **Size**: alert needs 30+ items to be able to show a regression at all (1.3).
+- **Where items come from** [inference]: prefer items with an outside ground truth:
+  `--help` text of tools absent from training, examples from the Prometheus docs, and real
+  lab questions (David's own, or LiteLLM request logs if they are kept). A model-written
+  item is the last resort. Every item passes the 1.2 check against train **and** dev
+  before sealing.
+- **Where it lives** [inference]: both repos are public, so the test set never enters
+  either one. Keep it on the desktop outside any checkout, commit only its SHA-256
+  manifest, and append one line per opening (date, candidate, result file) to a ledger.
+  That makes "opened once per final candidate" checkable.
+- **Retire it after a few openings** [inference]: each opening's decision feeds back into
+  the next round's choices, so the test slowly turns into dev. Write a fresh one after 3
+  openings, and say in each result how many openings came before it.
+- **Size** [arithmetic and inference]: 30+ items per task kind, about 180-200 in all.
+  Alert at its dev size of 9 cannot show a regression under a sign test (1.3); at 30 the
+  row margin is 3 items. Size against the margin each row must detect, not against what is
+  easy to write.
+- **promql and alert wait for the fixture** [inference]: their truth is read from the live
+  lab today (1.6), so a sealed item could change its answer after sealing. Seal those two
+  kinds once 1.6's fixture Prometheus exists.
+- **The sealing check reports counts only**: the 1.2 check on test items prints how many
+  items exceed each similarity threshold, never the items, so running it leaks nothing to
+  whoever writes training data.
 
 ### 1.2 Skeleton contamination check
 
@@ -60,23 +87,98 @@ Audit fix 2 and §1.3; research §2.2 and #6.
 
 Audit fix 3, §6 and §8.4; research #1, §6.2 and §6.3.
 
-**Rule.**
-- Run at least 3 repeats per arm. Average each item over its repeats **before** the sign
-  test [sourced, research §6.2].
-- Apply Holm across a family of rows defined before looking.
-- Pre-register one pooled primary metric and report it with a CI [sourced, research #1:
-  Miller arXiv 2411.00640, Bowyer arXiv 2503.01747].
+**Rule** (implemented in `probes/decision_rule.py`).
+- Run at least 3 repeats per arm. Average each item over its repeats **before** any
+  comparison [sourced, research §6.2].
+- **Anchors**: every comparison includes the base and the adapter currently served, on the
+  same server config. "Better than G6q" is not "better than the base" (bottom line 3).
+  `decision_rule.py --served ARM` prints the served arm's CI against the pick whenever
+  they differ.
+- **The row is the unit.** A row is one split under one headline metric, as
+  `noise_summary.py` defines them (e.g. rocky / rocky_task / hit_and_grounded). Metrics
+  where lower is better (a control's denial rate, over_trigger, fabricated) enter as
+  1 - rate, so higher is always better. An item a metric cannot score is left out of that
+  row. no_tool's correctness is a summary rate (`correct_where_scorable`); per item it is
+  the `correct` field, which a per-item reader must map by name or it silently drops the
+  row [measured: 0 of 37,355 items in the 514 files `results/**/research-eval-*.json`
+  store it, 2026-10-04].
+- **One pre-registered primary metric**: each task kind (`KIND`: flag, trap, no_tool,
+  live for promql, alert, trap3) scores the mean of its rows. The primary metric is the mean of the
+  six kinds. Its 95% CI comes from a paired bootstrap over tool clusters [sourced method,
+  research #1: Miller arXiv 2411.00640, Bowyer arXiv 2503.01747; the weighting is
+  inference]. Pooling raw items would hand every decision to the flag-lookup sets: v1, v2
+  and rocky are 394 of 478 items (82%), alert under 2% [arithmetic].
+- **Wins and regressions use different rules** [inference]:
+  - **win**: an arm beats the base when its Holm-adjusted bootstrap p < 0.05 across the
+    arms compared with the base, with a positive difference. The printed CIs are
+    unadjusted. A claim that one row improved needs
+    Holm over a row family fixed before looking.
+  - **regression**: no Holm. Holm guards against false wins; applied to regressions at
+    these sizes it passes almost anything (alert must go 9-0 to fail). Flag a **row**
+    whose item-averaged drop against the base exceeds both max(2 items, 10% of the row)
+    and the larger of the two arms' range across repeats. Any flag blocks promotion until
+    it is explained. Flags are raised against the base only: the base is the floor, and an
+    adapter's gains over it are weighed by the primary metric, not protected row by row.
+  - **Why per row, not per set**: G6q's rocky_task loss (4.67 items of 20) is outweighed
+    inside its own set by gains on rocky's other rows. The set nets a gain of 15.7
+    item-rows, so a set-level margin flags nothing [measured, dry run below].
+  - **Why the range condition**: run-to-run spread alone fires the margin. Set each
+    arm against itself, one run against another, and the margin fires on 12 of 396
+    ordered row pairs (3.0%; base 4, G6q 1, G6u 7), about 0.67 false flags per 22-row
+    comparison of single runs [measured, 7 sets]. Means of 3 repeats shrink that spread,
+    and the range condition asks the drop to exceed what the arms' own repeats show. In
+    the dry run below the margin alone and the full rule raise the same one flag in 44
+    row comparisons [measured]: a guard that did not bind here. Its price: a row as
+    unstable as G6q's alert (7, 3 and 5 of 9) hides a 4-item drop, one reason alert is
+    resized to 30+ (1.1).
 - Temperature 0 is not deterministic [sourced, research §6.2]: G6q gave 7, 3 and 5 on
-  alert under identical settings [measured].
+  alert under identical settings [measured]. The spread comes from batch composition, which
+  serving has too [inference], so the repeats measure a real property. Keep the eval's
+  concurrency fixed across arms and record it.
+
+**Dry run on dev** [measured: `decision_rule.py --served g6q g6q g6u`, thinking on at
+4,096 tokens, 3 repeats of all 7 sets per arm; 545 item-rows, 22 rows, 149 tool clusters]:
+
+| arm | primary | flag-lookup | trap | no_tool | live | alert | trap3 | completion tokens / item | eval minutes |
+|---|---|---|---|---|---|---|---|---|---|
+| base | 0.695 | 0.697 | 0.588 | 0.899 | 0.667 | 0.667 | 0.653 | 625 | 88.4 |
+| G6q | 0.811 | 0.880 | 0.964 | 0.996 | 0.759 | 0.556 | 0.708 | 77 | 16.7 |
+| G6u | 0.843 | 0.900 | 0.807 | 0.974 | 0.852 | 0.778 | 0.750 | 381 | 77.7 |
+
+- Against the base: G6q +0.116 [+0.043, +0.187], Holm 0.005; G6u +0.149 [+0.106,
+  +0.196], Holm 0.001. Both wins hold.
+- Row flags: G6q one, rocky_task (20 items): base 13, 13, 12; G6q 9, 7, 8; drop 4.67,
+  range 2. G6u none.
+- **The rule serves G6u.** G6q is blocked by its flag, not by its score: G6u - G6q is
+  +0.033 [-0.022, +0.094], p 0.24, not distinguishable.
+- **Cost** [measured, same runs]: G6q writes 5.0x fewer completion tokens per item than
+  G6u and 8.1x fewer than the base, never hit `max_tokens` (base 12 turns, G6u 7) and
+  finished the 21 runs in 21% of G6u's time. Summed over all sets, tokens per item vary
+  between repeats by up to 5.9% of the mean (base 608-645, G6q 76-77, G6u 376-386); one
+  set alone varies by up to 52% (G6u general, 51-84). Item and cluster mix move the ratio too, so
+  the rule tests cost at the bootstrap bound, not the point ratio: G6q's tokens are 0.20x
+  G6u's, 0.22x at the 95% bound [measured]. Tokens are measured on the eval's task mix,
+  not on the lab's traffic; the ratio may differ there [inference]. Eval minutes include
+  one base v1 run of 207 s against 507-535 s for the other two, unexplained; tokens are
+  unaffected.
+- **A cost win needs non-inferiority** (step 2 of the decision tree). With G6q's flag
+  cleared by hand on a scratch copy [measured], both arms qualify, but G6q - G6u has a
+  lower bound of -0.094, beyond the default margin of -0.02, so the rule still serves
+  G6u. At a margin of 0.10 it serves G6q. On today's dev numbers G6q needs both its flag
+  explained and a margin above 0.094: the margin is David's call (Needs David).
+- Without the alert set (9 items) G6q - G6u is [-0.051, +0.059] [measured,
+  `--allow-partial` with alert hidden]: the alert row carries G6u's lead (+0.222 on one
+  kind of six, +0.037 against a +0.033 total; G6q leads trap by 0.157). A 9-item row
+  deciding the served model is the case for 1.1's 30+.
 
 **Gaps in today's tools** [code, audit §8.4]:
-- `pair_items.py` marks raw p < 0.05 and computes **no Holm**. With 20-25 rows, one raw "<"
-  is expected under the null.
-- v1 (held_out, the gate's must-win row) and general have a **single** thinking-on run per
-  adapter [measured, audit §6].
+- `pair_items.py` marks raw p < 0.05 and computes **no Holm**. With 22 rows on the 7 sets
+  [measured], about one raw "<" is expected under the null [arithmetic].
+- v1 and general had a single thinking-on run per adapter [audit §6]; base, G6q and G6u
+  now have three [measured, fixed in this revision]. G6t still has one.
 
-**What each set can show** [arithmetic]: exact two-sided sign test. Holm's strictest step
-over 7 sets is 0.05 / 7 = 0.0071.
+**What a per-row or per-set win can show** [arithmetic]: exact two-sided sign test. Holm's
+strictest step over a family of 7 is 0.05 / 7 = 0.0071.
 
 | set (items) | smallest passing split | why it matters |
 |---|---|---|
@@ -91,14 +193,22 @@ over 7 sets is 0.05 / 7 = 0.0071.
 shared templates, so they are not independent. The pooled primary metric with a CI over
 clusters is the safer headline.
 
+**Clusters on the locked test** [measured, inference]: a row with few clusters drops out of
+some resamples, and its kind is then scored from its other rows. On dev,
+v1/seen_tool/hit_and_grounded has 4 clusters and is absent from 34 of 2,000 resamples
+(1.7%); no other row drops out and no kind is ever lost. The script falls back to the item
+id when an item names no tool, which counts each such item as its own cluster. So the
+locked test's manifest carries a cluster field for every item, and every row has at least
+10 clusters.
+
 ### 1.4 Item manifest and cwd assert
 
 Audit fix 7, §8.3.
 
 - **The cwd bug** [measured]: `research_eval.py` builds items from the host's `--help` in
   the caller's cwd. Outside a git repo, v1 is 166 items, not 158. Of the 154 ids both lists
-  share, 39 name a different flag and question. `pair_items.py` joins by id, so it would
-  silently pair different items.
+  share, 39 differ in flag or question (23 in the flag). `pair_items.py` joins by id, so it
+  would silently pair different items.
 - **Existing comparisons are safe** [verified, audit §8.3]: all 418 result files are
   158/134/102/18/45/9/12.
 - **Fix:**
@@ -106,6 +216,9 @@ Audit fix 7, §8.3.
   - Assert the cwd is inside a repo (`l70_eval.sh` already `cd`s; `g6_eval.sh` and
     `noise_eval.sh` do not).
   - Record the rocky image and promtool image digests in every result file.
+  - Record the training data's SHA-256, the git commit, the seed and the LoRA target regex
+    in every adapter directory, and copy them into the result of any eval that serves the
+    adapter. `g6q-train.json` names the dataset path but holds no content hash [measured].
 
 ### 1.5 Scorer hardening
 
@@ -133,6 +246,11 @@ regression cases. Then tighten:
 - negation handling for denials and flag hits;
 - exact duration and threshold match in alert rules.
 
+**Then measure the scorer, not only test it** [inference]: a test file holds only the cases
+someone thought of. Hand-label a stratified random sample (about 20 rows per set, both
+arms) and report the scorer's agreement per set beside every result; redo it after each
+scorer change. A set whose agreement is low cannot carry a decision.
+
 Re-score the existing result files wherever they store what the scorer needs, and report
 any rank that changes. promql truth is read live after the answer, so those rows may not be
 re-scorable [inference].
@@ -157,6 +275,9 @@ Audit §3; research §3.
   thinking off with a bigger budget.
 - **Add to every result**: the valid-reasoning rate (a non-empty, closed think block) per
   mode [sourced, arXiv 2605.21127].
+- **Add cost per answer**: output tokens, wall seconds, the rate of hitting `max_tokens`
+  and the rate of malformed tool calls, per mode. Whether to think (3.3, the router study)
+  is a cost question as much as a score question [inference].
 - **Add a reasoning-required held-out slice.** The current `general` set ("What is 3
   cubed?") cannot show a reasoning regression [inference, audit §3].
 
@@ -172,9 +293,12 @@ N1 three-run means [measured, `results/n1-summary.json`]:
 | G6u | task | 19/20 (0.95) | 17.7/20 |
 | G6u | trap3 noticed | 9/12 (0.75) | 8.0/12 |
 
-The L7/L8 choice (G6q by default, G6u as backup) rests on item-level comparisons with three
-repeats a side, so this correction does not change it. Both adapters were still selected on
-the dev items, so the locked test (1.1) is what confirms either one [inference].
+The L7/L8 choice (G6q by default, G6u as backup) rested on item-level comparisons with
+three repeats a side, so this correction alone does not change it. 1.3's rule, run on the
+same dev sets, does: it serves G6u, because G6q's rocky_task drop is a row flag (1.3 dry
+run). G6q's case is cost: 77 completion tokens per item against G6u's 381, at a primary
+metric the dry run cannot separate. Which to serve until the locked test is David's call;
+both were selected on dev, so the locked test (1.1) confirms either one [inference].
 
 ## Tier 2: data hygiene
 
@@ -186,11 +310,13 @@ Audit fix 5, §2; research #6, §2.1 and §2.2.
 - 1,248 records, 157 of them exact duplicates (1,091 unique).
 - Six prompts appear 10 times and four appear 12 times. web_research has 6 unique prompts
   in 60 records; conversational_replay has 4 in 48.
-- 544 records (43.6%) answer "Based on `x --help`".
+- 544 records (43.6%) say "Based on `<source>`" in an answer; 508 open with it, and 329
+  cite `--help` literally [measured].
 
-**The arithmetic**: 12 copies x 2 epochs = 24 passes over one answer. Training loss reached
-0.0016 [measured, audit §7]. That is memorised templates, not signal [inference; research
-§1.4].
+**The arithmetic**: 12 copies x 2 epochs = 24 passes over one answer. Epoch-2 step loss
+averaged 0.17, with single steps as low as 0.0016 [measured, `results/g6q-train.json`].
+Low, spiky loss on repeated templates is consistent with memorisation; it does not prove
+it [inference; research §1.4].
 
 **Pipeline**, in order:
 1. exact dedup;
@@ -210,12 +336,22 @@ Audit fix 9, §2; research #4, §2.4.
     rightly answers with bash or no tool.
   - There are no system messages and no second user turns.
   - Thinking-off no-tool answers appear only in 11 alert records.
+  - **A measured regression to repair first**: rocky_task, 8.0 against the base's 12.7 of
+    20 [measured, N1].
 - **Rule**:
   - Every weakness-targeted slice gets at least as many control records from the other
     task types.
   - Every tool appears in records where it is offered and correctly **not** used.
   - Add system-message and multi-turn records.
-  - The gate is all 7 sets, not the targeted row.
+  - The gate is every row of all 7 sets, not the targeted row, under 1.3's regression
+    rule.
+  - **Teach behaviour, not facts.** Records teach when to call a tool, the answer's form
+    and when to deny. Facts the model cannot look up at inference (metric names, flag
+    spellings) stay in retrieval and tools [sourced, research: Gekhman et al. EMNLP 2024;
+    matches our Phase 2b confabulation result].
+  - Judge the Tier 2 changes as **one bundle** against G6q at the same two seeds (0 and
+    1), otherwise identical (3.2). Ablate only if a row is flagged [inference: each
+    ablation costs a training run plus its eval].
 
 ### 2.3 Verified targets
 
@@ -265,15 +401,42 @@ Audit fix 8, §7.
 
 Research #5, §1.1 and §1.4; audit §6.
 
+- **Seeds first.** Seed variance is unmeasured [measured: every adapter is one seed-0 run,
+  audit §6]; until it is, a gap between two adapters is not attributable to their data.
+  Retrain G6q's exact recipe at seeds 1 and 2. G6q was the best of about 10 adapters on
+  the dev items, so its dev score is biased upward [inference]; the reseeds show both the
+  seed spread and how much of G6q's margin survives.
+- **The reseeds need one code change first** [code]: `g6_train.py` hard-codes
+  `EPOCHS, LR, PER_STEP, RANK, SEED = 2, 1e-4, 8, 16, 0` (line 96), and `probes/gpurun.sh`
+  passes an explicit `-e` list that has no SEED or LR. Read SEED and LR from the
+  environment with today's values as defaults, add `-e SEED -e LR` to `gpurun.sh`, and
+  write the dataset's SHA-256 into the result (1.4). Then, from the repo root:
+
+      SEED=1 DATASET=/out/research_dataset_g6q.json RENDER=think GUARD=hw MAX_LEN=2048 \
+        probes/gpurun.sh g6q-seed1-train /probes/attn_bf16.py g6_train.py g6q-seed1-train
+
+  This is the command `lightning-training.md` gives for G6q, plus SEED and a new label
+  [measured: `g6q-train.json` records seed 0, max_len 2048, guard hw, render think].
+- **Cost per run** [measured; arithmetic]: ~50 min of training (2,970 s, `g6q-train.json`)
+  plus ~35 min of eval (3 repeats x 2 modes x ~5.5 min per 7-set Lightning pass), plus
+  ~1.5 min per server start (91 s with the LoRA server, this revision). Training and eval
+  share the laptop GPU, so they run one after the other, not overlapped.
 - **LR is the dominant knob** [sourced, research §1.1, arXiv 2601.22708]. Sweep
-  {5e-5, 1e-4, 2e-4}, one seed each, then 3 seeds of the winner.
-- **Keep the rest fixed** [sourced, research §1.1]: r=16, alpha=32, all linear layers,
-  effective batch of at most 32, at most 3 epochs.
+  {5e-5, 1e-4, 2e-4} with 2 seeds per point, on the Tier 2 data: one seed per point cannot
+  separate LR from seed noise. 6 runs is about 8.5 h with eval [arithmetic]. If an
+  endpoint wins, extend one step past it (2.5e-5 or 4e-4) at 2 seeds before choosing,
+  about 2.8 h more [inference; arithmetic]: a best value at the edge of the grid is not
+  yet located.
+- **Keep the rest fixed**: r=16, alpha=32, 8 records per step, 2 epochs [measured,
+  `g6q-train.json`], and today's targets.
+- **Today's targets** [code, `g6_train.py` TARGETS; measured, `g6q-train.json`]: attention
+  q/k/v/o, the Mamba `in_proj` and the shared experts' up/down; 93 modules, 11.4M
+  trainable parameters. The routed experts are **not** trained, so the research's
+  "all linear layers" default [sourced, research §1.1] does not describe our runs.
+- **Expert LoRA as one later arm** [inference]: `expert_lora.py` (per-expert or shared
+  adapters inside the experts' forward) exists, but no G6 run used it. After the LR sweep,
+  try it as one arm with 2 seeds if it fits 24 GB.
 - **Run on Lightning first** (3B active): it is cheaper per run [inference].
-- **Seed variance is unmeasured** [measured: every adapter is one seed-0 run, audit §6].
-  Until it is measured, a gap between two adapters is not attributable to their data.
-- **Check first** [unknown, research §1.3]: does our Lightning path put LoRA on the expert
-  weights, or only on attention and shared layers?
 
 ### 3.3 Reasoning mix
 
@@ -331,6 +494,52 @@ Research #10, §5.2.
 - **Where to run it**: Qwen3.8-27B with colocated generation does not fit 24 GB
   [inference]. Start on a smaller model.
 
+## Exit criteria and decision tree [inference]
+
+- **Tier 1 is done when**:
+  - items load by hash and the cwd assert is in;
+  - the scorer test file passes and the hand audit is reported per set, with every set
+    at 18 of 20 or better (90%, a bar set before looking [inference]); a set below it
+    has its scorer fixed before it carries a decision;
+  - `decision_rule.py` (primary metric, paired CI, Holm, row flags) reports every
+    comparison, and `pair_items.py` applies Holm to row wins;
+  - the skeleton script reports max similarity to train for every dev item;
+  - promql truth comes from the fixture Prometheus (1.6), and every result carries the
+    cost metrics (1.7);
+  - the locked test is sealed: manifest hash committed, ledger started.
+- **Tier 2 is done when** the cleaned data passes the dedupe, cap and control checks, and
+  one bundle candidate has been judged on dev against G6q at the same seeds (2.2).
+- **A final candidate** is trained at 2 seeds. The seed to serve is named before the test
+  is opened and is the only one ranked; the other seed must also qualify, so one lucky
+  seed cannot carry it (`decision_rule.py --named SEED_A --partner SEED_B`). G6q (seed 0,
+  the existing adapter) and G6u enter as the fixed adapters they are: the locked test
+  measures exactly what would be served, and neither was chosen on it. The partner rule
+  guards the candidate, whose recipe is chosen after many looks at dev.
+- **On the locked test**, the arms are the base, G6q, G6u and the candidate's two seeds,
+  scored in the mode that will be served (Needs David: is reasoning needed?). An arm
+  **qualifies** when it scores above the base with a Holm-adjusted p below 0.05 across
+  these comparisons with the base, and it has no row flag against the base (1.3). Then:
+  1. the leader is the qualifying arm with the highest primary metric;
+  2. another qualifying arm is **non-inferior** when its paired CI against the leader has
+     a lower bound above -0.02 (the margin; Needs David). Among non-inferior arms, serve
+     the cheapest whose completion tokens per item are at most 0.8x the leader's at the
+     95% bootstrap bound (1.3); failing that, keep the served arm if it is non-inferior,
+     since a tie is no reason to switch; failing that, the leader. Every qualifying arm is
+     compared with the leader, not only the runner-up. These CIs are not Holm-adjusted, and
+     the leader is the best of noisy scores, which favours it; both err toward keeping the
+     leader. With CIs about 0.1 wide, a 0.02 margin is rarely met unless two arms are
+     truly level, so in practice the rule serves the leader unless David widens it;
+  3. if no arm qualifies, serve the base, and treat adapter work as unproven for this
+     task mix.
+
+  The test is not reopened for this candidate.
+- **Change approach** if, on dev, any of the three G6q seeds (0, 1, 2) has a Holm-adjusted
+  p >= 0.05 against the base, the family being the three seeds (`decision_rule.py` with
+  the three seeds as its only arms, since its Holm family is the arms it is given): G6q's margin then depends
+  on the seed. Stop ranking adapters on dev by point estimate, and enlarge the eval (1.1
+  sizes) before training more. Judge the rocky_task flag apart: if 2 of the 3 seeds carry
+  it, the loss belongs to G6q's data, not to one seed's noise, and G6q stays behind G6u.
+
 ## Data volume: where more data comes from
 
 "As much data as possible" holds only for data that is verified, deduplicated and balanced
@@ -381,9 +590,116 @@ Research §"Not recommended":
 | the audit's measured counts | CONFIRMED |
 | sign-test power table (1.3) | CONFIRMED by exact computation |
 
+### Judge pass 2 (2026-10-04, this revision)
+
+Claims re-run on the files, not read from the audit:
+
+| claim | verdict |
+|---|---|
+| 1,248 records, 157 exact duplicates, prompts at 10 and 12 copies, 6/60 and 4/48 | CONFIRMED |
+| 0 of 2,424 assistant turns hold reasoning; no system or second user turns | CONFIRMED |
+| promql in 58 records; 99,387 assistant tokens | CONFIRMED |
+| 544 answer "Based on `x --help`" | CORRECTED: 544 say "Based on `<source>`"; 329 cite `--help` |
+| training loss "reached 0.0016" | CORRECTED: single-step minimum; epoch-2 mean 0.17 |
+| all scorer cases in 1.5 | CONFIRMED through the real `score()` |
+| sign-test table, all 11 cells | CONFIRMED |
+| G6q alert 7, 3, 5; 8B alert 78% to 11% | CONFIRMED |
+| `g6_train.py` exits 0 after an abort | CONFIRMED (saves `-partial`, falls through) |
+| unknown: does Lightning LoRA train the experts | RESOLVED: shared experts only, not routed |
+| the six arXiv IDs | CONFIRMED: each exists and says what is attributed |
+
+Design gaps fixed in this revision: the base anchor and G6q's rocky_task regression;
+Holm making the regression gate toothless; item pooling handing decisions to the flag
+sets; a locked test in a public repo with no opening ledger; seed-free LR comparisons;
+the "all linear layers" mismatch; no scorer error rate; no cost metrics; no exit criteria.
+
+### Judge pass 3 (2026-10-04, an independent judge session)
+
+Each finding was checked on the files or by running `decision_rule.py`, not taken on the
+judge's word:
+
+| finding | verdict |
+|---|---|
+| a set-level regression margin misses G6q's rocky_task loss | CONFIRMED: rocky nets a gain of 15.7 item-rows; the rule is now per row (1.3) |
+| G6u, not G6q, leads on the primary metric | CONFIRMED on dev; the gap's CI includes 0 (1.3 dry run) |
+| the tree's branch 2 serves the base when G6q fails, even if G6u qualifies | CONFIRMED; the tree now ranks base, G6q, G6u and the candidate |
+| the reseeds "need nothing from Tier 1" | REFUTED: SEED and LR are hard-coded (`g6_train.py:96`), and `gpurun.sh` does not pass them (3.2) |
+| a 2-item margin fires on run-to-run noise | CONFIRMED: 12 of 396 single-run pairs (3.0%), ~0.67 per 22-row comparison; the range condition guards it and did not change the dry run (1.3) |
+| "with 20-25 rows" (1.3) | CORRECTED: 22 rows on the 7 sets [measured] |
+| `correct_where_scorable` read per item | FIXED: per item it is `correct`; read by name, the no_tool row was silently empty (1.3) |
+| the rule ignores cost | FIXED: a tie goes to the arm with 20% fewer completion tokens per item; G6q costs 77 per item, G6u 381 (1.3); revised in pass 4 |
+| "39 name a different flag and question" (1.4) | CORRECTED: 39 differ in flag or question, 23 in the flag |
+| "seed-matched" is undefined (2.2) | FIXED: the same seeds, 0 and 1, otherwise identical |
+| an LR that wins at the grid's edge is not located (3.2) | FIXED: extend one step past it |
+| a one-seed candidate can pass the locked test by luck | FIXED: 2 seeds, the served one named first (Exit criteria) |
+| the cost omits server start; eval and training could overlap (3.2) | FIXED: 91 s per start; they share the GPU, so they run in sequence |
+| Tier 1's exit omits the fixture Prometheus and the cost metrics | FIXED |
+| the primary metric's mode (thinking on or off) is unspecified | FIXED: the mode that will be served |
+| alert's 9 items cannot carry a regression | KEPT in the metric; the locked test sizes alert to 30+ (1.1) |
+
+### Judge pass 4 (2026-10-04, an independent judge session)
+
+Each finding was checked on the code or by running `decision_rule.py`:
+
+| finding | verdict |
+|---|---|
+| a set missing for one arm is dropped for all, silently; no set at all crashes | CONFIRMED; the script now refuses partial coverage (`--allow-partial` overrides and says so) and exits cleanly with no set |
+| the two-seed rule (Exit criteria) is not in the code | CONFIRMED; `--named`/`--partner` implement it: the partner is never served, the named seed needs it to qualify |
+| the cost tie-break decides most ties: CIs are ~0.1 wide, so "includes 0" is common, and a 9-item row drives the gap | CONFIRMED arithmetically; a cost win now needs non-inferiority (lower bound above -0.02) and 0.8x at the 95% token bound |
+| only the top two arms are compared, and ties are not transitive | CONFIRMED; every qualifying arm is compared with the leader |
+| "Change approach" fires on any seed's unadjusted CI | CONFIRMED; Holm over the 3 seeds, and the rocky_task flag judged apart |
+| the served arm is not printed against the pick | CONFIRMED; printed whenever they differ |
+| a 4-cluster row drops out of 2.4% of resamples | CORRECTED: 1.7% (34 of 2,000) on the script's resamples; no kind lost; the locked test needs 10+ clusters per row (1.3) |
+| "blocked from G6q only by its rocky_task flag" reads backwards | FIXED (Needs David) |
+| "repeats vary under 6%" | CORRECTED: 5.9% of the mean summed, up to 52% on one set; the rule uses the bootstrap bound |
+| the scorer-agreement gate (1.5) has no bar and no consumer | FIXED: 90% per set, in Tier 1's exit |
+| REPS="r1" gives a range of 0 | FIXED: the script refuses fewer than 2 repeats |
+| make the cheaper arm also match the leader on trap and no_tool | NOT ADOPTED: row flags against the base and non-inferiority already guard it; per-kind matching adds unplanned comparisons |
+
+The dry run is unchanged by the fixes: identical scores, CIs and Holm values, and it
+serves G6u [measured].
+
+### Judge pass 5 (2026-10-04, an independent judge session)
+
+The judge re-ran the dry run, the refusals, the named/partner paths and the
+non-inferiority path on a scratch copy, and re-measured the doc's numbers; all matched.
+Its findings, each checked by running:
+
+| finding | verdict |
+|---|---|
+| a turn with no `completion_tokens` counts as 0 tokens, so an arm served without usage data looks free and wins on cost | CONFIRMED in code (dev data is clean: 0 of 9,361 turns); the script now refuses |
+| `--named X --partner X` silently serves the base | CONFIRMED; now an error, as is `--served` naming the partner |
+| G6u is one seed while the candidate needs two | KEPT, explained (Exit criteria): G6q and G6u are fixed adapters measured as served; the partner rule guards a recipe chosen on dev |
+| the non-inferiority CIs are unadjusted, and the leader is a noisy argmax | CONFIRMED; both favour the leader, now stated (step 2) |
+| "6.0%" and "52%" use different bases | CONFIRMED: 6.0% was range over min; both are now range over mean (5.9%, 52%) |
+| the Change-approach Holm family is whatever arms the script is given | FIXED: run it with the three seeds as the only arms |
+
+### Why the passes stop here
+
+Each pass found less, and of a smaller kind. Pass 3 found that the rule missed G6q's
+rocky_task loss and never ranked G6u; with both fixed, the dry run's pick became G6u. Pass
+4 found that cost decided most ties and that the two-seed rule existed only in prose; its
+fixes changed no pick on today's data, but would have with G6q's flag cleared (G6q before,
+G6u after). Pass 5 found two guards against malformed input (a missing token count, a seed
+named twice) and four wording points; none changes a pick on well-formed data, and each was
+fixed and re-run.
+
+What remains is not a flaw in the plan that a further pass could fix:
+- **David's decisions**: the non-inferiority margin, G6q or G6u until the locked test,
+  whether reasoning is needed, the SEED/LR change (Needs David). A judge can show what each
+  choice does, as 1.3 does for the margin, but not make it.
+- **Data that does not exist yet**: the locked test, the reseeds and the scorer audit.
+  Their results can reopen the plan; more reading of the plan cannot stand in for them.
+- **Stated limits**: dev numbers are not test numbers, tokens are measured on the eval mix,
+  and alert's 9 items cannot carry a decision. Each is labelled where it is used.
+
+A further pass would judge wording. The next real test of the rule is its first run on
+data it has not seen.
+
 ## Open unknowns
 
-- Does our Lightning path train the expert layers (3.2)?
+- Seed spread of a Lightning adapter (3.2: the reseeds answer it).
+- Whether expert LoRA fits 24 GB with the lean scan (3.2).
 - NF4-trained vs bf16-trained Qwen3.8 adapter quality (4.2).
 - vLLM 0.29.0 batch invariance with hybrids plus LoRA (4.2).
 - GRPO on a hybrid MoE in 24 GB (4.3).
@@ -397,6 +713,13 @@ Research §"Not recommended":
   thinking-on as the primary mode.
 - **Who writes the locked test set** (1.1), and an agreement that its items are never read
   per item during data work.
+- **G6q or G6u until the locked test.** L7/L8 chose G6q; the dev dry run of 1.3's rule
+  picks G6u, because G6q carries a rocky_task flag. G6q writes 5.0x fewer tokens at a
+  primary metric the dry run cannot separate (1.3, 1.8). Both are dev numbers.
+- **The non-inferiority margin** (default 0.02 on the primary metric). It is the score
+  David will give up for a cheaper model. On dev, G6q would need a margin above 0.094
+  even with its flag cleared (1.3).
+- **The SEED/LR change** to `g6_train.py` and `gpurun.sh` (3.2), before any reseed.
 - **Merges**: this branch, `worktree-s1-screen` and `lab-alerts` are proposals; none is
   merged.
 
@@ -409,6 +732,9 @@ Research §"Not recommended":
    - Holm in `pair_items.py` (1.3).
 2. Tier 2, CPU only: dedupe, caps, controls and the web_search fix on a copy of the G6q
    data (2.1-2.3).
-3. The first GPU work: a 3-point LR sweep on Lightning with a grouped validation split
-   (3.1, 3.2), judged on dev with 3 repeats.
-4. Write the locked test set in parallel. Use it only when a candidate is final.
+3. The first GPU work, in parallel with 1 and 2: the G6q reseeds (3.2), judged on dev with
+   3 repeats and the base anchor by `decision_rule.py`. They need the SEED/LR change in
+   `g6_train.py` and `gpurun.sh` first, and nothing else from Tier 1.
+4. Then, unless "Change approach" fired, the LR sweep on the Tier 2 data with a grouped
+   validation split, 2 seeds per point (3.1, 3.2).
+5. Write the locked test set in parallel. Use it only when a candidate is final.
