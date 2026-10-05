@@ -1,0 +1,25 @@
+23 mamba layers x 64 heads, 16 of 64 rows; dt_raw ~ N(0.0, 1.0); 16384 steps
+decay rate dt*|A| at the dt_raw mean, quantiles 0/10/50/90/100%: 1.4e-08 1.3e-03 2.2e-02 3.3e-01 5.9e+03; heads below 1e-2: 572, below 1e-3: 117 of 1472
+t=   64    1s  peak worst-layer rel err of y so far: fp16 1.2e-03  bf16 9.2e-03
+t=  256    5s  peak worst-layer rel err of y so far: fp16 2.3e-03  bf16 1.6e-02
+t= 1024   20s  peak worst-layer rel err of y so far: fp16 4.2e-03  bf16 3.6e-02
+t= 2048   39s  peak worst-layer rel err of y so far: fp16 6.7e-03  bf16 5.4e-02
+t= 4096   79s  peak worst-layer rel err of y so far: fp16 9.9e-03  bf16 9.0e-02
+t= 8192  157s  peak worst-layer rel err of y so far: fp16 1.6e-02  bf16 1.2e-01
+t=16384  314s  peak worst-layer rel err of y so far: fp16 2.6e-02  bf16 2.1e-01
+max |h| in fp32: 377.0 (fp16 max 65504)
+
+last 256 steps, relative error of y:  worst layer | heads under 1e-2 | under 3e-2 | worst head
+  fp16       1.5e-02 | 1455 | 1472 | 2.0e-02
+  bf16       1.1e-01 | 1017 | 1358 | 1.6e-01
+
+by decay rate (dt*|A| at the dt_raw mean): heads, and share under 1e-2 per format
+  [0e+00, 1e-04)   26 heads  fp16 38%  bf16 12%
+  [1e-04, 1e-03)   91 heads  fp16 99%  bf16 7%
+  [1e-03, 3e-03)  200 heads  fp16 100%  bf16 12%
+  [3e-03, 1e-02)  255 heads  fp16 100%  bf16 33%
+  [1e-02, 3e-02)  231 heads  fp16 100%  bf16 100%
+  [3e-02, 1e-01)  266 heads  fp16 100%  bf16 100%
+  [1e-01, 1e+09)  403 heads  fp16 100%  bf16 100%
+
+done in 314s
