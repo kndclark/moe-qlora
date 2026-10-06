@@ -16,7 +16,10 @@ first laptop hang was in g.replay with ~20 steps queued, after K=1's first repla
 launch queue can block the main thread inside the driver, where it may hold what the helper's copy
 needs; vLLM launches about one step at a time). A hang inside a helper call ends in CE_WATCH seconds (default
 --timeout) with the call's name and every Python stack. Run with docker --init and timeout -k: as
-PID 1 Python ignores SIGTERM, and a thread inside a CUDA call ignores everything else."""
+PID 1 Python ignores SIGTERM, and a thread inside a CUDA call ignores everything else.
+--devdone: an empty plan's done flag is set by the graph (a kernel), not by the helper, so a layer
+that fetches nothing skips the round trip. --sparse F: only that fraction of layers plan K rows (the
+rest plan none), the shape of a fill-ahead that fetches only predicted misses."""
 import argparse
 import ctypes
 import faulthandler
@@ -36,7 +39,11 @@ ap.add_argument("--homes", type=int, default=24)
 ap.add_argument("--slots", type=int, default=8)
 ap.add_argument("--timeout", type=float, default=60.0, help="seconds any one wait may take")
 ap.add_argument("--inflight", type=int, default=2, help="replays queued at most (0: no limit, as the first runs)")
+ap.add_argument("--devdone", action="store_true", help="the graph sets done for empty plans (CE_DEVDONE=1)")
+ap.add_argument("--sparse", type=float, default=1.0, help="fraction of layers that plan K rows")
 a = ap.parse_args()
+if a.devdone:
+    os.environ["CE_DEVDONE"] = "1"  # read by ce_start
 faulthandler.dump_traceback_later(a.timeout * 10, exit=True)  # backstop if a wait below never returns
 faulthandler.register(signal.SIGUSR1, all_threads=True)  # ce_helper's watchdog raises it before exiting
 os.environ.setdefault("CE_WATCH", str(a.timeout))
@@ -97,6 +104,8 @@ sink = torch.zeros(L, dtype=torch.float32, device=dev)
 sel = torch.zeros(1, dtype=torch.int64, device=dev)
 ar = torch.arange(max(maxk, 1), device=dev)
 seen = torch.zeros(L, S, 4, dtype=torch.int32, device=dev)
+rows_at = [int((n + 1) * a.sparse) > int(n * a.sparse) for n in range(L)]  # spread evenly
+mask = torch.tensor(rows_at, dtype=torch.int64, device=dev)
 done_ptr, req_ptr = done.data_ptr(), req_h.data_ptr()
 
 
@@ -113,7 +122,10 @@ def step(k, fill):
                 src = (sel * 7 + n * 3 + ar[:k]) % E  # data-dependent rows
                 plan_d[n, 1:1 + 2 * k:2] = src
                 plan_d[n, 2:2 + 2 * k:2] = ar[:k] % S
-            plan_d[n, :1] = k
+            kn = mask[n:n + 1] * k  # on the device: how many rows is data the graph computes
+            plan_d[n, :1] = kn
+            if a.devdone:
+                done[n:n + 1] = kn == 0  # an empty plan is done now; the helper skips it
             memop("cuStreamWriteValue32_v2", req_ptr + 4 * n, 1)
         sink[l] = work[l % 2].sum(dtype=torch.float32)
 
@@ -178,7 +190,10 @@ def prime(k):
     """The first layer of a step waits for a fill the previous step's last layer planned; before
     the first replay nothing planned it, so plan it from the host."""
     plan_h[0, 0] = 0
-    req_h[0] = 1
+    if a.devdone:
+        done[0] = 1
+    else:
+        req_h[0] = 1
 
 
 res = {}
@@ -186,7 +201,7 @@ g0 = graph(0, False)
 timed(g0, 3, "work")
 res["work"] = timed(g0, a.steps, "work")
 print(f"CUDA_DEVICE_MAX_CONNECTIONS={os.environ.get('CUDA_DEVICE_MAX_CONNECTIONS', 'unset (8)')}, "
-      f"CE_PRIO={os.environ.get('CE_PRIO', '0')}", flush=True)
+      f"CE_PRIO={os.environ.get('CE_PRIO', '0')}, devdone {a.devdone}, layers with rows {sum(rows_at)} of {L}", flush=True)
 print(f"work alone: {res['work']:.3f} ms a step ({L} layers x {a.work_mb:g} MB read); a row is {row / MiB:.2f} MiB"
       f" in 4 copies", flush=True)
 for k in [int(x) for x in a.k.split(",")]:
@@ -203,12 +218,12 @@ for k in [int(x) for x in a.k.split(",")]:
     sv = int(sel.item())
     bad = 0
     for n in range(1, L):
-        for i in range(k):
+        for i in range(k if rows_at[n] else 0):
             r = (sv * 7 + n * 3 + i) % E
             for ti in range(4):
                 bad += int(not torch.equal(slots[n][ti][i].cpu(), homes[ti][r]))
     st = stats()
-    print(f"K={k}: {t:.3f} ms a step, +{t - res['work']:.3f} over work; rows checked {(L - 1) * k}, bad {bad}; "
+    print(f"K={k}: {t:.3f} ms a step, +{t - res['work']:.3f} over work; rows checked {k * sum(rows_at[1:])}, bad {bad}; "
           f"helper requests {st[0]}, rows {st[1]}, err {st[2]}", flush=True)
     res[k] = t
 lib.ce_stop(ce)

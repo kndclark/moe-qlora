@@ -381,23 +381,153 @@ class _Cache:
         self.stats = stats  # 3 int64 the GPU writes and the CPU reads (host-mapped), or None
         self.rows = []
 
+    def _assign(self, ids, S, stats):
+        out = torch.empty_like(ids)
+        _cache_kernel[(1,)](ids, ids.numel(), out, self.where, self.home, self.owner, self.stamp, self.clock,
+                            self.freq, self.need, self.miss, self.cps, self.cpd,
+                            stats if stats is not None else self.clock, S, self.slot0, E=self.E,
+                            BE=self.BE, BS=self.BS, CH=128, STATS=stats is not None, LFU=self.lfu,
+                            SHIFT=self.shift, num_warps=8)
+        return out
+
     def step(self, topk_ids, frozen=False):
         ids = topk_ids.contiguous()
-        n, S = ids.numel(), (0 if frozen else self.S)
-        out = torch.empty_like(ids)
-        _cache_kernel[(1,)](ids, n, out, self.where, self.home, self.owner, self.stamp, self.clock, self.freq,
-                            self.need, self.miss, self.cps, self.cpd,
-                            self.stats if self.stats is not None else self.clock, S, self.slot0, E=self.E,
-                            BE=self.BE, BS=self.BS, CH=128, STATS=self.stats is not None, LFU=self.lfu,
-                            SHIFT=self.shift, num_warps=8)
-        P = min(S, n, self.E)
-        for r in self.rows if P else ():
+        S = 0 if frozen else self.S
+        out = self._assign(ids, S, self.stats)
+        self._copy(self.rows, min(S, ids.numel(), self.E))
+        return out
+
+    def ahead(self, ids, stats, rows):
+        """K6 on predicted ids (KSTAGE_AHEAD): slots assigned and listed in cps/cpd as if the layer
+        had routed them; only `rows` are copied here, the caller has the rest copied."""
+        self._assign(ids, self.S, stats)
+        self._copy(rows, min(self.S, ids.numel(), self.E))
+
+    def _copy(self, rows, P):
+        for r in rows if P else ():
             if COPY_N:
                 _copy_rows_few[(COPY_N,)](r, self.cps, self.cpd, P, r.shape[1], BLOCK=BLOCK, num_warps=WARPS)
             else:
                 _copy_rows_kernel[(P, triton.cdiv(r.shape[1], BLOCK))](r, self.cps, self.cpd, r.shape[1],
                                                                        BLOCK=BLOCK, num_warps=WARPS)
-        return out
+
+
+@triton.jit
+def _plan_kernel(cps_ptr, cpd_ptr, plan_ptr, done_ptr, BS: tl.constexpr):
+    """KSTAGE_AHEAD: the slots K6 just assigned, as ce_helper reads a plan, [n, src0, dst0, ...]
+    in rows. An empty plan is marked done here (CE_DEVDONE): the helper makes no CUDA call."""
+    j = tl.arange(0, BS)
+    r = tl.load(cps_ptr + j)
+    ok = r >= 0
+    d = tl.load(cpd_ptr + j, mask=ok, other=0)
+    n = tl.sum(ok.to(tl.int32), axis=0)
+    tl.store(plan_ptr + 1 + 2 * j, r.to(tl.int64), mask=ok)
+    tl.store(plan_ptr + 2 + 2 * j, d.to(tl.int64), mask=ok)
+    tl.store(plan_ptr + j, n.to(tl.int64) + tl.zeros([BS], tl.int64), mask=j == 0)
+    tl.store(done_ptr + j, tl.full([BS], 1, tl.int32), mask=(j == 0) & (n == 0))
+
+
+class _Ahead:
+    """KSTAGE_AHEAD=1, steps of fewer than KSTAGE_AHEAD_M tokens (decode). At MoE layer p the
+    next MoE layer's gate, scaled by the two layers' norm weights (_install_predict's "d1
+    scaled"), is applied to layer p's input, and K6 assigns layer p+1's slots to the top
+    KSTAGE_AHEAD_K predicted ids as if layer p+1 had routed them. The small rows are copied
+    here; the big ones (host pages) by ce_helper on the copy engine, while layer p and the
+    layers between run. Layer p+1 waits for those copies (cuStreamWaitValue32 on a flag the
+    helper writes), then takes its own K6 step, which copies what the prediction missed.
+    Plan and flags are memory, not graph edges, so this works inside CUDA graphs and across
+    vLLM's piecewise graph boundaries. The helper thread spins on its flags (one CPU core)."""
+
+    def start(self, order, model, period):
+        """order: (idx, name, cache, big rows, small rows) for every MoE layer, in forward order."""
+        import faulthandler, signal, subprocess, threading
+        faulthandler.register(signal.SIGUSR1, all_threads=True)  # CE_WATCH: every thread's stack
+        mods = dict(model.named_modules())
+        self.L = L = len(order)
+        self.caches, self.small = [o[2] for o in order], [o[4] for o in order]
+        norms, self.w, self.bias = [], [None], [None]
+        for p, (idx, name, *_) in enumerate(order):
+            gate = mods[name.rsplit(".", 1)[0]].gate
+            assert gate.e_score_correction_bias is not None, f"{name}: no correction bias"
+            norms.append(mods[name.rsplit(".", 2)[0]].norm.weight.detach().float())
+            if p:
+                self.w.append((gate.weight.detach().float() * (norms[p] / norms[p - 1])).contiguous())
+                self.bias.append(gate.e_score_correction_bias.detach().float())
+        nt = {len(o[3]) for o in order}
+        assert len(nt) == 1 and min(nt), f"big tensors per layer: {nt}"
+        self.ntens = nt.pop()
+        maxk = max(c.BS for c in self.caches)
+        so = "/tmp/ce_helper.so"
+        subprocess.run(["gcc", "-O2", "-shared", "-fPIC", "-I/usr/local/cuda/include",
+                        f"{os.path.dirname(os.path.abspath(__file__))}/ce_helper.c", "-o", so,
+                        "-L/usr/local/cuda/lib64/stubs", "-lcuda", "-lpthread"], check=True)
+        lib = ctypes.CDLL(so)
+        lib.ce_start.restype = ctypes.c_void_p
+        lib.ce_start.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 3 + [ctypes.c_void_p] * 6
+        self.cu = ctypes.CDLL("libcuda.so.1")
+        for f in ("cuStreamWriteValue32_v2", "cuStreamWaitValue32_v2"):
+            getattr(self.cu, f).argtypes = [ctypes.c_void_p, ctypes.c_uint64, ctypes.c_uint32, ctypes.c_uint]
+            getattr(self.cu, f).restype = ctypes.c_int
+        w = 1 + 2 * maxk
+        self.plan_h = torch.zeros(L, w, dtype=torch.int64, pin_memory=True)
+        self.plan_d = torch.as_tensor(_Arr(self.plan_h.data_ptr(), self.plan_h.numel() * 8),
+                                      device="cuda").view(torch.int64).view(L, w)
+        self.req = torch.zeros(L, dtype=torch.int32, pin_memory=True)
+        # A VMM page, not torch memory: the helper writes it from a context of its own (CE_OWNCTX)
+        self.done_m = MixedRows(1, 4 * L, 1)
+        self.done = self.done_m.tensor(torch.int32, (L,))
+        self.done.zero_()
+        base = [r.data_ptr() for o in order for r in o[3]]
+        rb = [r.shape[1] * r.element_size() for o in order for r in o[3]]
+        B = ctypes.c_uint64 * len(base)
+        ctx = ctypes.c_void_p()
+        assert self.cu.cuCtxGetCurrent(ctypes.byref(ctx)) == 0 and ctx.value
+        os.environ["CE_DEVDONE"], os.environ["CE_DTOD"] = "1", "1"
+        os.environ.setdefault("CE_OWNCTX", "1")  # on vLLM's context the helper deadlocks (ce_helper.c)
+        os.environ.setdefault("CE_WATCH", "30")  # a helper stuck 30 s in one CUDA call ends the process
+        torch.cuda.synchronize()
+        self.ce = lib.ce_start(ctx, L, self.ntens, maxk, ctypes.c_void_p(self.plan_h.data_ptr()),
+                               ctypes.c_void_p(self.req.data_ptr()), ctypes.c_void_p(self.done.data_ptr()),
+                               B(*base), B(*base), B(*rb))
+        self.lib = lib
+        self.hstats, self.dstats = _stats_buffer(L) if period else (None, None)
+        if period:
+            _report(self.hstats, period, "ahead")
+            threading.Thread(target=self._counts, args=(period,), daemon=True, name="kstage-ce").start()
+
+    def _counts(self, period):
+        """The helper's own tally (ce_counts makes no CUDA call): its rows must match the "ahead:"
+        line's copies. A failed copy ends the process (CE_WATCH), so err stays 0 here."""
+        v, last = (ctypes.c_int64 * 4)(), None
+        while True:
+            time.sleep(period)
+            self.lib.ce_counts(ctypes.c_void_p(self.ce), v)
+            if list(v) != last and v[0]:
+                log(f"ahead helper: {v[0]} requests, {v[1]} rows, {v[3]} copies, err {v[2]}")
+            last = list(v)
+
+    def _memop(self, f, addr, v, flags=0):
+        r = getattr(self.cu, f)(ctypes.c_void_p(torch.cuda.current_stream().cuda_stream), addr, v, flags)
+        assert r == 0, f"{f}: CUresult {r}"
+
+    def wait(self, p):
+        """Before layer p's own K6 step: the copies planned at layer p - 1 are done."""
+        if p:
+            a = self.done.data_ptr() + 4 * p
+            self._memop("cuStreamWaitValue32_v2", a, 1, 1)  # CU_STREAM_WAIT_VALUE_EQ
+            self._memop("cuStreamWriteValue32_v2", a, 0)
+
+    def plan(self, p, x):
+        """After layer p's own K6 step (its copies come first): layer p + 1's fill from x."""
+        q = p + 1
+        if q == self.L:
+            return
+        lg = x.float() @ self.w[q].t()
+        ids = (lg.sigmoid() + self.bias[q]).topk(AHEAD_K, dim=-1).indices
+        c = self.caches[q]
+        c.ahead(ids, self.dstats[q] if self.dstats is not None else None, self.small[q])
+        _plan_kernel[(1,)](c.cps, c.cpd, self.plan_d[q], self.done[q:], BS=c.BS)
+        self._memop("cuStreamWriteValue32_v2", self.req.data_ptr() + 4 * q, 1)
 
 
 class _BigStage:
@@ -633,7 +763,7 @@ def _install_gather(layers):
         f"{st.nbytes() / 2**30:.2f} GiB of device buffers; DMA from {DMA_M or 'never'} tokens")
 
 
-def _wrap(runner, idx, E, big=(), pos=None, mixed=(), cache=None, stage=None):
+def _wrap(runner, idx, E, big=(), pos=None, mixed=(), cache=None, stage=None, ahead=None):
     re_ = runner.routed_experts
     fwd = re_.forward_modular
 
@@ -654,7 +784,15 @@ def _wrap(runner, idx, E, big=(), pos=None, mixed=(), cache=None, stage=None):
             finally:
                 st.leave(li)
         if cache is not None:  # K6: slots filled, ids remapped to rows
-            return fwd(x, topk_weights, cache.step(topk_ids, bool(FREEZE_M) and M >= FREEZE_M), *a, **k)
+            # _Ahead: one forward has one M, so every layer agrees. Only in graphs, where decode runs;
+            # eager steps of this size are warm-up and profiling.
+            fill = ahead is not None and M < AHEAD_M and torch.cuda.is_current_stream_capturing()
+            if fill:
+                ahead[0].wait(ahead[1])
+            ids = cache.step(topk_ids, bool(FREEZE_M) and M >= FREEZE_M)
+            if fill:
+                ahead[0].plan(ahead[1], x)
+            return fwd(x, topk_weights, ids, *a, **k)
         ids = topk_ids if pos is None else pos[topk_ids.long()].to(topk_ids.dtype)
         if big:  # K2: experts live in host memory, staging is what Marlin reads
             if DMA_M and M >= DMA_M:
@@ -768,6 +906,9 @@ SLOTS = os.environ.get("KSTAGE_SLOTS", "all")
 FREEZE_M = int(os.environ.get("KSTAGE_FREEZE_M", "0"))
 EVICT = os.environ.get("KSTAGE_EVICT", "lru")
 SHIFT = int(os.environ.get("KSTAGE_SHIFT", "6"))
+AHEAD = os.environ.get("KSTAGE_AHEAD", "0") == "1"  # _Ahead: fill the next layer's slots on the copy engine
+AHEAD_M = int(os.environ.get("KSTAGE_AHEAD_M", "64"))  # steps of fewer tokens fill ahead (decode)
+AHEAD_K = int(os.environ.get("KSTAGE_AHEAD_K", "6"))  # ids predicted per token
 
 
 def _set_rows(group, new):
@@ -786,7 +927,7 @@ def _stats_buffer(n, *shape):
     return host, dev
 
 
-def _report(host, period):
+def _report(host, period, name="cache"):
     import threading
 
     def run():
@@ -795,7 +936,7 @@ def _report(host, period):
             time.sleep(period)
             v = host.sum(0).tolist()
             if v != last and v[0]:
-                log(f"cache: {v[0]} layer-steps, {v[1] / v[0]:.2f} misses and {v[2] / v[0]:.2f} copies "
+                log(f"{name}: {v[0]} layer-steps, {v[1] / v[0]:.2f} misses and {v[2] / v[0]:.2f} copies "
                     f"a layer-step ({v[1]} / {v[2]})")
             last = v
     threading.Thread(target=run, daemon=True, name="kstage-stats").start()
@@ -822,7 +963,7 @@ def _cache_layout(cnt, D, S):
             "stamp": [-1 - j for j in range(S)], "freq": freq, "src": perm[:D] + unpinned}
 
 
-def _install_cache(layers):
+def _install_cache(layers, model=None):
     E = layers[0][2].routed_experts.w13_weight.shape[0]
     groups = {idx: _groups(r) for idx, _, r in layers}
     _show(layers[0][1], groups[layers[0][0]], E)
@@ -839,6 +980,7 @@ def _install_cache(layers):
     bstage, staged, bank, bank_bytes = (_BigStage(nbuf) if X else None), {}, {}, 0
     G = _vmm()[3] if X else 1
     up = lambda x: (x + G - 1) // G * G
+    ahead, rowsets = (_Ahead() if AHEAD else None), {}
     for li, (idx, name, runner) in enumerate(sorted(layers, key=lambda l: (on_host[l[0]], l[0]))):
         D = E - cold_n[idx]
         lay = _cache_layout(counts[idx], D, D if SLOTS == "all" else min(int(SLOTS), D))
@@ -884,12 +1026,17 @@ def _install_cache(layers):
         _keep.append(c)
         if bstage:
             staged[idx] = (c, D, Z, cold_n[idx], bigv, smallv)
-        _wrap(runner, idx, E, cache=c, stage=(bstage, fpos[idx]) if bstage else None)
+        _wrap(runner, idx, E, cache=c, stage=(bstage, fpos[idx]) if bstage else None,
+              ahead=(ahead, fpos[idx]) if ahead else None)
+        rowsets[idx] = (name, c, bigv, smallv)
         shape.append((idx, H, S))
     for idx in sorted(staged):
         bstage.add(*staged[idx])
     if bstage:
         _keep.append((bstage, bank))
+    if ahead:
+        ahead.start([(idx,) + rowsets[idx] for idx in sorted(rowsets)], model, period)
+        _keep.append(ahead)
     if hasattr(torch._C, "_host_emptyCache"):
         torch._C._host_emptyCache()
     if period:
@@ -900,7 +1047,8 @@ def _install_cache(layers):
         f"{host_bytes / 2**30:.2f} GiB host pages, {dev_bytes / 2**30:.2f} GiB device, policy {pol}, profile {src}; "
         f"slots {SLOTS}: pinned/slots per layer {[f'{h}/{s}' for _, h, s in shape]}; "
         f"evict {EVICT}{SHIFT if EVICT == 'lfu' else ''}; frozen from {FREEZE_M or 'never'} tokens"
-        + (f"; DMA from {DMA_M} tokens: {X} staging rows, {nbuf} buffers, {bank_bytes / 2**30:.2f} GiB" if X else ""))
+        + (f"; DMA from {DMA_M} tokens: {X} staging rows, {nbuf} buffers, {bank_bytes / 2**30:.2f} GiB" if X else "")
+        + (f"; ahead below {AHEAD_M} tokens, top {AHEAD_K}, {ahead.ntens} tensors on the copy engine" if ahead else ""))
 
 
 # ---------------------------------------------------------------- predict: is the next layer's routing knowable early?
@@ -1040,7 +1188,8 @@ def _install(model):
         E = layers[0][2].routed_experts.w13_weight.shape[0]
         cold_n, counts, *_ = _cold_split(layers, {idx: _groups(r) for idx, _, r in layers}, E)
     if mode != "predict":
-        {"gather": _install_gather, "hotcold": _install_hotcold, "cache": _install_cache}[mode](layers)
+        {"gather": _install_gather, "hotcold": _install_hotcold,
+         "cache": lambda l: _install_cache(l, model)}[mode](layers)
     if mode == "predict" or os.environ.get("KSTAGE_PREDICT") == "1":
         pred = _install_predict(layers, model, cold_n, counts)
         _keep.append(pred)

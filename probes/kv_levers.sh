@@ -290,6 +290,40 @@ run() {  # the doc's lever table, row by row
     p15-1m-off4)       MAXLEN=1048576 WORK=needle BARGS="--lens 1040000" phase "$1" "${G92[@]}" "${UVA[@]}" 4 ;;
     p15-1m-ks-dma64)   KS="$KC6 KSTAGE_SLOTS=all KSTAGE_DMA_M=64" MAXLEN=1048576 WORK=needle BARGS="--lens 1040000" \
                          phase "$1" "${G92[@]}" ;;
+    # P1 at 16 agents to 127k (7.49 GiB of KV against K6 + P1's 5.44 with one buffer): vs
+    # p14-ks-cache4-a16l-cb (5,816 s), its kvoff16 twin (1,177 s) and host KV alone (744 s).
+    p16-ks-dma64-b1-a16l-cb|p16-ks-dma64-b1-kvoff16-a16l-cb)
+      local o=() k="$KC6 KSTAGE_SLOTS=all KSTAGE_DMA_M=64 KSTAGE_DMA_BUF=1 KSTAGE_COPY=$(cbest)"
+      case $1 in *kvoff16*) o=(--kv-offloading-size 16 --kv-offloading-backend native) ;; esac
+      KS="$k" MAXLEN=131072 WORK=agent BARGS="$AGENT16L" phase "$1" "${G92[@]}" "${o[@]}" ;;
+    # P1 copies all 4 GiB for any step of KSTAGE_DMA_M+ tokens; p15's 80-208-token steps spent
+    # 87-89 ms copying in a 99-112 ms span. A warm 98k prefill ends in a 208-token step: 128 and
+    # 256 leave it to K6's own path. Compare p15-ks-dma64-all-b1 (warm 0.60 s, 8k warm 0.43).
+    p16-ks-dma128-b1|p16-ks-dma256-b1)
+      local m=${1#p16-ks-dma}; m=${m%-b1}
+      KS="$KC6 KSTAGE_SLOTS=all KSTAGE_DMA_M=$m KSTAGE_DMA_BUF=1 KSTAGE_DMA_TIME=1" MAXLEN=131072 \
+        WORK="decode prefill" BARGS="--conc 1,4,16 $PREF" phase "$1" "${G92[@]}" ;;
+    # Row O: K6's misses at each concurrency (is a fill-ahead worth it at c=1?). Stats every second,
+    # cumulative; layer-steps a second tell c=1 (~3,800), c=4 (~1,600) and c=16 (~500) apart.
+    p17-ks-dma64-b1-miss)
+      KS="${KC6/KSTAGE_STATS=30/KSTAGE_STATS=1} KSTAGE_SLOTS=all KSTAGE_DMA_M=64 KSTAGE_DMA_BUF=1" \
+        MAXLEN=131072 WORK=decode BARGS="--conc 1,4,16" phase "$1" "${G92[@]}" ;;
+    # Row O, fill-ahead (KSTAGE_AHEAD): at MoE layer p, layer p+1's gate on p's input picks its
+    # likely experts; K6 assigns their slots and ce_helper copies the big rows on the copy engine
+    # while the layers between run. vs p17 (same flags, no fill-ahead). The "ahead:" stats line
+    # counts the predicted fills, "cache:" what the prediction missed. k10: top 10, not 6.
+    p18-ks-dma64-b1-ahead|p18-ks-dma64-b1-ahead-k10)
+      local k="${KC6/KSTAGE_STATS=30/KSTAGE_STATS=1} KSTAGE_SLOTS=all KSTAGE_DMA_M=64 KSTAGE_DMA_BUF=1 KSTAGE_AHEAD=1"
+      case $1 in *-k10) k="$k KSTAGE_AHEAD_K=10" ;; esac
+      KS="$k" MAXLEN=131072 WORK=decode BARGS="--conc 1,4,16" phase "$1" "${G92[@]}" ;;
+    # Correctness (a fill that desynced from its layer would serve the wrong expert): vs
+    # p15-ks-dma64-eval. Then 8 agents to 127k with and without it.
+    p18-ks-dma64-b1-ahead-eval)
+      KS="$KC6 KSTAGE_SLOTS=all KSTAGE_DMA_M=64 KSTAGE_DMA_BUF=1 KSTAGE_AHEAD=1" phase "$1" "${G92[@]}" ;;
+    p18-ks-dma64-b1-a8l|p18-ks-dma64-b1-ahead-a8l)
+      local k="$KC6 KSTAGE_SLOTS=all KSTAGE_DMA_M=64 KSTAGE_DMA_BUF=1"
+      case $1 in *-ahead-*) k="$k KSTAGE_AHEAD=1" ;; esac
+      KS="$k" MAXLEN=131072 WORK=agent BARGS="$AGENT8L" phase "$1" "${G92[@]}" ;;
     *) echo "unknown phase $1"; return 9 ;;
   esac
 }
@@ -317,6 +351,11 @@ for p in "$@"; do
     p14) for q in p14-kvoff16-a16l p14-ks-cache4-a16l-cb p14-ks-cache4-kvoff16-a16l-cb; do run $q; done ;;
     p15) for q in p15-ks-dma64-all p15-ks-dma64-all-b8k p15-ks-dma64-all-b1 p15-ks-dma64-a8l \
                   p15-1m-off4 p15-1m-ks-dma64 p15-ks-dma64-eval; do run $q; done ;;
+    p16) for q in p16-ks-dma128-b1 p16-ks-dma256-b1 p16-ks-dma64-b1-a16l-cb \
+                  p16-ks-dma64-b1-kvoff16-a16l-cb; do run $q; done ;;
+    p17) for q in p17-ks-dma64-b1-miss; do run $q; done ;;
+    p18) for q in p18-ks-dma64-b1-ahead p18-ks-dma64-b1-ahead-eval p18-ks-dma64-b1-ahead-k10 \
+                  p18-ks-dma64-b1-a8l p18-ks-dma64-b1-ahead-a8l; do run $q; done ;;
     *) run "$p" ;;
   esac
 done
