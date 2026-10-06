@@ -5,7 +5,7 @@
 # flags in the table below, runs v1, v2, alert and trap3 thinking-on, and keeps its log.
 # Outputs go to results/kv-levers/; kv_levers_agree.py compares them with G6q's three runs.
 # usage: kv_levers.sh PHASE...   (or "round4" / "round5" for the doc's rows 2-9 / 10-14,
-#        "round6" / "round8" / "round7" / "round9" / "k6" / "p13" for the experts-in-RAM program's passes)
+#        "round6" / "round8" / "round7" / "round9" / "k6" / "p13" / "p14" for the experts-in-RAM program's passes)
 # Env per phase: MAXLEN / SEQS (default 16384 / 16); WORK="MODE..." runs probes/offload_bench.py
 # modes (decode prefill agent needle experts) with BARGS instead of the eval, to bench-TAG.json.
 # KS="KSTAGE=... VAR=..." loads the kstage plugin (probes/kstage) with those variables set;
@@ -33,6 +33,7 @@ AGENT4L="--agents 4 --start 8192 --chunk 4096 --gen 256 --target 126976"  # 1.87
 KC6="KSTAGE=cache KSTAGE_COLD_GB=4 KSTAGE_PROFILE=/prof/p7-all.json KSTAGE_STATS=30"
 AGENT6="--agents 6 --start 8192 --chunk 4096 --gen 256 --target 98304"    # 2.30 GiB: does not
 AGENT8L="--agents 8 --start 8192 --chunk 4096 --gen 256 --target 126976"  # 3.74 GiB: only with experts in RAM
+AGENT16L="--agents 16 --start 8192 --chunk 4096 --gen 256 --target 126976" # 7.49 GiB: spills K6's 5.71
 cbest() {  # the fastest KSTAGE_COPY at 64 slots and 16 streams in x-cbench (82, one per SM, if none)
   local n; n=$(awk '/^slots 64 C=16 few/ { for (i = 1; i <= NF; i++) if ($i == "trace") t = $(i + 1) + 0
              n = $4; sub("few", "", n); sub(":", "", n); if (b == "" || t < b) { b = t; bn = n } }
@@ -266,6 +267,29 @@ run() {  # the doc's lever table, row by row
       case $1 in *ks-cache4*) k="$KC6 KSTAGE_SLOTS=all" ;; esac
       case $1 in *-cb) k="$k KSTAGE_COPY=$(cbest)" ;; esac
       KS="$k" MAXLEN=131072 WORK=agent BARGS="$AGENT8L" phase "$1" "${G92[@]}" "${o[@]}" ;;
+    # Spill: 16 agents to 127k need 7.49 GiB of KV, more than K6's 5.71, so K6 alone must evict
+    # or preempt; host KV (16 GiB: kvoff alone holds ~5.8 GiB off the card) should catch the spill.
+    p14-kvoff16-a16l|p14-ks-cache4-a16l-cb|p14-ks-cache4-kvoff16-a16l-cb)
+      local o=() k=""
+      case $1 in *kvoff16*) o=(--kv-offloading-size 16 --kv-offloading-backend native) ;; esac
+      case $1 in *ks-cache4*) k="$KC6 KSTAGE_SLOTS=all KSTAGE_COPY=$(cbest)" ;; esac
+      KS="$k" MAXLEN=131072 WORK=agent BARGS="$AGENT16L" phase "$1" "${G92[@]}" "${o[@]}" ;;
+    # P1 (row U): K6 with every batch of 64+ tokens outside CUDA graphs (prefill chunks) staged on
+    # the copy engine, KSTAGE_DMA_BUF layers ahead, instead of Marlin reading ~33 cold experts a
+    # layer over UVA. Compare p10-ks-cache4-all (98k 25.56 s), no offload 15.40, K2 DMA b8k 15.10;
+    # agents vs p13-ks-cache4-a8l (589 s); quality vs p10-ks-cache4-eval.
+    p15-ks-dma64-all|p15-ks-dma64-all-b8k|p15-ks-dma64-all-b1)
+      local b=() k="$KC6 KSTAGE_SLOTS=all KSTAGE_DMA_M=64 KSTAGE_DMA_TIME=1"  # time: copy GB/s a chunk
+      case $1 in *-b8k) b=(--max-num-batched-tokens 8192) ;; *-b1) k="$k KSTAGE_DMA_BUF=1" ;; esac
+      KS="$k" MAXLEN=131072 WORK="decode prefill" BARGS="--conc 1,4,16 $PREF" phase "$1" "${G92[@]}" "${b[@]}" ;;
+    p15-ks-dma64-a8l)  KS="$KC6 KSTAGE_SLOTS=all KSTAGE_DMA_M=64" MAXLEN=131072 WORK=agent BARGS="$AGENT8L" \
+                         phase "$1" "${G92[@]}" ;;
+    p15-ks-dma64-eval) KS="$KC6 KSTAGE_SLOTS=all KSTAGE_DMA_M=64" phase "$1" "${G92[@]}" ;;
+    # 1M needle again: p8-1m-* never sent a prompt (the bench overshot to 1,198,435 tokens; it now
+    # brackets the target). Then the same needle with K6 + P1 prefill.
+    p15-1m-off4)       MAXLEN=1048576 WORK=needle BARGS="--lens 1040000" phase "$1" "${G92[@]}" "${UVA[@]}" 4 ;;
+    p15-1m-ks-dma64)   KS="$KC6 KSTAGE_SLOTS=all KSTAGE_DMA_M=64" MAXLEN=1048576 WORK=needle BARGS="--lens 1040000" \
+                         phase "$1" "${G92[@]}" ;;
     *) echo "unknown phase $1"; return 9 ;;
   esac
 }
@@ -290,6 +314,9 @@ for p in "$@"; do
     lfu) for q in p12-ks-cache4-a6-lfu p12-ks-cache4-all-lfu p12-ks-cache4-s64-lfu; do run $q; done ;;
     p13) for q in x-cbench p13-base-a8l p13-kvoff8-a8l p13-ks-cache4-a8l p13-ks-cache4-kvoff8-a8l \
                   p13-ks-cache4-a8l-cb p13-ks-cache4-all-cb p13-ks-cache4-s64-cb; do run $q; done ;;
+    p14) for q in p14-kvoff16-a16l p14-ks-cache4-a16l-cb p14-ks-cache4-kvoff16-a16l-cb; do run $q; done ;;
+    p15) for q in p15-ks-dma64-all p15-ks-dma64-all-b8k p15-ks-dma64-all-b1 p15-ks-dma64-a8l \
+                  p15-1m-off4 p15-1m-ks-dma64 p15-ks-dma64-eval; do run $q; done ;;
     *) run "$p" ;;
   esac
 done

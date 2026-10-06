@@ -238,7 +238,11 @@ def mode_needle(a):
         codes = {nm: f"{rng.randrange(10**5, 10**6)}" for nm in names}
         fr = sorted(0.05 + 0.9 * rng.random() for _ in names)
         chars, msgs, got_n, cap = int(n * 3.0), None, 0, None
-        for _ in range(4):  # chars per token varies ~4% across the text: measure, rescale, measure
+        lo, hi = (0, 0), None  # (chars, tokens) known short of the window and past it
+        # Chars per token swings across the text (data files tokenize far denser than code), so a
+        # plain rescale can hop over the 2% window forever (1M: 1,198,435 tokens after 4 tries).
+        # Bracket the target and interpolate inside the bracket, at least a quarter in from each end.
+        for _ in range(20):
             if chars > len(text) * 0.95:
                 sys.exit(f"needle text has {len(text)} chars, {n} tokens needs {chars}")
             msgs = build(chars, codes, fr)
@@ -246,7 +250,17 @@ def mode_needle(a):
             limit = min(n, (cap or n) - 200)  # leave room for the answer
             if 0.98 * limit <= got_n <= limit:
                 break
-            chars = int(chars * limit * 0.99 / got_n)
+            goal = 0.99 * limit
+            if got_n < goal:
+                lo = (chars, got_n)
+            else:
+                hi = (chars, got_n)
+            if hi is None:
+                chars = int(chars * goal / got_n)
+            else:
+                (c0, t0), (c1, t1) = lo, hi
+                w = c1 - c0
+                chars = int(min(max(c0 + w * (goal - t0) / (t1 - t0), c0 + w / 4), c1 - w / 4))
         t0 = time.time()
         try:
             if got_n > (cap or got_n) - 200:

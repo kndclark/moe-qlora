@@ -1,0 +1,54 @@
+=== first run, 2026-10-05 23:50 (ce_probe --k 0,1,2,3, no cap on steps in flight, watchdog 60 s in Python only; ended by faulthandler at 30 min)
+CUDA_DEVICE_MAX_CONNECTIONS=unset (8), CE_PRIO=0
+work alone: 4.530 ms a step (23 layers x 160 MB read); a row is 5.35 MiB in 4 copies
+K=0: 4.824 ms a step, +0.294 over work; rows checked 0, bad 0; helper requests 714, rows 0, err 0
+Timeout (0:30:00)!
+Thread 0x00007c6938ec3300 (most recent call first):
+  File "/usr/local/lib/python3.12/dist-packages/torch/cuda/graphs.py", line 186 in replay
+  File "/p/ce_probe.py", line 151 in timed
+  File "/p/ce_probe.py", line 178 in <module>
+=== inflight2 ( --inflight 2 --k 0,1,2,3 --steps 50) 00:21:37
+CUDA_DEVICE_MAX_CONNECTIONS=unset (8), CE_PRIO=0
+work alone: 4.514 ms a step (23 layers x 160 MB read); a row is 5.35 MiB in 4 copies
+K=0: 4.860 ms a step, +0.346 over work; rows checked 0, bad 0; helper requests 1174, rows 0, err 0
+K=1: 5.707 ms a step, +1.194 over work; rows checked 22, bad 0; helper requests 2348, rows 1173, err 0
+K=2: 7.298 ms a step, +2.784 over work; rows checked 44, bad 0; helper requests 3522, rows 3519, err 0
+K=3: 10.578 ms a step, +6.064 over work; rows checked 66, bad 0; helper requests 4696, rows 7038, err 0
+per layer: work 196.3 us; K=0 +15.0 us; K=1 +51.9 us; K=2 +121.0 us; K=3 +263.6 us
+=== inflight2 exit 0 00:21:45
+=== inflight1 ( --inflight 1 --k 0,1,2,3 --steps 50) 00:21:50
+CUDA_DEVICE_MAX_CONNECTIONS=unset (8), CE_PRIO=0
+work alone: 4.607 ms a step (23 layers x 160 MB read); a row is 5.35 MiB in 4 copies
+K=0: 4.998 ms a step, +0.390 over work; rows checked 0, bad 0; helper requests 1174, rows 0, err 0
+K=1: 5.979 ms a step, +1.371 over work; rows checked 22, bad 0; helper requests 2348, rows 1173, err 0
+K=2: 7.451 ms a step, +2.844 over work; rows checked 44, bad 0; helper requests 3522, rows 3519, err 0
+K=3: 10.540 ms a step, +5.933 over work; rows checked 66, bad 0; helper requests 4696, rows 7038, err 0
+per layer: work 200.3 us; K=0 +17.0 us; K=1 +59.6 us; K=2 +123.6 us; K=3 +257.9 us
+=== inflight1 exit 0 00:21:58
+=== nocap ( --inflight 0 --k 1 --steps 20) 00:22:03
+CUDA_DEVICE_MAX_CONNECTIONS=unset (8), CE_PRIO=0
+work alone: 4.554 ms a step (23 layers x 160 MB read); a row is 5.35 MiB in 4 copies
+CE_WATCH: the helper has been inside cuMemcpyHtoDAsync for 20 s; requests 25, rows 24, copies issued 97, err 0
+Current thread 0x000074a592638300 (most recent call first):
+  File "/usr/local/lib/python3.12/dist-packages/torch/cuda/graphs.py", line 186 in replay
+  File "/p/ce_probe.py", line 168 in timed
+  File "/p/ce_probe.py", line 198 in <module>
+=== nocap exit 3 00:22:28
+=== nocap-conn32 (CUDA_DEVICE_MAX_CONNECTIONS=32 --inflight 0 --k 1 --steps 20) 00:22:33
+CUDA_DEVICE_MAX_CONNECTIONS=32, CE_PRIO=0
+work alone: 4.536 ms a step (23 layers x 160 MB read); a row is 5.35 MiB in 4 copies
+CE_WATCH: the helper has been inside cuMemcpyHtoDAsync for 20 s; requests 25, rows 24, copies issued 97, err 0
+Current thread 0x00007b5ae2f2d300 (most recent call first):
+  File "/usr/local/lib/python3.12/dist-packages/torch/cuda/graphs.py", line 186 in replay
+  File "/p/ce_probe.py", line 168 in timed
+  File "/p/ce_probe.py", line 198 in <module>
+=== nocap-conn32 exit 3 00:22:58
+=== nocap-prio (CE_PRIO=1 --inflight 0 --k 1 --steps 20) 00:23:03
+CUDA_DEVICE_MAX_CONNECTIONS=unset (8), CE_PRIO=1
+work alone: 4.569 ms a step (23 layers x 160 MB read); a row is 5.35 MiB in 4 copies
+CE_WATCH: the helper has been inside cuMemcpyHtoDAsync for 20 s; requests 25, rows 24, copies issued 97, err 0
+Current thread 0x00007c7e8a226300 (most recent call first):
+  File "/usr/local/lib/python3.12/dist-packages/torch/cuda/graphs.py", line 186 in replay
+  File "/p/ce_probe.py", line 168 in timed
+  File "/p/ce_probe.py", line 198 in <module>
+=== nocap-prio exit 3 00:23:28

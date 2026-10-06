@@ -378,25 +378,26 @@ Laptop, 131,072-token server, unless a row says otherwise. Decode is aggregate t
 | ID | Option | How | Result | Status |
 |---|---|---|---|---|
 | A | UVA offload vs none | `--cpu-offload-gb 4 --cpu-offload-params experts` | KV 1.69 → 5.63 GiB (3.3x); decode 202 / 430 / 701 → 76 / 98 / 132; 98k 15.4 → 34.8 s | done |
-| B | Agent loads that overflow row 4 | 6 × 98k, 4 × 127k | 6 × 98k: no offload 730 s, 10 preemptions, late TTFT 19.2 s; off4 572 s, 0, 3.8 s; K2 gather4 402 s. 4 × 127k: 519 vs 520 s, but 195 s with no expert offload and evicted prefix KV kept in RAM (row I) | 4 × 127k is prefix eviction, not running room. 8 × 127k (3.74 GiB running) tests running room: queued (p13) |
+| B | Agent loads that overflow row 4 | 6 × 98k, 4 × 127k | 6 × 98k: no offload 730 s, 10 preemptions, late TTFT 19.2 s; off4 572 s, 0, 3.8 s; K2 gather4 402 s. 4 × 127k: 519 vs 520 s, but 195 s with no expert offload and evicted prefix KV kept in RAM (row I). 8 × 127k (3.74 GiB running, p13): no offload 2,461 s, 80 preemptions, late TTFT 68.4 s; prefix KV in RAM (8 GiB) 374 s, 0, 9.2 s; K6 589 s, 0, 3.5 s (decode median 14.3 tok/s a stream vs 33.1) | 4 × 127k is prefix eviction, not running room. At 8 × 127k host KV wins wall time and K6 wins time to first token: K6 holds all 8 contexts on the card, but its prefill chunks are 1.6x slower (row K, P1). 16 × 127k (7.49 GiB, past K6's 5.71; p14, 448 turns, 0 errors): prefix KV in RAM (16 GiB) 744 s, decode median 28.3 tok/s a stream, late TTFT 25.0 s; K6 alone 5,816 s, 6.6 tok/s, 263 s; K6 + prefix KV in RAM 1,177 s, 7.2 tok/s, 7.1 s, 12 preemptions. K6 alone found 9.73M of its 29.99M prompt tokens in the prefix cache and recomputed the other ~20M at its slow prefill [arithmetic]: that is what P1 (row U) attacks |
 | C | Offload size, 2–16 GiB | UVA | KV 3.66 / 5.63 / 9.57 / 13.49 / 16.83 GiB; c=16 231 / 132 / 77 / 54 / 42 | done |
-| D | Larger prefill batches | `--max-num-batched-tokens 8192 / 16384` | 8192: 98k 34.8 → 27.2 s, c=16 132 → 141, KV 4.82 GiB; 16384 OOMs at startup | 12,288 queued (round 10) |
-| E | Prefetch whole layers | `--offload-backend prefetch`, G 4/2, step 1–2 | g4s2: KV 4.93 GiB, 98k 17.1 s (no offload: 15.4), but decode 9.9 / 38.7 / 149; pins ~2.5x the offload in RAM. g4s2 and g2s2 computed wrong outputs: vLLM's slot reuse races when the offloaded count is not a multiple of the step (below); their speeds stand. Step 1 (safe), 6 × 98k: 660 s | a prefill lever; the fix (`KSTAGE_PFFIX=1`) and a race-free G4/K2 step 2 queued (round 10) |
+| D | Larger prefill batches | `--max-num-batched-tokens 8192 / 16384` | 8192: 98k 34.8 → 27.2 s, c=16 132 → 141, KV 4.82 GiB; 12,288: 98k 26.4 s, c=16 143, KV 4.84 GiB; 16384 OOMs at startup | done: 8,192 takes most of it; 12,288 adds 3% |
+| E | Prefetch whole layers | `--offload-backend prefetch`, G 4/2, step 1–2 | g4s2: KV 4.93 GiB, 98k 17.1 s (no offload: 15.4), but decode 9.9 / 38.7 / 149; pins ~2.5x the offload in RAM. g4s2 and g2s2 computed wrong outputs: vLLM's slot reuse races when the offloaded count is not a multiple of the step (below); their speeds stand. Step 1 (safe), 6 × 98k: 660 s. With the fix (`KSTAGE_PFFIX=1`), g4s2: KV 4.93 GiB, decode 9.9 / 38.4 / 148, 98k 17.6 s, host +12.1 GiB; 6 × 98k 650 s, late TTFT 2.0 s. Race-free G4/K2 step 2: KV 8.19 GiB, decode 5.7 / 22.8 / 88, 98k 18.7 s, host +17.8 GiB | done: the best 98k prefill of any offload arm except K2 with DMA at batch 8,192 (15.1 s, row K), at a tenth of the decode speed. Agent wall loses to K6 (650 vs 282 s) |
 | F | Offload + the state levers | fp16 state, `none` mode | UVA 4 GiB + fp16 state: KV 6.28 GiB, decode 77 / – / 136, 4 × 127k 511 s (UVA alone 520). Adding `none`: 15.62x printed, but no prefix cache, so 4 × 127k took 2,474 s, late TTFT 33.9 s | done: fp16 state is free; `none` is unusable for agents (each turn recomputes its whole context). ESTCG=0 not run with offload |
-| G | Full context: 512k, 1M | needle | round 8 invalid: the model answered with the file's own NAME = NUMBER constants, and 1M overran `max_model_len` (HTTP 400); bench fixed | queued, follower |
+| G | Full context: 512k, 1M | needle | round 8 invalid: the model answered with the file's own NAME = NUMBER constants, and 1M overran `max_model_len` (HTTP 400). 512k (round 10, no expert offload): 8 of 8 at 32k, 131k, 264k and 509,885 tokens, the last in 214 s; fp16 state the same. 1M (UVA 4 and 2 GiB): the bench never sent a prompt. Its rescale stopped at 1,198,435 tokens after 4 tries, because the text's characters per token vary along it; it now brackets the target and interpolates | 512k done; 1M re-run queued (p15) |
 | H | Eager under offload | `--enforce-eager` | UVA 4 GiB: KV 5.63 → 7.03 GiB (peak activation 1.13 → 0.18, weights + non-torch 14.76 → 14.31); decode 76 / 98 / 132 → 24 / 85 / 133. One stream runs at a third, 16 streams unchanged | done: KV for many streams, not one |
-| I | KV blocks evicted to RAM | `--kv-offloading-size 16 --kv-offloading-backend native` | no expert offload, 4 × 127k: 195 s (no offload 519, UVA 4 GiB 520), late TTFT 2.50 s, 0 preemptions. 2.20M of the 7.50M prompt tokens came back from RAM; recomputing them would take ~300 s [arithmetic]. Host RAM +20.9 GB | done: the fix for prefix eviction, at no VRAM cost. It adds no running room; combined with experts in RAM: queued (p13) |
+| I | KV blocks evicted to RAM | `--kv-offloading-size 16 --kv-offloading-backend native` | no expert offload, 4 × 127k: 195 s (no offload 519, UVA 4 GiB 520), late TTFT 2.50 s, 0 preemptions. 2.20M of the 7.50M prompt tokens came back from RAM; recomputing them would take ~300 s [arithmetic]. Host RAM +20.9 GB | done: the fix for prefix eviction, at no VRAM cost. It adds no running room. With K6, 8 × 127k: 579 s vs K6 alone 589 s, 0 external hits: K6's 5.72 GiB holds all eight (312 of 478 blocks) [arithmetic], so nothing is evicted. 16 × 127k (p14): 744 s, late TTFT 25.0 s, 27.1M tokens back from RAM, host +20.6 GiB; with K6, 1,177 s, 7.1 s, 18.0M from RAM, host +36.6 GiB (22.4 GiB still available) |
 | J | Routing histogram | `--enable-return-routed-experts` | the median layer's 32 most-routed experts of 128 take 0.52 (code) / 0.63 (eval) of routings; uniform would be 0.25 | done; drives K |
-| K | Hot experts on the card, cold in RAM | `probes/kstage` plugin: K2, K5, K6 | below. Desktop: K6 LRU decodes 4.3-4.8x UVA offload at the same VRAM | K2, K5 measured; K6 measured on the desktop, laptop queued (round 11) |
+| K | Hot experts on the card, cold in RAM | `probes/kstage` plugin: K2, K5, K6 | below. Laptop K6: decode 166 / 241 / 294 at 5.71 GiB KV (UVA 76 / 98 / 132 at 5.63), 6 × 98k in 282 s (UVA 572, K2 402) | K2, K5, K6 measured on both machines; K6's prefill (98k 25.3 s vs 15.4 none) is the open cost: P1 |
 | L | Where offload's time goes | copy probes; nsys | read rates: Marlin through UVA 27.2, Triton gather 36.8, copy engine 50.9 GB/s (desktop 7.2 / 11–12.5 / 12.2) | nsys not run |
 | M | Offload on the training side | QLoRA | | open |
 | N | Expert caches outside this vLLM | vLLM PR #37190, LMCache, ktransformers, llama.cpp | | needs a download (David) |
-| O | Fill K6 slots a layer ahead | `KSTAGE=predict` runs the next layers' gates on this layer's input | desktop (k7), one layer ahead: of the 2.63 cold experts a decode layer-step routes to, each token's top 6 predicted name 68% (fetching 2.68) and its top 10 83% (fetching 4.35); prefill 88% / 96%. Two layers ahead: 58% / 72% | worth building if copies overlap compute: `cache_bench.py` overlap, queued (k11, x-cbench) |
-| P | Compute cold experts on the CPU | NVFP4 kernel for AVX2 + VNNI (no AVX-512) | ~75 µs an expert vs ~110 µs to copy one [arithmetic] | open; RAM bandwidth unmeasured |
+| O | Fill K6 slots a layer ahead | `KSTAGE=predict` runs the next layers' gates on this layer's input | desktop (k7), one layer ahead: of the 2.63 cold experts a decode layer-step routes to, each token's top 6 predicted name 68% (fetching 2.68) and its top 10 83% (fetching 4.35); prefill 88% / 96%. Two layers ahead: 58% / 72% | measured (k11, desktop): a copy kernel beside a matmul takes the sum of both, not the longer (16 misses: 5.09 ms vs 1.95 + 3.14; 1 miss: 1.99 vs 1.97 + 0.06), so K6's in-kernel miss copies never hide behind compute. A fill ahead has to use the copy engine; P1 (row U) does that for prefill. Laptop, `probes/kstage/ce_probe.py` (2026-10-06): a CUDA graph can drive it. Its kernels write a copy plan into pinned memory and raise a flag (captured `cuStreamWriteValue32`); a host thread (`ce_helper.c`) issues the copies on its own stream and sets a flag the graph waits on (`cuStreamWaitValue32`). 23 layers each reading 160 MB on the card (~200 µs, decode-like), K expert rows (5.35 MiB) chosen on the device a layer ahead: per layer the handshake alone (K=0) adds 15–17 µs, K=1 52–60, K=2 121–124, K=3 258–264, with 0 bad of 22 / 44 / 66 rows checked (two runs, at most 2 or 1 steps queued) [measured]. A row alone takes ~108 µs at 51.8 GB/s, so K=1 hides ~60% of its copy, K=2 ~50%, K=3 ~25% [arithmetic]; in-kernel copies hide 0% (k11). Three rows need ~324 µs, more than the 200 µs of work, and the copies probably slow while the work saturates the card's memory [inference]. With no cap on queued steps (20 launched back to back) it hangs, three runs of three: the helper sits inside `cuMemcpyHtoDAsync` after 97 copies while the main thread sits in the graph launch; `CUDA_DEVICE_MAX_CONNECTIONS=32` and a high-priority stream change nothing [measured]. A launch blocked on a full queue holding a driver lock the copy needs, while the queued graph waits on that copy, fits [inference]; vLLM syncs on each step's sampled tokens, so it queues about one step [inference]. Next: drive the helper from `KSTAGE=predict` and measure decode |
+| P | Compute cold experts on the CPU | `probes/kstage/cpu_expert.c`: NVFP4 read as the checkpoint stores it, AVX2 + FMA (no AVX-512), a pool of spinning threads; `cpu_expert_probe.py` | correct: max error 1.3e-7 of the largest output against a float64 dequant, 1–24 threads, and vLLM's own e2m1 table matches. Laptop, idle, experts cycled through 2 GiB so every call reads RAM: all-thread RAM read 28.8–29.3 / 71.5–72.2 / 90.3–90.8 / 94.1–94.7 / 68.7–76.9 GB/s at 1 / 4 / 8 / 16 / 24 threads (two runs, 2026-10-05 and -06). An expert at one token takes 646–856 µs on one thread, 166–254 on 8, 115–175 on 16 (32–49 GB/s), 87–3,343 on 24 (erratic). Four tokens an expert 280–285 µs, 16 tokens 1,125–1,155 µs (16 threads) [measured] | measured: no faster than the copy engine (~110 µs an expert at 51.8 GB/s), with every core spinning. The earlier ~75 µs guess assumed the kernel reads at the RAM's rate; it reaches half. Its one use is beside the copy engine: both read the same RAM, 94 GB/s against the copy engine's 51.8, so splitting misses could at most raise the miss rate 1.8x [arithmetic]. It needs the same graph-to-host handshake as row O, which works (with the same cap on queued steps). Prefill is out: an expert there serves ~96 tokens |
 | Q | More streams | `--max-num-seqs 64`, decode at 16 / 32 / 64 | gather4: 191 / 245 / 357 (KV 4.66 GiB); with the copy engine from 32 tokens (`KSTAGE_DMA_M=32`) 194 / 267 / 447. No offload: 669 / 691 / 769 (1.40 GiB; 23 running, 41 waiting at 64). With DMA, offload's share of no offload rises 0.29 → 0.39 → 0.58 | done |
 | R | Async scheduling | `--async-scheduling` | gather4 98 / 141 / 192, UVA 77 / 97 / 138: the same as without. vLLM 0.29.0 already turns it on here | done: already the default |
-| S | The adapter under kstage | G6q LoRA through each mode | speed below; the plugin now hands MoE LoRA the router's ids. Research eval under K2 gather = under UVA: v1 0.989, v2 0.986; alert 6 vs 4 of 9, trap3 4 vs 5 of 12 (too few items to separate) | done (G6q has no routed-expert LoRA; fix for adapters that do). K6 eval queued (round 11) |
-| T | Decode graphs without torch.compile | `--compilation-config '{"mode":0,"cudagraph_mode":"FULL_DECODE_ONLY"}'`; `VLLM_USE_BREAKABLE_CUDAGRAPH=1` with mode 0 (piecewise graphs, experimental) | Eager's 1.40 GiB of extra KV (row H) is 0.95 of peak activation, measured in a profile pass through the compiled model, plus 0.45 of non-torch memory; the graphs themselves take 0.09. Compile off with decode graphs on may keep both | queued (round 12): UVA, K6, no offload |
+| S | The adapter under kstage | G6q LoRA through each mode | speed below; the plugin now hands MoE LoRA the router's ids. Research eval under K2 gather = under UVA: v1 0.989, v2 0.986; alert 6 vs 4 of 9, trap3 4 vs 5 of 12 (too few items to separate) | done (G6q has no routed-expert LoRA; fix for adapters that do). K6 (round 11): v1 0.989, v2 1.000, alert 5 of 9, trap3 4 of 12: K2's within the noise |
+| T | Decode graphs without torch.compile | `--compilation-config '{"mode":0,"cudagraph_mode":"FULL_DECODE_ONLY"}'`; `VLLM_USE_BREAKABLE_CUDAGRAPH=1` with mode 0 (piecewise graphs, experimental) | Eager's 1.40 GiB of extra KV (row H) is 0.95 of peak activation, measured in a profile pass through the compiled model, plus 0.45 of non-torch memory; the graphs themselves take 0.09. Round 12, `FULL_DECODE_ONLY` with mode 0 (`-fdo`): no offload KV 1.69 → 2.56 GiB, decode 202 / 430 / 701 → 188 / 359 / 712, 98k 15.4 → 15.5 s; UVA 4 GiB 5.63 → 6.50, 76 / 98 / 132 → 75 / 98 / 140, 34.8 → 34.4 s; K6 5.71 → 6.59, 166 / 241 / 294 → 156 / 203 / 297, 25.6 → 25.8 s. Breakable graphs under UVA (`-brk`) crashed in warmup: an illegal memory access surfaced in the grammar-bitmask kernel after both captures finished; the faulting kernel is unknown (asynchronous error) | `-fdo` done: +0.87 GiB KV on every arm; costs 0–7% of decode at one stream and 16 streams but 16–17% at four (K6's c=4 swings 211–259 between identical runs, so that is one draw); adopting it is David's call. `-brk` crash not localized (needs `CUDA_LAUNCH_BLOCKING=1`, or a run without offload) |
+| U | K6 prefill staged on the copy engine (P1) | `KSTAGE_DMA_M=64`: batches of 64+ tokens outside CUDA graphs leave the cache alone. Every non-resident expert of the layer `KSTAGE_DMA_BUF` ahead (default 2) is copied by the copy engine into staging rows, so Marlin reads no host memory | the cost it attacks: 98k prefill 25.3 s with K6 vs 15.4 s without offload. Copying the ~4 GiB of cold experts once per 2,048-token chunk at 51.8 GB/s is ~83 ms against K6's ~206 ms extra a chunk [arithmetic]. Staging takes ~0.5 GiB of device memory for two buffers [arithmetic]. Desktop, k13b, one draw: the first build crashed at install (fixed). The second sorted every expert tensor as small, so all staging ran as an on-device gather by SMs instead of the copy engine: prefill (7,560 tokens) 3.51 s with 64 slots or all, against K6 alone's 3.23 s (64 slots) and 2.70 s (all) and 1.14 s without offload. Decode is K6's own (126–131 / 162–195 / 212–234 vs 127–135 / 179–194 / 202–228): decode batches stay under 64 tokens. The MoE layers of a step took 501–528 ms at 80–244 tokens and 751–766 ms at 2,048, so gathering the ~765 cold experts (~4 GiB) costs ~500 ms a step, ~8 GB/s [arithmetic]. Greedy outputs match no offload 4–5 of 8, the permutation's pattern | the sorting bug is fixed, the copy-engine path is not yet measured: the desktop rerun (k13c) waits behind a hung row O probe; the laptop runs it in p15, which also logs the copy engine's GB/s a step (`KSTAGE_DMA_TIME=1`) |
 
 Sourced facts these options rest on (vLLM 0.29.0 source):
 
@@ -455,9 +456,29 @@ streams, aggregate tok/s; cold prefill in seconds):
 | K2 gather, 8 GiB | 8.89 | 65 / 79 / 114 | 2.09 / 9.57 / 32.18 |
 | K5 hotcold, 8 GiB | 9.75 | 60 / 80 / 103 | 2.74 / 12.25 / 44.71 |
 | K2 gather, 16 GiB | 16.15 | 39 / 45 / 65 | 3.29 / 14.92 / 47.97 |
+| K2 gather, 4 GiB, DMA, batch 8,192 | 4.14 | 101 / – / 207 | 0.85 / 3.82 / 15.10 |
+| K5 hotcold, 4 GiB, DMA | 5.06 | 111 / – / 217 | 1.71 / 7.63 / 27.06 |
+| K5 hotcold, 4 GiB, DMA, batch 8,192 | 4.25 | 111 / – / 246 | 1.12 / 4.89 / 18.19 |
+| K6 cache, 16 slots a layer | 5.73 | 155 / 215 / 295 | 1.58 / 7.04 / 25.99 |
+| K6 cache, 64 slots | 5.72 | 165 / 211 / 305 | 1.69 / 7.30 / 25.34 |
+| K6 cache, all slots (LRU) | 5.71 | 166 / 241 / 294 | 1.77 / 7.53 / 25.56 |
+| K6 all slots, LFU | 5.72 | 166 / 257 / 340 | 1.72 / 7.46 / 25.37 |
+| K6 all slots, `KSTAGE_COPY=82` | 5.71 | 175 / 259 / 314 | 1.81 / 7.43 / 25.26 |
 
 6 agents growing to 98k: no offload 730 s, UVA 572 s, K2 gather 402 s (decode median
-15.2 tok/s, late time to first token 2.63 s) [measured].
+15.2 tok/s, late time to first token 2.63 s), prefetch with the fix 650 s, K6 282 s
+(23.0 tok/s, 2.68 s), K6 LFU 271 s (25.0 tok/s, 2.49 s) [measured].
+
+- **K6 on the laptop:** 2.2x UVA's decode at one stream and 2.2x at 16, with 5.71 GiB of
+  KV against UVA's 5.63, and half UVA's agent wall time. Host RAM: +10.4 GiB with 16 slots,
+  +16.3 GiB with 64, +20.0 GiB with all (no offload +4.1 GiB) [measured].
+- **Its weak spot is prefill:** 25.3 s at 98k against 15.4 s with no offload. A 2,048-token
+  chunk makes 12,288 routings a layer, enough to reach most of its 128 experts, so each
+  chunk misses and copies most of the 765 cold ones [inference]. P1 (row U) moves those copies to the copy engine.
+- **Slot count barely matters on the laptop** (16 vs all: 295 vs 294 at 16 streams), unlike
+  the desktop (127 vs 236): the laptop's link copies a miss 4x faster [inference].
+- **LFU vs LRU, `KSTAGE_COPY`:** LFU 340 vs LRU 294 at 16 streams and 271 vs 282 s on the
+  agents; `KSTAGE_COPY=82` 314 at 16 streams and 175 at one. Single draws each.
 
 - **Both modes beat stock offload** at every size. At 4 GiB, hotcold has the faster
   decode (232 vs 193 at 16 streams) and gather the faster prefill (20.9 s with DMA vs
@@ -522,9 +543,31 @@ With the adapter, gather beats hotcold at 4 GiB too; the cause is unknown.
 - **Permuted rows diverge:** hotcold with a profile matches 3 of 8, and K6 3–5. Their
   first-token logprobs are within 0.06 of no offload. The racy prefetch flips first tokens
   and is off by 0.5–4.5.
-- **The leading guess:** a permuted layout changes the order Marlin sums in. That is an
-  inference: `k9` runs the permutation with nothing cold, and if hotcold then matches it,
-  the cold reads are cleared.
+- **The cause is the permutation, not the cold reads** [measured, k9]: hotcold's
+  profile permutation with nothing cold (`hc-perm0`) matches no offload 3 of 8, with the
+  same first differing tokens as hotcold with 4 GiB cold, and the two match each other
+  8 of 8. Each divergence starts where the reference's top two tokens are within
+  0.00–0.25 of each other. That a permuted layout changes the order Marlin sums in is
+  still an inference.
+- **Where K6's decode time goes** [measured, k12, desktop, one draw each]. Decode at
+  1 / 4 / 16 streams, tok/s:
+
+  | Arm | What it keeps | Decode | Prefill (s) |
+  |---|---|---|---|
+  | No offload | - | 205 / 465 / 634 | 1.14 |
+  | `cold0-frz1` | cache kernel and remap, 16 slots, no copy launch | 203 / 468 / 627 | 1.14 |
+  | `cold0-s16` | the same plus the (empty) copy launch | 195 / 451 / 614 | 1.14 |
+  | `cold0-all` | the same with every slot | 194 / 443 / 579 | 1.14 |
+  | K6, slots all | real host traffic: 1.54 misses, 1.50 copies a layer-step | 135 / 194 / 228 | 2.70 |
+  | `cache4-all-frz1` | no copies: every miss (4.89 a layer-step) read over UVA | 30 / 42 / 68 | 6.28 |
+
+  `cold0` puts nothing in host memory, so nothing can miss; `frz1` freezes the slots, so
+  nothing is copied. At one stream the machinery adds 0.26 ms a token (4.89 to 5.15 ms),
+  0.19 ms of it the copy step `frz1` skips, and K6 adds 2.51 ms: about 10% machinery, 90%
+  host reads and copies [arithmetic]. Copying misses into slots instead of reading them
+  over UVA is worth 4.5x on the desktop's 12.2 GB/s link. All five arms match no offload's
+  greedy output on the same 3 of 8 prompts with the same first differing tokens, the
+  permutation's pattern: the UVA reads are exact.
 
 **Copy rates, laptop** (GB/s, `x-copy` probe): device memory 145.5; Marlin's read through
 UVA 27.2; copy engine, whole range 51.6, per row 48.5–50.9; Triton gather 36.8; a VMM

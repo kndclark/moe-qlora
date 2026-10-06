@@ -32,6 +32,10 @@ KSTAGE (unset = plugin off, vLLM untouched):
            (half-life ~0.69 * 2**KSTAGE_SHIFT steps, default 6, at most 10). KSTAGE_COPY=N
            copies with N programs that walk the copy list, not a program per 512 words of
            every possible copy (min(slots, routings, E) of them, launched with or without misses).
+           KSTAGE_DMA_M: batches of this many tokens or more that run outside CUDA graphs (prefill
+           chunks) leave the cache alone and copy every non-resident expert into staging rows on
+           the copy engine, KSTAGE_DMA_BUF layers ahead (default 2; each buffer is X expert rows
+           of device memory, X the most any layer has at home), so Marlin reads no host memory.
   predict  A probe, no staging (or KSTAGE_PREDICT=1 on top of any mode): how well each MoE
            layer's input, put through the next two MoE layers' gates, predicts what they route
            to, overall and on the experts KSTAGE_COLD_GB would put in host memory. Decides
@@ -96,55 +100,82 @@ class _Arr:  # torch.as_tensor reads this to wrap a raw device pointer
         self.__cuda_array_interface__ = {"shape": (n,), "typestr": "|u1", "data": (ptr, False), "version": 3}
 
 
+def _vmm():
+    """(device pages prop, host pages prop, granularity) for this context's device."""
+    cu = _cu()
+    torch.cuda.init()
+    dev = int(ok(cu.cuCtxGetDevice()))
+    L = cu.CUmemLocationType
+
+    def prop(kind):
+        p = cu.CUmemAllocationProp()
+        p.type = cu.CUmemAllocationType.CU_MEM_ALLOCATION_TYPE_PINNED
+        p.location.type = kind
+        p.location.id = dev if kind == L.CU_MEM_LOCATION_TYPE_DEVICE else 0
+        return p
+    pd, ph = prop(L.CU_MEM_LOCATION_TYPE_DEVICE), prop(L.CU_MEM_LOCATION_TYPE_HOST)
+    G = ok(cu.cuMemGetAllocationGranularity(pd, cu.CUmemAllocationGranularity_flags.CU_MEM_ALLOC_GRANULARITY_MINIMUM))
+    return dev, pd, ph, int(G)
+
+
 class MixedRows:
     """E rows of row_bytes in one virtual range: rows [0, n_dev) on device pages, the rest on
-    host pages. The page holding the boundary is a device page."""
+    host pages. The page holding the boundary is a device page. stage=(Z, handle, size) also
+    maps device pages another owner made (shared by every layer) from the page holding row Z
+    on; Z must be past the host pages. Rows between are never mapped."""
 
-    def __init__(self, E, row_bytes, n_dev):
+    def __init__(self, E, row_bytes, n_dev, stage=None):
         cu = _cu()
-        torch.cuda.init()
-        self.dev = int(ok(cu.cuCtxGetDevice()))
-        L = cu.CUmemLocationType
-        pd, ph = self._prop(L.CU_MEM_LOCATION_TYPE_DEVICE), self._prop(L.CU_MEM_LOCATION_TYPE_HOST)
-        G = ok(cu.cuMemGetAllocationGranularity(pd, cu.CUmemAllocationGranularity_flags.CU_MEM_ALLOC_GRANULARITY_MINIMUM))
+        self.dev, pd, ph, G = _vmm()
         up = lambda x: (x + G - 1) // G * G
         self.nbytes = E * row_bytes
         self.size = up(self.nbytes)
         self.dsize = min(up(n_dev * row_bytes), self.size)
         self.hsize = self.size - self.dsize
-        self.va = ok(cu.cuMemAddressReserve(self.size, G, 0, 0))
-        self.handles = []
-        for off, sz, p in ((0, self.dsize, pd), (self.dsize, self.hsize, ph)):
+        maps = [(0, self.dsize, pd, None), (self.dsize, self.hsize, ph, None)]
+        self.total = self.size
+        if stage:
+            z, h, hs = stage
+            off = z * row_bytes // G * G
+            assert off >= self.size and hs % G == 0, (z, row_bytes, off, self.size, hs)
+            maps.append((off, hs, None, h))
+            self.total = off + hs
+        self.va = ok(cu.cuMemAddressReserve(self.total, G, 0, 0))
+        self.handles = []  # (offset, size, handle, owned)
+        for off, sz, p, h in maps:
             if sz:
-                h = ok(cu.cuMemCreate(sz, p, 0))
+                own = h is None
+                if own:
+                    h = ok(cu.cuMemCreate(sz, p, 0))
                 ok(cu.cuMemMap(int(self.va) + off, sz, 0, h, 0))
-                self.handles.append((off, sz, h))
+                self.handles.append((off, sz, h, own))
         acc = cu.CUmemAccessDesc()
-        acc.location.type = L.CU_MEM_LOCATION_TYPE_DEVICE
+        acc.location.type = cu.CUmemLocationType.CU_MEM_LOCATION_TYPE_DEVICE
         acc.location.id = self.dev
         acc.flags = cu.CUmemAccess_flags.CU_MEM_ACCESS_FLAGS_PROT_READWRITE
-        ok(cu.cuMemSetAccess(self.va, self.size, [acc], 1))
+        for off, sz, _, _ in self.handles:  # mapped ranges only: the gap before the stage has none
+            ok(cu.cuMemSetAccess(int(self.va) + off, sz, [acc], 1))
         self.E, self.row_bytes, self.n_dev = E, row_bytes, n_dev
 
-    def _prop(self, kind):
-        cu = _cu()
-        p = cu.CUmemAllocationProp()
-        p.type = cu.CUmemAllocationType.CU_MEM_ALLOCATION_TYPE_PINNED
-        p.location.type = kind
-        p.location.id = self.dev if kind == cu.CUmemLocationType.CU_MEM_LOCATION_TYPE_DEVICE else 0
-        return p
-
     def tensor(self, dtype, shape=None):
-        t = torch.as_tensor(_Arr(int(self.va), self.nbytes), device="cuda").view(dtype)
+        n = self.nbytes
+        if shape is not None:
+            n = 1
+            for d in shape:
+                n *= d
+            n *= torch.empty(0, dtype=dtype).element_size()
+            assert n <= self.total, (shape, n, self.total)
+        t = torch.as_tensor(_Arr(int(self.va), n), device="cuda").view(dtype)
         return t.view(shape if shape is not None else (self.E, -1))
 
     def free(self):
         cu = _cu()
         torch.cuda.synchronize()
-        for off, sz, h in self.handles:
+        for off, sz, h, own in self.handles:
             ok(cu.cuMemUnmap(int(self.va) + off, sz))
-            ok(cu.cuMemRelease(h))
-        ok(cu.cuMemAddressFree(self.va, self.size))
+            if own:
+                ok(cu.cuMemRelease(h))
+        ok(cu.cuMemAddressFree(self.va, self.total))
         self.handles = []
 
 
@@ -369,6 +400,102 @@ class _Cache:
         return out
 
 
+class _BigStage:
+    """K6 + KSTAGE_DMA_M. A batch that big (a prefill chunk) routes to nearly every expert, far
+    more than the free slots, so K6 leaves the rest at home and Marlin reads them through UVA,
+    once per block of tokens routed to them. Instead: at such a step's first MoE layer, read
+    every layer's rows (one sync); copy each layer's non-resident experts, home order, into
+    staging rows [Z, Z + n) with the copy engine on a side stream, KSTAGE_DMA_BUF layers ahead
+    (default 2: the next layer copies while this one computes); remap ids through that map.
+    The copy needs no routing, so it can run ahead; staging is one set of device pages per
+    buffer, mapped into every layer's range. The step leaves the cache alone (no stamps, no
+    slot copies): a chunk that touches every expert says nothing about the next decode step."""
+
+    def __init__(self, nbuf):
+        self.nbuf, self.layers, self.side = nbuf, [], torch.cuda.Stream()
+        self.free = [None] * nbuf
+        self.next, self.steps, self.runs, self.rows = 0, 0, 0, 0
+        self.time = os.environ.get("KSTAGE_DMA_TIME", "0") == "1"  # time steps (syncs at the last layer)
+
+    def add(self, cache, D, Z, n, big, small):
+        """One layer, in forward order: big are the [rows, units] views the copy engine fills,
+        small the device-only ones (filled with an index_select)."""
+        E = cache.E
+        self.layers.append({"c": cache, "D": D, "Z": Z, "n": n, "big": big, "small": small, "E": E,
+                            "pin": torch.empty(E + n, dtype=torch.long, pin_memory=True),
+                            "dev": torch.empty(E + n, dtype=torch.long, device="cuda"),
+                            "done": torch.cuda.Event(enable_timing=self.time), "runs": [],
+                            "c0": torch.cuda.Event(enable_timing=True) if self.time else None,
+                            "bytes": n * sum(r.shape[1] * r.element_size() for r in big)})
+
+    def _begin(self, li0, m):
+        snap = torch.stack([L["c"].where for L in self.layers]).cpu()  # waits for the layers before
+        self.m = m
+        if self.time:
+            self.f0 = torch.cuda.Event(enable_timing=True); self.f0.record()
+        for L, w in zip(self.layers, snap.long()):
+            nr = (w >= L["D"]).nonzero().flatten()
+            nr = nr[torch.argsort(w[nr])]
+            src = w[nr]
+            assert src.numel() == L["n"], (src.numel(), L["n"])
+            w[nr] = L["Z"] + torch.arange(L["n"])
+            L["pin"][:L["E"]] = w
+            L["pin"][L["E"]:] = src
+            s, runs, i = src.tolist(), [], 0
+            while i < len(s):
+                j = i
+                while j + 1 < len(s) and s[j + 1] == s[j] + 1:
+                    j += 1
+                runs.append((s[i], L["Z"] + i, j - i + 1))
+                i = j + 1
+            L["runs"] = runs
+            self.runs += len(runs); self.rows += len(s)
+        self.steps += 1
+        if self.steps in (1, 2, 3, 10, 100) or self.steps % 1000 == 0:
+            log(f"dma: {self.steps} big steps, {self.rows / self.steps:.0f} rows in "
+                f"{self.runs / self.steps:.0f} runs a step")
+        for li in range(li0, min(li0 + self.nbuf, len(self.layers))):
+            self._copy(li)
+
+    def _copy(self, li):
+        L, b = self.layers[li], li % self.nbuf
+        with torch.cuda.stream(self.side):
+            if self.free[b] is not None:
+                self.side.wait_event(self.free[b])  # the layer that read buffer b is done
+            if self.time:
+                L["c0"].record(self.side)
+            for r in L["big"]:
+                for s, d, n in L["runs"]:
+                    r[d:d + n].copy_(r[s:s + n], non_blocking=True)
+            L["done"].record(self.side)
+
+    def enter(self, li, ids):
+        if li != self.next or li == 0:
+            self._begin(li, ids.shape[0])
+        L = self.layers[li]
+        torch.cuda.current_stream().wait_event(L["done"])
+        L["dev"].copy_(L["pin"], non_blocking=True)
+        E, Z, n = L["E"], L["Z"], L["n"]
+        for r in L["small"]:
+            r[Z:Z + n].copy_(r.index_select(0, L["dev"][E:]))
+        return L["dev"][:E].index_select(0, ids.reshape(-1).long()).view(ids.shape).to(ids.dtype)
+
+    def leave(self, li):
+        b = li % self.nbuf
+        if self.free[b] is None:
+            self.free[b] = torch.cuda.Event()
+        self.free[b].record()
+        self.next = (li + 1) % len(self.layers)
+        if li + self.nbuf < len(self.layers):
+            self._copy(li + self.nbuf)
+        elif self.time and li == len(self.layers) - 1:
+            f1 = torch.cuda.Event(enable_timing=True); f1.record(); f1.synchronize()
+            busy = sum(L["c0"].elapsed_time(L["done"]) for L in self.layers)
+            gib = sum(L["bytes"] for L in self.layers) / 2**30
+            log(f"dma step {self.steps} ({self.m} tokens): copy engine busy {busy:.1f} ms for {gib:.2f} GiB "
+                f"({gib * 2**30 / busy / 1e6:.1f} GB/s); MoE layers span {self.f0.elapsed_time(f1):.1f} ms")
+
+
 # ---------------------------------------------------------------- finding the expert tensors
 
 def _walk(roots, depth=4):
@@ -506,7 +633,7 @@ def _install_gather(layers):
         f"{st.nbytes() / 2**30:.2f} GiB of device buffers; DMA from {DMA_M or 'never'} tokens")
 
 
-def _wrap(runner, idx, E, big=(), pos=None, mixed=(), cache=None):
+def _wrap(runner, idx, E, big=(), pos=None, mixed=(), cache=None, stage=None):
     re_ = runner.routed_experts
     fwd = re_.forward_modular
 
@@ -519,6 +646,13 @@ def _wrap(runner, idx, E, big=(), pos=None, mixed=(), cache=None):
 
     def remapped(x, topk_weights, topk_ids, *a, **k):
         M = x.shape[0]
+        if cache is not None and stage and M >= DMA_M and not torch.cuda.is_current_stream_capturing():
+            st, li = stage  # K6 prefill: non-resident experts staged on the copy engine
+            ids = st.enter(li, topk_ids)
+            try:
+                return fwd(x, topk_weights, ids, *a, **k)
+            finally:
+                st.leave(li)
         if cache is not None:  # K6: slots filled, ids remapped to rows
             return fwd(x, topk_weights, cache.step(topk_ids, bool(FREEZE_M) and M >= FREEZE_M), *a, **k)
         ids = topk_ids if pos is None else pos[topk_ids.long()].to(topk_ids.dtype)
@@ -699,11 +833,21 @@ def _install_cache(layers):
     dev_bytes = host_bytes = 0
     shape = []
     on_host = {idx: any(big(g) and is_host(g[0][1]) for _, g in groups[idx]) for idx, _, _ in layers}
+    X = max(cold_n.values()) if DMA_M else 0  # staging rows: the most experts any layer has at home
+    fpos = {idx: i for i, idx in enumerate(sorted(i for i, _, _ in layers))}  # forward order
+    nbuf = int(os.environ.get("KSTAGE_DMA_BUF", "2"))
+    bstage, staged, bank, bank_bytes = (_BigStage(nbuf) if X else None), {}, {}, 0
+    G = _vmm()[3] if X else 1
+    up = lambda x: (x + G - 1) // G * G
     for li, (idx, name, runner) in enumerate(sorted(layers, key=lambda l: (on_host[l[0]], l[0]))):
         D = E - cold_n[idx]
         lay = _cache_layout(counts[idx], D, D if SLOTS == "all" else min(int(SLOTS), D))
         c = _Cache(lay, dstats[li] if dstats is not None else None, evict=EVICT, shift=SHIFT)
         H, S, R = lay["H"], lay["S"], E + lay["S"]
+        # staging rows start at Z, the first row whose page is past every big tensor's host pages
+        Z = max([-(-up(R * (nb // E)) // (nb // E)) for nb, g in groups[idx] if big(g)] or [R])
+        T = Z + X if X else R
+        bigv, smallv = [], []
         src_rows = torch.tensor(lay["src"], dtype=torch.long, device="cuda")
         for nb, grp in groups[idx]:
             t0 = grp[0][1]
@@ -711,25 +855,41 @@ def _install_cache(layers):
                 if is_host(t0):
                     _set(grp, t0.data.clone())
                 continue
-            old = t0.data
-            if _is_big(t0, E):
-                mx = MixedRows(R, nb // E, D)
-                new = mx.tensor(old.dtype, (R,) + tuple(old.shape[1:]))
-                for s0 in range(0, R, 16):
-                    new[s0:s0 + 16].copy_(old.index_select(0, src_rows[s0:s0 + 16]))
+            old, isbig = t0.data, _is_big(t0, E)  # before _set_rows: it makes t0 T rows
+            if isbig:
+                rb, stage = nb // E, None
+                if X:  # one set of device pages per tensor kind and buffer, shared by every layer
+                    key = (min(p for p, _ in grp), fpos[idx] % nbuf)
+                    if key not in bank:
+                        hs = G + up(X * rb)
+                        bank[key] = (ok(_cu().cuMemCreate(hs, _vmm()[1], 0)), hs)
+                        bank_bytes += hs
+                    stage = (Z,) + bank[key]
+                mx = MixedRows(R, rb, D, stage)
+                new = mx.tensor(old.dtype, (T,) + tuple(old.shape[1:]))
+                for s0 in range(0, R, 16):  # rows past R: page padding, then staging
+                    new[s0:min(s0 + 16, R)].copy_(old.index_select(0, src_rows[s0:s0 + 16]))
                 _keep.append(mx)
                 dev_bytes += mx.dsize; host_bytes += mx.hsize
             else:
-                new = old.index_select(0, src_rows).contiguous()
+                new = torch.zeros((T,) + tuple(old.shape[1:]), dtype=old.dtype, device="cuda")
+                new[:R] = old.index_select(0, src_rows)
             _set_rows(grp, new)
             c.rows.append(_rows(new))
+            (bigv if isbig else smallv).append(c.rows[-1])
             del old
         torch.cuda.synchronize()
         torch.cuda.empty_cache()
-        runner.routed_experts.global_num_experts = R  # moe_align_block_size drops ids >= this
+        runner.routed_experts.global_num_experts = T  # moe_align_block_size drops ids >= this
         _keep.append(c)
-        _wrap(runner, idx, E, cache=c)
+        if bstage:
+            staged[idx] = (c, D, Z, cold_n[idx], bigv, smallv)
+        _wrap(runner, idx, E, cache=c, stage=(bstage, fpos[idx]) if bstage else None)
         shape.append((idx, H, S))
+    for idx in sorted(staged):
+        bstage.add(*staged[idx])
+    if bstage:
+        _keep.append((bstage, bank))
     if hasattr(torch._C, "_host_emptyCache"):
         torch._C._host_emptyCache()
     if period:
@@ -739,7 +899,8 @@ def _install_cache(layers):
     log(f"cache: {len(layers)} layers, {n_cold} experts cold ({n_cold / len(layers):.1f} a layer), "
         f"{host_bytes / 2**30:.2f} GiB host pages, {dev_bytes / 2**30:.2f} GiB device, policy {pol}, profile {src}; "
         f"slots {SLOTS}: pinned/slots per layer {[f'{h}/{s}' for _, h, s in shape]}; "
-        f"evict {EVICT}{SHIFT if EVICT == 'lfu' else ''}; frozen from {FREEZE_M or 'never'} tokens")
+        f"evict {EVICT}{SHIFT if EVICT == 'lfu' else ''}; frozen from {FREEZE_M or 'never'} tokens"
+        + (f"; DMA from {DMA_M} tokens: {X} staging rows, {nbuf} buffers, {bank_bytes / 2**30:.2f} GiB" if X else ""))
 
 
 # ---------------------------------------------------------------- predict: is the next layer's routing knowable early?
