@@ -1,0 +1,89 @@
+== phase x-vmm 15:39:02Z (no server)
+CU_DEVICE_ATTRIBUTE_VIRTUAL_MEMORY_MANAGEMENT_SUPPORTED: 1
+CU_DEVICE_ATTRIBUTE_HOST_NUMA_ID: 0
+CU_DEVICE_ATTRIBUTE_HOST_NUMA_VIRTUAL_MEMORY_MANAGEMENT_SUPPORTED: 1
+CU_DEVICE_ATTRIBUTE_HOST_VIRTUAL_MEMORY_MANAGEMENT_SUPPORTED: 1
+driver 13020 NVIDIA GeForce RTX 5090 Laptop GPU
+device granularity 2097152
+host location CU_MEM_LOCATION_TYPE_HOST: granularity 2097152, cuMemCreate OK
+host location CU_MEM_LOCATION_TYPE_HOST_NUMA: granularity 2097152, cuMemCreate OK
+mixed tensor: 2048 MiB, device half + host half, write/read OK
+GPU read GB/s: device 155.5; VMM device half 156.7; VMM host half 28.3; UVA pinned view 28.4
+VMM host half: 36 scattered expert reads (5.61 MB each) 6.76 ms, 29.9 GB/s
+UVA pinned view: 36 scattered expert reads (5.61 MB each) 6.68 ms, 30.2 GB/s
+pinned H2D copy GB/s: 52.4
+released
+== phase p7-experts 15:39:12Z work: experts
+ready in 101s; Model loading took 17.88 GiB;Available KV cache memory: 1.69 GiB;GPU KV cache size: 192,512 tokens;
+  mem: Maximum concurrency for 16,384 tokens per request: 11.75x;Actual usage is 18.7 GiB for consumed memory (weights + non-torch), 1.13 GiB for peak activation, and 0.1 GiB for CUDAGraph;
+  host RAM used: +4075 MiB, 54812 MiB available
+  bench: exit 0, 21s
+  experts eval: 10492 tokens; share of routings to each layer's top 13/32/64 experts (median layer): 1.00/1.00/1.00
+  experts code: 34808 tokens; share of routings to each layer's top 13/32/64 experts (median layer): 1.00/1.00/1.00
+  max running/waiting: Running: 0 reqs, Waiting: 0 reqs
+== phase p8-base-a4l 15:41:15Z maxlen 131072 work: agent
+ready in 101s; Model loading took 17.88 GiB;Available KV cache memory: 1.69 GiB;GPU KV cache size: 462,028 tokens;
+  mem: Maximum concurrency for 131,072 tokens per request: 3.52x;Actual usage is 18.7 GiB for consumed memory (weights + non-torch), 1.13 GiB for peak activation, and 0.09 GiB for CUDAGraph;
+  host RAM used: +4511 MiB, 54485 MiB available
+  bench: exit 0, 520s
+  agent x4 to 126976: 112 turns, 0 errors, wall 519s, decode median 53.5 tok/s, late TTFT median 3.01s, preemptions 1, prefix hits/queries 4881744/7497728, external hits 0
+  max running/waiting: Running: 4 reqs, Waiting: 0 reqs
+== phase p8-off4-a4l 15:51:36Z maxlen 131072 work: agent
+ready in 106s; Model loading took 13.93 GiB;Available KV cache memory: 5.63 GiB;GPU KV cache size: 1,543,372 tokens;
+  mem: Total CPU offloaded parameters: 4.01;Maximum concurrency for 131,072 tokens per request: 11.78x;Actual usage is 14.76 GiB for consumed memory (weights + non-torch), 1.13 GiB for peak activation, and 0.09 GiB for CUDAGraph;
+  host RAM used: +11334 MiB, 47671 MiB available
+  bench: exit 0, 522s
+  agent x4 to 126976: 112 turns, 0 errors, wall 520s, decode median 16.7 tok/s, late TTFT median 3.85s, preemptions 0, prefix hits/queries 6781824/7497728, external hits 0
+  max running/waiting: Running: 4 reqs, Waiting: 0 reqs
+== phase p8-base-a6 16:02:05Z maxlen 131072 work: agent
+ready in 100s; Model loading took 17.88 GiB;Available KV cache memory: 1.69 GiB;GPU KV cache size: 462,028 tokens;
+  mem: Maximum concurrency for 131,072 tokens per request: 3.52x;Actual usage is 18.7 GiB for consumed memory (weights + non-torch), 1.13 GiB for peak activation, and 0.09 GiB for CUDAGraph;
+  host RAM used: +4388 MiB, 54578 MiB available
+  bench: exit 0, 732s
+  agent x6 to 98304: 126 turns, 0 errors, wall 730s, decode median 36.3 tok/s, late TTFT median 19.23s, preemptions 10, prefix hits/queries 1966896/6515712, external hits 0
+  max running/waiting: Running: 6 reqs, Waiting: 0 reqs
+== phase p8-off4-a6 16:15:57Z maxlen 131072 work: agent
+ready in 110s; Model loading took 13.93 GiB;Available KV cache memory: 5.63 GiB;GPU KV cache size: 1,543,372 tokens;
+  mem: Total CPU offloaded parameters: 4.01;Maximum concurrency for 131,072 tokens per request: 11.78x;Actual usage is 14.76 GiB for consumed memory (weights + non-torch), 1.13 GiB for peak activation, and 0.09 GiB for CUDAGraph;
+  host RAM used: +11148 MiB, 47729 MiB available
+  bench: exit 0, 573s
+  agent x6 to 98304: 126 turns, 0 errors, wall 572s, decode median 10.6 tok/s, late TTFT median 3.80s, preemptions 0, prefix hits/queries 5737824/6515712, external hits 0
+  max running/waiting: Running: 6 reqs, Waiting: 0 reqs
+== phase p8-1m-base 16:27:22Z cap-only maxlen 1048576
+container exited before ready (90s)
+== phase p8-1m-off2 16:28:53Z maxlen 1048576 work: needle
+ready in 101s; Model loading took 15.91 GiB;Available KV cache memory: 3.66 GiB;GPU KV cache size: 1,234,093 tokens;
+  mem: Total CPU offloaded parameters: 2.01;Maximum concurrency for 1,048,576 tokens per request: 1.18x;Actual usage is 16.73 GiB for consumed memory (weights + non-torch), 1.13 GiB for peak activation, and 0.09 GiB for CUDAGraph;
+  host RAM used: +7282 MiB, 50959 MiB available
+  bench: exit 0, 2s
+  needle 1040000: None/None at None tokens, 0s HTTP Error 400: Bad Request
+  max running/waiting: 
+== phase p8-1m-off4 16:30:37Z maxlen 1048576 work: needle
+ready in 105s; Model loading took 13.93 GiB;Available KV cache memory: 5.63 GiB;GPU KV cache size: 1,899,535 tokens;
+  mem: Total CPU offloaded parameters: 4.01;Maximum concurrency for 1,048,576 tokens per request: 1.81x;Actual usage is 14.76 GiB for consumed memory (weights + non-torch), 1.13 GiB for peak activation, and 0.09 GiB for CUDAGraph;
+  host RAM used: +11179 MiB, 47472 MiB available
+  bench: exit 0, 2s
+  needle 1040000: None/None at None tokens, 0s HTTP Error 400: Bad Request
+  max running/waiting: 
+== phase p8-512k-base 16:32:25Z maxlen 524288 work: needle
+ready in 96s; Model loading took 17.88 GiB;Available KV cache memory: 1.69 GiB;GPU KV cache size: 551,676 tokens;
+  mem: Maximum concurrency for 524,288 tokens per request: 1.05x;Actual usage is 18.7 GiB for consumed memory (weights + non-torch), 1.13 GiB for peak activation, and 0.09 GiB for CUDAGraph;
+  host RAM used: +4189 MiB, 54546 MiB available
+  bench: exit 0, 308s
+  needle 32768: 0/8 at 31668 tokens, 5s 
+  needle 131072: 0/8 at 128773 tokens, 23s 
+  needle 262144: 0/8 at 273099 tokens, 73s 
+  needle 516000: 3/8 at 495513 tokens, 207s 
+  max running/waiting: Running: 1 reqs, Waiting: 0 reqs
+== phase p8-512k-f16 16:39:10Z maxlen 524288 work: needle
+ready in 100s; Model loading took 17.88 GiB;Available KV cache memory: 1.69 GiB;GPU KV cache size: 569,520 tokens;
+  mem: Maximum concurrency for 524,288 tokens per request: 1.09x;Actual usage is 18.7 GiB for consumed memory (weights + non-torch), 1.13 GiB for peak activation, and 0.09 GiB for CUDAGraph;
+  host RAM used: +4267 MiB, 54657 MiB available
+  bench: exit 0, 317s
+  needle 32768: 0/8 at 31668 tokens, 5s 
+  needle 131072: 0/8 at 128773 tokens, 24s 
+  needle 262144: 5/8 at 273099 tokens, 74s 
+  needle 516000: 0/8 at 495513 tokens, 213s 
+  max running/waiting: Running: 1 reqs, Waiting: 0 reqs
+== done 16:46:07Z
+profile: performance

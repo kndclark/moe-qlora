@@ -1,0 +1,968 @@
+"""vLLM plugin: experts in RAM, without Marlin reading every touched expert over PCIe.
+
+--cpu-offload-gb N --cpu-offload-params experts leaves whole MoE layers in pinned host
+memory and Marlin reads them through a UVA view: each touched expert once per decode step,
+and once per block of tokens routed to it in a prefill batch. Two ways round that, chosen by
+KSTAGE (unset = plugin off, vLLM untouched):
+
+  gather   K2. Each offloaded layer's expert tensors are swapped for one device staging
+           buffer shared by every layer. Before the layer's Marlin call, a Triton kernel
+           copies just the experts this batch routes to from host memory into it. Batches of
+           KSTAGE_DMA_M tokens or more (0 = never) copy the whole layer with the copy engine
+           instead (cudaMemcpy from pinned memory, ~2x the GPU's own read rate on the laptop).
+  hotcold  K5. Every MoE layer's experts are reordered by how often a profile routed to
+           them, then rebuilt as one tensor whose most-used rows sit in device memory and
+           the rest in host memory (CUDA VMM: one address range, two kinds of page). Routing
+           ids are remapped to the new order; Marlin runs unchanged, no copies per step.
+           KSTAGE_COLD_GB GiB of experts go to host memory (default: what vLLM offloaded),
+           spread by KSTAGE_POLICY: global (least-routed layer/expert pairs anywhere) or
+           static (same count per layer). KSTAGE_PROFILE: JSON of routing counts per decoder
+           layer (expert_cache_sim.py --emit-profile); without it, the order is the expert index.
+           KSTAGE_DMA_M also works here: the layer is copied whole into staging first.
+  cache    K6. Hotcold's split, but the device rows are a cache: H rows pinned to the
+           profile's hottest experts and KSTAGE_SLOTS slots (default all = plain LRU) that
+           take whatever the batch routes to, evicting the least recently used expert it
+           does not route to. Every unpinned expert keeps a home row in host memory, so a
+           layer is one VMM tensor of E + slots rows and Marlin sees E + slots experts. Per
+           step a one-program Triton kernel picks the slots and remaps the routing ids; misses
+           are copied home -> slot before Marlin runs (misses beyond the free slots are read
+           in place through UVA). KSTAGE_FREEZE_M: batches of this many tokens or more
+           only remap (prefill does not churn the cache). KSTAGE_STATS=SECONDS logs hits.
+           KSTAGE_EVICT=lfu evicts the expert with the lowest decayed use count instead
+           (half-life ~0.69 * 2**KSTAGE_SHIFT steps, default 6, at most 10). KSTAGE_COPY=N
+           copies with N programs that walk the copy list, not a program per 512 words of
+           every possible copy (min(slots, routings, E) of them, launched with or without misses).
+  predict  A probe, no staging (or KSTAGE_PREDICT=1 on top of any mode): how well each MoE
+           layer's input, put through the next two MoE layers' gates, predicts what they route
+           to, overall and on the experts KSTAGE_COLD_GB would put in host memory. Decides
+           whether K6 slots are worth filling a layer or two ahead. Logs every KSTAGE_STATS s.
+KSTAGE_PFFIX=1 (with or without KSTAGE) fixes a race in vLLM's own --offload-backend prefetch
+that gives wrong logits when the offloaded layer count is not a multiple of the step (_pf_fix).
+
+Mount the directory and put it on PYTHONPATH; vLLM finds the plugin through the dist-info
+entry point (vllm.general_plugins):
+  docker run ... -v $PWD/probes/kstage:/k:ro -e PYTHONPATH=/k -e KSTAGE=gather ...
+"""
+import ctypes, json, os, re, sys, time
+
+import torch
+
+MiB = 1 << 20
+_keep = []  # VMM allocations and host views the swapped tensors point into
+
+
+def log(msg):
+    print(f"kstage: {msg}", file=sys.stderr, flush=True)
+
+
+# ---------------------------------------------------------------- CUDA driver helpers
+
+def _cu():
+    from cuda.bindings import driver as cu
+    return cu
+
+
+def ok(r):
+    cu = _cu()
+    err, *rest = r if isinstance(r, tuple) else (r,)
+    if err != cu.CUresult.CUDA_SUCCESS:
+        raise RuntimeError(f"{err}")
+    return rest[0] if len(rest) == 1 else (rest or None)
+
+
+def is_host(t):
+    """True when the tensor's bytes are host memory (pinned/UVA or VMM host pages)."""
+    if t.device.type != "cuda" or t.numel() == 0:
+        return t.device.type == "cpu"
+    cu = _cu()
+    try:
+        mt = ok(cu.cuPointerGetAttribute(cu.CUpointer_attribute.CU_POINTER_ATTRIBUTE_MEMORY_TYPE, t.data_ptr()))
+    except RuntimeError:
+        return False
+    return int(mt) == int(cu.CUmemorytype.CU_MEMORYTYPE_HOST)
+
+
+def host_alias(view):
+    """A CPU tensor over the pinned host bytes behind a UVA view (for copy-engine copies)."""
+    cu = _cu()
+    hp = int(ok(cu.cuPointerGetAttribute(cu.CUpointer_attribute.CU_POINTER_ATTRIBUTE_HOST_POINTER, view.data_ptr())))
+    n = view.numel() * view.element_size()
+    buf = (ctypes.c_uint8 * n).from_address(hp)
+    return torch.frombuffer(buf, dtype=torch.uint8).view(view.dtype).view(view.shape)
+
+
+class _Arr:  # torch.as_tensor reads this to wrap a raw device pointer
+    def __init__(self, ptr, n):
+        self.__cuda_array_interface__ = {"shape": (n,), "typestr": "|u1", "data": (ptr, False), "version": 3}
+
+
+class MixedRows:
+    """E rows of row_bytes in one virtual range: rows [0, n_dev) on device pages, the rest on
+    host pages. The page holding the boundary is a device page."""
+
+    def __init__(self, E, row_bytes, n_dev):
+        cu = _cu()
+        torch.cuda.init()
+        self.dev = int(ok(cu.cuCtxGetDevice()))
+        L = cu.CUmemLocationType
+        pd, ph = self._prop(L.CU_MEM_LOCATION_TYPE_DEVICE), self._prop(L.CU_MEM_LOCATION_TYPE_HOST)
+        G = ok(cu.cuMemGetAllocationGranularity(pd, cu.CUmemAllocationGranularity_flags.CU_MEM_ALLOC_GRANULARITY_MINIMUM))
+        up = lambda x: (x + G - 1) // G * G
+        self.nbytes = E * row_bytes
+        self.size = up(self.nbytes)
+        self.dsize = min(up(n_dev * row_bytes), self.size)
+        self.hsize = self.size - self.dsize
+        self.va = ok(cu.cuMemAddressReserve(self.size, G, 0, 0))
+        self.handles = []
+        for off, sz, p in ((0, self.dsize, pd), (self.dsize, self.hsize, ph)):
+            if sz:
+                h = ok(cu.cuMemCreate(sz, p, 0))
+                ok(cu.cuMemMap(int(self.va) + off, sz, 0, h, 0))
+                self.handles.append((off, sz, h))
+        acc = cu.CUmemAccessDesc()
+        acc.location.type = L.CU_MEM_LOCATION_TYPE_DEVICE
+        acc.location.id = self.dev
+        acc.flags = cu.CUmemAccess_flags.CU_MEM_ACCESS_FLAGS_PROT_READWRITE
+        ok(cu.cuMemSetAccess(self.va, self.size, [acc], 1))
+        self.E, self.row_bytes, self.n_dev = E, row_bytes, n_dev
+
+    def _prop(self, kind):
+        cu = _cu()
+        p = cu.CUmemAllocationProp()
+        p.type = cu.CUmemAllocationType.CU_MEM_ALLOCATION_TYPE_PINNED
+        p.location.type = kind
+        p.location.id = self.dev if kind == cu.CUmemLocationType.CU_MEM_LOCATION_TYPE_DEVICE else 0
+        return p
+
+    def tensor(self, dtype, shape=None):
+        t = torch.as_tensor(_Arr(int(self.va), self.nbytes), device="cuda").view(dtype)
+        return t.view(shape if shape is not None else (self.E, -1))
+
+    def free(self):
+        cu = _cu()
+        torch.cuda.synchronize()
+        for off, sz, h in self.handles:
+            ok(cu.cuMemUnmap(int(self.va) + off, sz))
+            ok(cu.cuMemRelease(h))
+        ok(cu.cuMemAddressFree(self.va, self.size))
+        self.handles = []
+
+
+def read_rate(t, reps=5):
+    """GB/s for a GPU kernel reading every byte of t (the access pattern of weights in a GEMM)."""
+    v = t.reshape(-1).view(torch.int32)
+    v.sum(); torch.cuda.synchronize()
+    t0 = time.perf_counter()
+    for _ in range(reps):
+        v.sum(dtype=torch.int64)
+    torch.cuda.synchronize()
+    return reps * t.numel() * t.element_size() / (time.perf_counter() - t0) / 1e9
+
+
+# ---------------------------------------------------------------- Triton kernels
+
+import triton
+import triton.language as tl
+
+
+@triton.jit
+def _plan_kernel(ids_ptr, n, order_ptr, E: tl.constexpr, BE: tl.constexpr, CH: tl.constexpr):
+    """order[:k] = the k distinct expert ids in ids (ascending), order[k:] = -1."""
+    e = tl.arange(0, BE)
+    touched = tl.zeros([BE], dtype=tl.int32)
+    for s in range(0, n, CH):
+        o = s + tl.arange(0, CH)
+        v = tl.load(ids_ptr + o, mask=o < n, other=-1).to(tl.int32)
+        hit = (v[:, None] == e[None, :]).to(tl.int32)
+        touched = tl.maximum(touched, tl.max(hit, axis=0))
+    touched = tl.where(e < E, touched, 0)
+    cs = tl.cumsum(touched, axis=0)
+    nt = tl.sum(touched, axis=0)
+    tl.store(order_ptr + cs - 1, e, mask=touched > 0)
+    tl.store(order_ptr + nt + (e - cs), -1, mask=(touched == 0) & (e < E))
+
+
+@triton.jit
+def _gather_kernel(src_ptr, dst_ptr, order_ptr, row_words, BLOCK: tl.constexpr):
+    """dst[e] = src[e] for e = order[program 0]; order -1 = nothing to do."""
+    e = tl.load(order_ptr + tl.program_id(0))
+    o = tl.program_id(1) * BLOCK + tl.arange(0, BLOCK)
+    m = (o < row_words) & (e >= 0)
+    base = tl.maximum(e, 0).to(tl.int64) * row_words
+    x = tl.load(src_ptr + base + o, mask=m)
+    tl.store(dst_ptr + base + o, x, mask=m)
+
+
+BLOCK = int(os.environ.get("KSTAGE_BLOCK", "512"))  # small blocks, many warps: more reads in flight
+# over PCIe. 3090: 512/16 gathers at 12.0 GB/s = the copy engine; 8192/8 managed 7.2 (gather_sweep.py)
+WARPS = int(os.environ.get("KSTAGE_WARPS", "16"))
+COPY_N = int(os.environ.get("KSTAGE_COPY", "0"))  # 0: _copy_rows_kernel's grid; N: _copy_rows_few
+
+
+def plan(ids, E):
+    order = torch.empty(E, dtype=torch.int32, device=ids.device)
+    _plan_kernel[(1,)](ids.contiguous(), ids.numel(), order, E=E, BE=triton.next_power_of_2(E), CH=128)
+    return order
+
+
+def _words(t):
+    u = t.reshape(t.shape[0], -1).view(torch.uint8)
+    assert u.shape[1] % 4 == 0, f"row of {u.shape[1]} B is not whole int32 words"
+    return u.view(torch.int32)
+
+
+def gather(src, dst, order, n_ids=None):
+    """Copy the rows order names from src to dst (same shape, expert-major)."""
+    s, d = _words(src), _words(dst)
+    P = min(src.shape[0], n_ids if n_ids is not None else src.shape[0])
+    _gather_kernel[(P, triton.cdiv(s.shape[1], BLOCK))](s, d, order, s.shape[1], BLOCK=BLOCK, num_warps=WARPS)
+
+
+@triton.jit
+def _cache_kernel(ids_ptr, n, out_ptr, where_ptr, home_ptr, owner_ptr, stamp_ptr, clock_ptr, freq_ptr, need_ptr,
+                  miss_ptr, cps_ptr, cpd_ptr, stats_ptr, S, slot0,
+                  E: tl.constexpr, BE: tl.constexpr, BS: tl.constexpr, CH: tl.constexpr, STATS: tl.constexpr,
+                  LFU: tl.constexpr, SHIFT: tl.constexpr):
+    """K6, one program per layer per step. Slots whose expert the batch routes to are stamped
+    with the clock; each miss (ascending id) takes the slot of the least recently used expert
+    the batch does not route to (ties: lower expert id, as expert_cache_sim.py) while such
+    slots last, and is listed for copying (cps row -> cpd row, cps -1 = none). Misses left
+    over stay in their home row. Then out = where[ids]. LFU: the victim is instead the expert
+    with the lowest decayed use count; every step each expert's count loses count >> SHIFT,
+    and each one the batch routes to gains 2**20 (lfu in expert_cache_sim.py)."""
+    e = tl.arange(0, BE)
+    em = e < E
+    touched = tl.zeros([BE], dtype=tl.int32)
+    for s in range(0, n, CH):
+        o = s + tl.arange(0, CH)
+        v = tl.load(ids_ptr + o, mask=o < n, other=-1).to(tl.int32)
+        touched = tl.maximum(touched, tl.max((v[:, None] == e[None, :]).to(tl.int32), axis=0))
+    touched = tl.where(em, touched, 0)
+    wh = tl.load(where_ptr + e, mask=em, other=0)
+    hm = tl.load(home_ptr + e, mask=em, other=-1)
+    miss = (touched > 0) & (hm >= 0) & (wh == hm)  # pinned experts have no home (-1)
+    mi = miss.to(tl.int32)
+    nm = tl.sum(mi, axis=0)
+    tl.store(need_ptr + e, touched, mask=em)
+    tl.store(miss_ptr + tl.cumsum(mi, axis=0) - 1, e, mask=miss)
+    if LFU:  # frozen steps (S = 0) leave the counts alone, as they leave the stamps
+        f = tl.load(freq_ptr + e, mask=em, other=0)
+        tl.store(freq_ptr + e, f - (f >> SHIFT) + touched * 1048576, mask=em & (S > 0))
+    clock = tl.load(clock_ptr)
+    tl.debug_barrier()
+    j = tl.arange(0, BS)
+    jm = j < S
+    own = tl.load(owner_ptr + j, mask=jm, other=-1)
+    st = tl.load(stamp_ptr + j, mask=jm, other=0)
+    used = jm & (own >= 0) & (tl.load(need_ptr + tl.maximum(own, 0), mask=jm & (own >= 0), other=0) > 0)
+    cand = jm & ~used
+    ncand = tl.sum(cand.to(tl.int32), axis=0)
+    if LFU:  # counts stay below 2**(20 + SHIFT): int32 for SHIFT <= 10
+        sc = tl.load(freq_ptr + tl.maximum(own, 0), mask=jm, other=0).to(tl.int64)
+    else:
+        sc = st.to(tl.int64) + 2147483648
+    key = (sc * BE + tl.maximum(own, 0)) * BS + j
+    key = tl.where(cand, key, 0x3FFFFFFFFFFFFFFF)
+    slot = (tl.sort(key) % BS).to(tl.int32)  # victims, least recently used (or used) first
+    na = tl.minimum(nm, ncand)
+    ok = j < na
+    new = tl.load(miss_ptr + j, mask=ok, other=0)
+    old = tl.load(owner_ptr + slot, mask=ok, other=-1)
+    h_old = tl.load(home_ptr + tl.maximum(old, 0), mask=ok & (old >= 0), other=0)
+    h_new = tl.load(home_ptr + new, mask=ok, other=-1)
+    if STATS:
+        c0 = tl.load(stats_ptr)
+        c1 = tl.load(stats_ptr + 1)
+        c2 = tl.load(stats_ptr + 2)
+    tl.debug_barrier()  # every read of the old state before any write
+    tl.store(stamp_ptr + j, clock, mask=used)
+    tl.store(where_ptr + old, h_old, mask=ok & (old >= 0))
+    tl.store(where_ptr + new, slot0 + slot, mask=ok)
+    tl.store(owner_ptr + slot, new, mask=ok)
+    tl.store(stamp_ptr + slot, clock, mask=ok)
+    tl.store(cps_ptr + j, tl.where(ok, h_new, -1))
+    tl.store(cpd_ptr + j, slot0 + slot, mask=ok)
+    tl.store(clock_ptr, clock + 1)
+    if STATS:  # calls, misses, copies; one writer per layer, so plain stores
+        tl.store(stats_ptr, c0 + 1)
+        tl.store(stats_ptr + 1, c1 + nm)
+        tl.store(stats_ptr + 2, c2 + na)
+    tl.debug_barrier()
+    for s in range(0, n, CH):
+        o = s + tl.arange(0, CH)
+        v = tl.load(ids_ptr + o, mask=o < n, other=0)
+        w = tl.load(where_ptr + v, mask=o < n, other=0)
+        tl.store(out_ptr + o, w.to(out_ptr.dtype.element_ty), mask=o < n)
+
+
+@triton.jit
+def _copy_rows_kernel(t_ptr, cps_ptr, cpd_ptr, row_words, BLOCK: tl.constexpr):
+    """t[cpd[p]] = t[cps[p]] for p = program 0; cps -1 = nothing to do."""
+    r = tl.load(cps_ptr + tl.program_id(0))
+    d = tl.load(cpd_ptr + tl.program_id(0))
+    o = tl.program_id(1) * BLOCK + tl.arange(0, BLOCK)
+    m = (o < row_words) & (r >= 0)
+    x = tl.load(t_ptr + tl.maximum(r, 0).to(tl.int64) * row_words + o, mask=m)
+    tl.store(t_ptr + tl.maximum(d, 0).to(tl.int64) * row_words + o, x, mask=m)
+
+
+@triton.jit
+def _copy_rows_few(t_ptr, cps_ptr, cpd_ptr, P, row_words, BLOCK: tl.constexpr):
+    """The same copies on a fixed grid: each program walks the P entries and takes every
+    num_programs-th block of each row, so an idle entry costs a load, not a program per block."""
+    for p in range(P):
+        r = tl.load(cps_ptr + p)
+        if r >= 0:
+            d = tl.load(cpd_ptr + p)
+            for o0 in range(tl.program_id(0) * BLOCK, row_words, tl.num_programs(0) * BLOCK):
+                o = o0 + tl.arange(0, BLOCK)
+                m = o < row_words
+                x = tl.load(t_ptr + r.to(tl.int64) * row_words + o, mask=m)
+                tl.store(t_ptr + d.to(tl.int64) * row_words + o, x, mask=m)
+
+
+def _rows(t):
+    """t as [rows, units] of the widest of int32/int16/uint8 that divides a row."""
+    u = t.reshape(t.shape[0], -1).view(torch.uint8)
+    for dt, w in ((torch.int32, 4), (torch.int16, 2), (torch.uint8, 1)):
+        if u.shape[1] % w == 0:
+            return u.view(dt)
+
+
+class _Cache:
+    """K6 state for one layer: the row every expert's weights are in now, each slot's expert
+    and last use, every expert's decayed use count (evict "lfu"), and the tensors whose rows
+    move with the experts."""
+
+    def __init__(self, lay, stats=None, device="cuda", evict="lru", shift=6):
+        assert evict in ("lru", "lfu") and 1 <= shift <= 10, (evict, shift)
+        i32 = lambda a: torch.tensor(a, dtype=torch.int32, device=device)
+        self.E, self.S, self.slot0 = len(lay["where"]), lay["S"], lay["H"]
+        self.where, self.home = i32(lay["where"]), i32(lay["home"])
+        self.owner, self.stamp = i32(lay["owner"] or [0]), i32(lay["stamp"] or [0])
+        self.lfu, self.shift, self.freq = evict == "lfu", shift, i32(lay["freq"])
+        self.BE, self.BS = triton.next_power_of_2(self.E), triton.next_power_of_2(max(self.S, 16))
+        self.clock = torch.zeros(1, dtype=torch.int32, device=device)
+        self.need = torch.zeros(self.BE, dtype=torch.int32, device=device)
+        self.miss = torch.zeros(self.BE, dtype=torch.int32, device=device)
+        self.cps = torch.full((self.BS,), -1, dtype=torch.int32, device=device)
+        self.cpd = torch.zeros(self.BS, dtype=torch.int32, device=device)
+        self.stats = stats  # 3 int64 the GPU writes and the CPU reads (host-mapped), or None
+        self.rows = []
+
+    def step(self, topk_ids, frozen=False):
+        ids = topk_ids.contiguous()
+        n, S = ids.numel(), (0 if frozen else self.S)
+        out = torch.empty_like(ids)
+        _cache_kernel[(1,)](ids, n, out, self.where, self.home, self.owner, self.stamp, self.clock, self.freq,
+                            self.need, self.miss, self.cps, self.cpd,
+                            self.stats if self.stats is not None else self.clock, S, self.slot0, E=self.E,
+                            BE=self.BE, BS=self.BS, CH=128, STATS=self.stats is not None, LFU=self.lfu,
+                            SHIFT=self.shift, num_warps=8)
+        P = min(S, n, self.E)
+        for r in self.rows if P else ():
+            if COPY_N:
+                _copy_rows_few[(COPY_N,)](r, self.cps, self.cpd, P, r.shape[1], BLOCK=BLOCK, num_warps=WARPS)
+            else:
+                _copy_rows_kernel[(P, triton.cdiv(r.shape[1], BLOCK))](r, self.cps, self.cpd, r.shape[1],
+                                                                       BLOCK=BLOCK, num_warps=WARPS)
+        return out
+
+
+# ---------------------------------------------------------------- finding the expert tensors
+
+def _walk(roots, depth=4):
+    """(path, tensor) reachable from (name, object) roots through vLLM objects' attributes,
+    without walking into other nn.Modules (the quant config keeps a back-reference to the layer)."""
+    seen, out, stack = set(), [], [(r, n, 0) for n, r in roots]
+    while stack:
+        o, path, d = stack.pop()
+        if o is None or id(o) in seen:
+            continue
+        seen.add(id(o))
+        if isinstance(o, torch.Tensor):
+            out.append((path, o))
+            continue
+        if d > depth or (isinstance(o, torch.nn.Module) and d > 0):
+            continue
+        if isinstance(o, (list, tuple)):
+            items = [(str(i), x) for i, x in enumerate(o)]
+        elif isinstance(o, dict):
+            items = [(str(k), v) for k, v in o.items()]
+        elif isinstance(o, torch.nn.Module):
+            items = list(o._parameters.items()) + list(o._buffers.items()) + [
+                (k, v) for k, v in vars(o).items() if k not in ("_parameters", "_buffers", "_modules")]
+        elif hasattr(o, "__dict__") and type(o).__module__.startswith("vllm"):
+            items = list(vars(o).items())
+        else:
+            continue
+        stack += [(x, f"{path}.{k}", d + 1) for k, x in items]
+    return out
+
+
+SKIP_NAMES = ("workspace", "correction_bias", "input_scale", "expert_map", "hash_indices")
+
+
+def _groups(runner):
+    """Tensors behind this layer's routed experts, grouped by the memory they view:
+    [(nbytes, [(path, tensor), ...]), ...]. Anything the router or gate can reach is left out,
+    and so are names in SKIP_NAMES: routing runs on the original expert ids (the score-correction
+    bias is expert-indexed and held by both the router and the experts)."""
+    re_ = runner.routed_experts
+    qm = re_.quant_method
+    mk = getattr(qm, "moe_kernel", None)
+    fe = getattr(mk, "fused_experts", None)
+    skip = {t.data_ptr() for _, t in _walk([("router", runner.router), ("gate", getattr(runner, "gate", None))])
+            if t.numel()}
+    roots = [("experts", re_), ("qm", qm), ("qcfg", getattr(qm, "moe_quant_config", None)), ("kernel", mk),
+             ("fused", fe), ("fused.qcfg", getattr(fe, "quant_config", None))]
+    g = {}
+    for path, t in _walk(roots):
+        if t.numel() == 0 or t.data_ptr() in skip or any(s in path for s in SKIP_NAMES):
+            continue
+        g.setdefault((t.data_ptr(), t.numel() * t.element_size()), {})[id(t)] = (path, t)
+    return [(k[1], list(v.values())) for k, v in g.items()]
+
+
+def _show(name, gs, E):
+    """Log the tensors found for one layer, once, so a wrong walk is visible."""
+    if getattr(_show, "done", False) and not os.environ.get("KSTAGE_LOG"):
+        return
+    _show.done = True
+    for nb, grp in sorted(gs, key=lambda g: -g[0]):
+        t = grp[0][1]
+        log(f"{name}: {nb / MiB:9.2f} MiB {str(tuple(t.shape)):22} {str(t.dtype):14} "
+            f"{'host' if is_host(t) else 'dev '} {'expert-major' if t.dim() and t.shape[0] == E else '-':12} "
+            + ", ".join(p for p, _ in grp))
+
+
+def _set(group, new):
+    """Point every tensor object in the group at new, each keeping its own dtype and shape."""
+    for _, t in group:
+        t.data = new if (t.dtype, t.shape) == (new.dtype, new.shape) else new.view(t.dtype).view(t.shape)
+
+
+def _layers(model):
+    out = []
+    for name, m in model.named_modules():
+        if hasattr(m, "router") and hasattr(m, "routed_experts"):
+            assert not m.routed_experts.quant_method.is_monolithic, f"{name}: monolithic MoE kernel"
+            mm = re.search(r"layers\.(\d+)\.", name + ".")
+            out.append((int(mm.group(1)) if mm else len(out), name, m))
+    assert len({id(m.router) for _, _, m in out}) == len(out), "routers shared between layers"
+    return out
+
+
+# ---------------------------------------------------------------- the two modes
+
+DMA_M = int(os.environ.get("KSTAGE_DMA_M", "0"))
+
+
+class _Staging:
+    """One device buffer per (shape, dtype), shared by every layer: layers run one at a time."""
+
+    def __init__(self):
+        self.bufs = {}
+
+    def get(self, t):
+        k = (tuple(t.shape), t.dtype)
+        if k not in self.bufs:
+            self.bufs[k] = torch.empty(t.shape, dtype=t.dtype, device="cuda")
+        return self.bufs[k]
+
+    def nbytes(self):
+        return sum(b.numel() * b.element_size() for b in self.bufs.values())
+
+
+def _is_big(t, E):
+    return t.dim() >= 1 and t.shape[0] == E and t.is_contiguous() and t.numel() * t.element_size() >= MiB
+
+
+def _install_gather(layers):
+    st, n_layers, moved = _Staging(), 0, 0
+    for idx, name, runner in layers:
+        E = runner.routed_experts.w13_weight.shape[0]
+        big = []  # (source view, host alias, staging, holders)
+        gs = _groups(runner)
+        _show(name, gs, E)
+        for nb, grp in gs:
+            t0 = grp[0][1]
+            if not is_host(t0):
+                continue
+            if _is_big(t0, E):
+                src = t0.data
+                stg = st.get(src)
+                big.append((src, host_alias(src) if DMA_M else None, stg, grp))
+                _set(grp, stg)
+                moved += nb
+            else:  # scales, alphas: small, keep a device copy
+                _set(grp, t0.data.clone())
+        if not big:
+            continue
+        n_layers += 1
+        _keep.append(big)
+        _wrap(runner, idx, E, big=big)
+    log(f"gather: {n_layers} layers, {moved / 2**30:.2f} GiB of experts staged through "
+        f"{st.nbytes() / 2**30:.2f} GiB of device buffers; DMA from {DMA_M or 'never'} tokens")
+
+
+def _wrap(runner, idx, E, big=(), pos=None, mixed=(), cache=None):
+    re_ = runner.routed_experts
+    fwd = re_.forward_modular
+
+    def forward_modular(x, topk_weights, topk_ids, *a, **k):
+        _lora_ids[0] = topk_ids  # adapters are indexed by the router's ids (_lora_fix)
+        try:
+            return remapped(x, topk_weights, topk_ids, *a, **k)
+        finally:
+            _lora_ids[0] = None
+
+    def remapped(x, topk_weights, topk_ids, *a, **k):
+        M = x.shape[0]
+        if cache is not None:  # K6: slots filled, ids remapped to rows
+            return fwd(x, topk_weights, cache.step(topk_ids, bool(FREEZE_M) and M >= FREEZE_M), *a, **k)
+        ids = topk_ids if pos is None else pos[topk_ids.long()].to(topk_ids.dtype)
+        if big:  # K2: experts live in host memory, staging is what Marlin reads
+            if DMA_M and M >= DMA_M:
+                for src, alias, stg, _ in big:
+                    stg.copy_(alias, non_blocking=True)
+            else:
+                order = plan(ids, E)
+                for src, _, stg, _ in big:
+                    gather(src, stg, order, ids.numel())
+            return fwd(x, topk_weights, ids, *a, **k)
+        if mixed and DMA_M and M >= DMA_M:  # K5 prefill: copy the layer whole, run, swap back
+            for mt, stg, grp in mixed:
+                stg.copy_(mt, non_blocking=True)
+                _set(grp, stg)
+            try:
+                return fwd(x, topk_weights, ids, *a, **k)
+            finally:
+                for mt, stg, grp in mixed:
+                    _set(grp, mt)
+        return fwd(x, topk_weights, ids, *a, **k)
+
+    re_.forward_modular = forward_modular
+
+
+def _profile(layers, E):
+    path = os.environ.get("KSTAGE_PROFILE")
+    if not path:
+        return {idx: [0] * E for idx, _, _ in layers}, "none (expert index order)"
+    d = json.load(open(path))
+    c = d["counts"]
+    missing = [idx for idx, _, _ in layers if str(idx) not in c]
+    assert not missing, f"profile {path} has no counts for decoder layers {missing}"
+    return {idx: c[str(idx)] for idx, _, _ in layers}, f"{path} ({d.get('kind', '?')})"
+
+
+def _cold_split(layers, groups, E):
+    """How many experts of each layer go to host memory: KSTAGE_COLD_GB, KSTAGE_POLICY."""
+    big = lambda g: _is_big(g[0][1], E)
+    row = {idx: sum(nb // E for nb, g in gs if big(g)) for idx, gs in groups.items()}
+    host_now = sum(nb for gs in groups.values() for nb, g in gs if big(g) and is_host(g[0][1]))
+    gb = os.environ.get("KSTAGE_COLD_GB")
+    budget = float(gb) * 2**30 if gb else host_now
+    rb = max(row.values())
+    n_cold = min(int(budget // rb), E * len(layers))
+    counts, src = _profile(layers, E)
+    pol = os.environ.get("KSTAGE_POLICY", "global")
+    cold_n = {}
+    if pol == "static":
+        per, extra = divmod(n_cold, len(layers))
+        for i, (idx, _, _) in enumerate(layers):
+            cold_n[idx] = per + (1 if i < extra else 0)
+    else:  # least-routed (layer, expert) pairs anywhere; ties go to the higher index
+        pairs = sorted((counts[idx][e], -idx, -e, idx) for idx, _, _ in layers for e in range(E))
+        for idx, _, _ in layers:
+            cold_n[idx] = 0
+        for *_, idx in pairs[:n_cold]:
+            cold_n[idx] += 1
+    return cold_n, counts, src, pol, n_cold
+
+
+def _install_hotcold(layers):
+    E = layers[0][2].routed_experts.w13_weight.shape[0]
+    groups = {idx: _groups(r) for idx, _, r in layers}
+    _show(layers[0][1], groups[layers[0][0]], E)
+    big = lambda g: _is_big(g[0][1], E)
+    cold_n, counts, src, pol, n_cold = _cold_split(layers, groups, E)
+    st = _Staging() if DMA_M else None
+    dev_bytes = host_bytes = 0
+    # layers on the card first: they give back device memory before offloaded layers take it
+    on_host = {idx: any(big(g) and is_host(g[0][1]) for _, g in groups[idx]) for idx, _, _ in layers}
+    for idx, name, runner in sorted(layers, key=lambda l: (on_host[l[0]], l[0])):
+        cnt = torch.tensor(counts[idx], dtype=torch.float64)
+        perm = sorted(range(E), key=lambda e: (-cnt[e].item(), e))  # hot first
+        perm_t = torch.tensor(perm, dtype=torch.long, device="cuda")
+        pos = torch.empty(E, dtype=torch.long, device="cuda")
+        pos[perm_t] = torch.arange(E, device="cuda")
+        n_hot = E - cold_n[idx]
+        mixed = []
+        for nb, grp in groups[idx]:
+            t0 = grp[0][1]
+            if t0.dim() < 1 or t0.shape[0] != E:
+                if is_host(t0):
+                    _set(grp, t0.data.clone())
+                continue
+            if not _is_big(t0, E):
+                _set(grp, t0.data.index_select(0, perm_t).contiguous())
+                continue
+            old = t0.data
+            mx = MixedRows(E, nb // E, n_hot)
+            mt = mx.tensor(old.dtype, old.shape)
+            for s in range(0, E, 16):
+                mt[s:s + 16].copy_(old.index_select(0, perm_t[s:s + 16]))
+            _keep.append(mx)
+            _set(grp, mt)
+            dev_bytes += mx.dsize; host_bytes += mx.hsize
+            mixed.append((mt, st.get(mt) if st else None, grp))
+            del old
+        torch.cuda.synchronize()
+        torch.cuda.empty_cache()
+        _keep.append(pos)
+        _wrap(runner, idx, E, pos=pos, mixed=mixed)
+    if hasattr(torch._C, "_host_emptyCache"):
+        torch._C._host_emptyCache()  # the pinned blocks vLLM's offloader left behind
+    log(f"hotcold: {len(layers)} layers, {n_cold} experts cold ({n_cold / len(layers):.1f} a layer, "
+        f"{host_bytes / 2**30:.2f} GiB host pages, {dev_bytes / 2**30:.2f} GiB device), policy {pol}, "
+        f"profile {src}; cold per layer {[cold_n[i] for i, _, _ in layers]}"
+        + (f"; DMA staging {st.nbytes() / 2**30:.2f} GiB from {DMA_M} tokens" if st else ""))
+
+
+SLOTS = os.environ.get("KSTAGE_SLOTS", "all")
+FREEZE_M = int(os.environ.get("KSTAGE_FREEZE_M", "0"))
+EVICT = os.environ.get("KSTAGE_EVICT", "lru")
+SHIFT = int(os.environ.get("KSTAGE_SHIFT", "6"))
+
+
+def _set_rows(group, new):
+    """_set for a tensor with a different number of expert rows: every holder is expert-major."""
+    for path, t in group:
+        assert t.dim() and t.shape[0] == group[0][1].shape[0], f"{path}: {tuple(t.shape)} is not expert-major"
+        t.data = new.view(t.dtype).view((new.shape[0],) + tuple(t.shape[1:]))
+
+
+def _stats_buffer(n, *shape):
+    """n x 3 (or n x shape) int64 in pinned host memory, with a device view of the same bytes:
+    the kernel writes, a thread reads without a CUDA call (none may run while vLLM captures graphs)."""
+    shape = (n,) + (shape or (3,))
+    host = torch.zeros(shape, dtype=torch.int64, pin_memory=True)
+    dev = torch.as_tensor(_Arr(host.data_ptr(), host.numel() * 8), device="cuda").view(torch.int64).view(shape)
+    return host, dev
+
+
+def _report(host, period):
+    import threading
+
+    def run():
+        last = None
+        while True:
+            time.sleep(period)
+            v = host.sum(0).tolist()
+            if v != last and v[0]:
+                log(f"cache: {v[0]} layer-steps, {v[1] / v[0]:.2f} misses and {v[2] / v[0]:.2f} copies "
+                    f"a layer-step ({v[1]} / {v[2]})")
+            last = v
+    threading.Thread(target=run, daemon=True, name="kstage-stats").start()
+
+
+def _cache_layout(cnt, D, S):
+    """One layer's K6 rows: [0, H) the H = D - S most routed experts, pinned; [H, D) slots,
+    starting with the next S; [D, E + S) a host home for every unpinned expert, hot first.
+    src: the expert each row starts as. freq: LFU's starting counts, the profile's order (all
+    below one use). Ties as expert_cache_sim.py (lower id is colder)."""
+    E = len(cnt)
+    H = D - S
+    perm = sorted(range(E), key=lambda e: (-cnt[e], -e))
+    unpinned = perm[H:]
+    where, home, freq = [0] * E, [-1] * E, [0] * E
+    for i, e in enumerate(perm):
+        freq[e] = E - i
+    for i, e in enumerate(perm[:H]):
+        where[e] = i
+    for k, e in enumerate(unpinned):
+        home[e] = D + k
+        where[e] = H + k if k < S else D + k
+    return {"H": H, "S": S, "D": D, "where": where, "home": home, "owner": perm[H:D],
+            "stamp": [-1 - j for j in range(S)], "freq": freq, "src": perm[:D] + unpinned}
+
+
+def _install_cache(layers):
+    E = layers[0][2].routed_experts.w13_weight.shape[0]
+    groups = {idx: _groups(r) for idx, _, r in layers}
+    _show(layers[0][1], groups[layers[0][0]], E)
+    big = lambda g: _is_big(g[0][1], E)
+    cold_n, counts, src, pol, n_cold = _cold_split(layers, groups, E)
+    period = float(os.environ.get("KSTAGE_STATS", "0"))
+    hstats, dstats = _stats_buffer(len(layers)) if period else (None, None)
+    dev_bytes = host_bytes = 0
+    shape = []
+    on_host = {idx: any(big(g) and is_host(g[0][1]) for _, g in groups[idx]) for idx, _, _ in layers}
+    for li, (idx, name, runner) in enumerate(sorted(layers, key=lambda l: (on_host[l[0]], l[0]))):
+        D = E - cold_n[idx]
+        lay = _cache_layout(counts[idx], D, D if SLOTS == "all" else min(int(SLOTS), D))
+        c = _Cache(lay, dstats[li] if dstats is not None else None, evict=EVICT, shift=SHIFT)
+        H, S, R = lay["H"], lay["S"], E + lay["S"]
+        src_rows = torch.tensor(lay["src"], dtype=torch.long, device="cuda")
+        for nb, grp in groups[idx]:
+            t0 = grp[0][1]
+            if t0.dim() < 1 or t0.shape[0] != E:
+                if is_host(t0):
+                    _set(grp, t0.data.clone())
+                continue
+            old = t0.data
+            if _is_big(t0, E):
+                mx = MixedRows(R, nb // E, D)
+                new = mx.tensor(old.dtype, (R,) + tuple(old.shape[1:]))
+                for s0 in range(0, R, 16):
+                    new[s0:s0 + 16].copy_(old.index_select(0, src_rows[s0:s0 + 16]))
+                _keep.append(mx)
+                dev_bytes += mx.dsize; host_bytes += mx.hsize
+            else:
+                new = old.index_select(0, src_rows).contiguous()
+            _set_rows(grp, new)
+            c.rows.append(_rows(new))
+            del old
+        torch.cuda.synchronize()
+        torch.cuda.empty_cache()
+        runner.routed_experts.global_num_experts = R  # moe_align_block_size drops ids >= this
+        _keep.append(c)
+        _wrap(runner, idx, E, cache=c)
+        shape.append((idx, H, S))
+    if hasattr(torch._C, "_host_emptyCache"):
+        torch._C._host_emptyCache()
+    if period:
+        _keep.append(hstats)
+        _report(hstats, period)
+    shape.sort()
+    log(f"cache: {len(layers)} layers, {n_cold} experts cold ({n_cold / len(layers):.1f} a layer), "
+        f"{host_bytes / 2**30:.2f} GiB host pages, {dev_bytes / 2**30:.2f} GiB device, policy {pol}, profile {src}; "
+        f"slots {SLOTS}: pinned/slots per layer {[f'{h}/{s}' for _, h, s in shape]}; "
+        f"evict {EVICT}{SHIFT if EVICT == 'lfu' else ''}; frozen from {FREEZE_M or 'never'} tokens")
+
+
+# ---------------------------------------------------------------- predict: is the next layer's routing knowable early?
+
+PRED_K = (6, 10)  # ids predicted per token: the router's 6, and a wider net
+PRED_SLOTS = ("own", "d1 raw", "d1 scaled", "d2 raw", "d2 scaled")
+PRED_FIELDS = ("steps", "tokens", "tok_hit", "u_act", "u_hit", "u_pred", "c_act", "c_hit", "c_pred")
+PRED_MAXT = int(os.environ.get("KSTAGE_PREDICT_MAXT", "16384"))
+
+
+def _install_predict(layers, model, cold_n, counts, device="cuda"):
+    """A probe, no staging. At each MoE layer, the next two MoE layers' gates are applied to this
+    layer's input x; when those layers run, their routed ids are compared with the prediction.
+    raw: x as it is. scaled: x * w_j / w_i, this layer's norm weight swapped for the target's,
+    which is the target's input but for what the layers between add to the residual. own: this
+    layer's gate on its own x, which must reproduce the router (the replica check).
+    Per prediction and K in PRED_K, split decode (<= 64 tokens) / prefill: per-token hits, and over
+    the batch's union of ids (what a fetch would cover): all ids, and the cold ones only."""
+    E = len(counts[layers[0][0]])
+    mods = dict(model.named_modules())
+    order = sorted(layers, key=lambda l: l[0])
+    L, K = len(order), max(PRED_K)
+    gates, norms, cold = [], [], []
+    for idx, name, _ in order:
+        gate = mods[name.rsplit(".", 1)[0]].gate
+        assert gate.e_score_correction_bias is not None, f"{name}: no correction bias"
+        gates.append((gate.weight, gate.e_score_correction_bias))
+        norms.append(mods[name.rsplit(".", 2)[0]].norm.weight.detach().float())
+        perm = sorted(range(E), key=lambda e: (-counts[idx][e], -e))  # as _cache_layout
+        m = torch.zeros(E, dtype=torch.bool, device=device)
+        m[perm[E - cold_n[idx]:]] = True
+        cold.append(m)
+    ratio = {(i, i + d): norms[i + d] / norms[i] for i in range(L) for d in (1, 2) if i + d < L}
+    shape = (len(PRED_SLOTS), len(PRED_K), 2, len(PRED_FIELDS))
+    if device == "cuda":
+        host, dev = _stats_buffer(L, *shape)
+    else:
+        host = dev = torch.zeros((L,) + shape, dtype=torch.int64)
+    bufs = [torch.zeros(4, PRED_MAXT, K, dtype=torch.int16, device=device) for _ in order]
+
+    def top(logits, j):  # the router's rule: sigmoid, plus the correction bias, top K
+        return (logits.sigmoid() + gates[j][1].float()).topk(K, dim=-1).indices
+
+    def probe(li, x, ids, M):
+        xf = x.float()
+        n = 1 + 2 * min(li, 2)
+        own = top(xf @ gates[li][0].float().t(), li)
+        P = torch.cat([own[None].to(torch.int16), bufs[li][:n - 1, :M]])  # [n, M, K]
+        act = ids.reshape(M, -1)
+        hit = (P[..., None] == act[None, :, None, :]).any(-1)  # [n, M, K]: predicted id is routed
+        am = torch.zeros(E, dtype=torch.bool, device=x.device).scatter_(0, act.reshape(-1).long(), True)
+        pm = torch.stack([torch.zeros(n, E, dtype=torch.bool, device=x.device)
+                          .scatter_(1, P[..., :k].reshape(n, -1).long(), True) for k in PRED_K], 1)
+        c = cold[li]
+        ac = am & c
+        V = torch.stack([torch.stack([hit[..., :k].sum((1, 2)) for k in PRED_K], 1),
+                         am.sum().expand(n, len(PRED_K)), (pm & am).sum(-1), pm.sum(-1),
+                         ac.sum().expand(n, len(PRED_K)), (pm & ac).sum(-1), (pm & c).sum(-1)], -1)
+        row = dev[li, :n, :, 0 if M <= 64 else 1]
+        row[..., 0].add_(1)
+        row[..., 1].add_(M)
+        row[..., 2:].add_(V)
+        for d in (1, 2):
+            j = li + d
+            if j < L:
+                w = gates[j][0].float()
+                lg = torch.stack([xf @ w.t(), xf @ (w * ratio[(li, j)]).t()])
+                bufs[j][2 * d - 2: 2 * d, :M] = top(lg, j).to(torch.int16)
+
+    def wrap(li, re_):
+        fwd = re_.forward_modular
+
+        def forward_modular(x, topk_weights, topk_ids, *a, **k):
+            M = x.shape[0]
+            if 0 < M <= PRED_MAXT:  # the same M reaches every layer of one forward
+                probe(li, x, topk_ids, M)
+            return fwd(x, topk_weights, topk_ids, *a, **k)
+
+        re_.forward_modular = forward_modular
+
+    for li, (_, _, runner) in enumerate(order):
+        wrap(li, runner.routed_experts)
+    wmin = min(float(w.abs().min()) for w in norms)
+    log(f"predict: {L} layers, {sum(cold_n.values())} cold experts, norm |w| min {wmin:.3g}, "
+        f"top {PRED_K}, batches of up to {PRED_MAXT} tokens")
+    return host
+
+
+def _predict_lines(v):
+    """v: the stats summed over layers, [slot, K, phase, field]."""
+    out = []
+    for ph, pname in ((0, "decode"), (1, "prefill")):
+        if not int(v[0, 0, ph, 0]):
+            continue
+        for si, sname in enumerate(PRED_SLOTS):
+            parts = []
+            for ki, k in enumerate(PRED_K):
+                st, tok, th, ua, uh, up, ca, ch, cp = v[si, ki, ph].tolist()
+                if st:
+                    parts.append(f"top{k} token {th / (tok * 6):.3f}, batch {uh / max(ua, 1):.3f} of "
+                                 f"{ua / st:.1f} fetching {up / st:.1f}, cold {ch / max(ca, 1):.3f} of "
+                                 f"{ca / st:.2f} fetching {cp / st:.2f}")
+            if parts:
+                out.append(f"predict {pname} {sname}: {int(v[si, 0, ph, 0])} layer-steps, "
+                           f"{int(v[si, 0, ph, 1])} tokens; " + "; ".join(parts))
+    return out
+
+
+def _report_predict(host, period):
+    import threading
+
+    def run():
+        last = None
+        while True:
+            time.sleep(period)
+            v = host.sum(0)
+            if last is None or not torch.equal(v, last):
+                for line in _predict_lines(v):
+                    log(line)
+                d = host[:, 2, 0, 0]  # d1 scaled, top6, decode, per layer
+                if int(d[:, 0].sum()):
+                    log("predict decode d1 scaled top6 token recall by layer: "
+                        f"{[round(int(h) / max(int(t) * 6, 1), 2) for t, h in zip(d[:, 1], d[:, 2])]}")
+            last = v.clone()
+    threading.Thread(target=run, daemon=True, name="kstage-predict").start()
+
+
+def _install(model):
+    mode = os.environ.get("KSTAGE", "")
+    layers = _layers(model)
+    if not layers:
+        log("no MoE layers found; nothing done")
+        return
+    t0 = time.perf_counter()
+    pred = None
+    if mode == "predict" or os.environ.get("KSTAGE_PREDICT") == "1":  # the split before any mode moves rows
+        E = layers[0][2].routed_experts.w13_weight.shape[0]
+        cold_n, counts, *_ = _cold_split(layers, {idx: _groups(r) for idx, _, r in layers}, E)
+    if mode != "predict":
+        {"gather": _install_gather, "hotcold": _install_hotcold, "cache": _install_cache}[mode](layers)
+    if mode == "predict" or os.environ.get("KSTAGE_PREDICT") == "1":
+        pred = _install_predict(layers, model, cold_n, counts)
+        _keep.append(pred)
+        _report_predict(pred, float(os.environ.get("KSTAGE_STATS", "0")) or 30)
+    torch.cuda.synchronize()
+    log(f"installed in {time.perf_counter() - t0:.1f}s; device memory free "
+        f"{torch.cuda.mem_get_info()[0] / 2**30:.2f} GiB")
+
+
+def _pf_fix(cls):
+    """KSTAGE_PFFIX=1: make vLLM's prefetch offloader (--offload-backend prefetch) safe when
+    the number of offloaded modules n is not a multiple of the step s. Module i reads slot
+    i % s, and after its forward starts the copy of module (i + s) % n into that module's
+    slot. For a wrap-around target j = i + s - n with n % s != 0, slot j % s is still to be
+    read later in the same pass (n=7, s=2: module 5 starts module 0's copy into slot 0
+    while module 6, also slot 0, has not run), so the copy races the read. Here such a
+    copy starts after the slot's last reader in the pass instead."""
+    orig = cls._start_prefetch
+    if getattr(orig, "_kstage", False):
+        return
+
+    def _start_prefetch(self, j):
+        n, s = len(self.module_offloaders), self.prefetch_step
+        if n % s == 0:
+            return orig(self, j)
+        i = (j - s) % n  # the module whose forward just ended
+        pend = self.__dict__.setdefault("_kstage_pend", {})
+        last = max(m for m in range(n) if m % s == j % s)
+        if i + s >= n and last > i:
+            pend.setdefault(last, []).append(j)
+        else:
+            orig(self, j)
+        for k in pend.pop(i, []):
+            orig(self, k)
+
+    _start_prefetch._kstage = True
+    cls._start_prefetch = _start_prefetch
+    log("prefetch offloader: wrap-around copies wait for their slot's last reader")
+
+
+_lora_ids = [None]  # the router's own ids while a wrapped layer runs
+
+
+def _lora_fix(cls):
+    """MoE LoRA indexes each expert's adapter by the ids Marlin gets (punica add_lora_w13;
+    w2 reuses its alignment). Hotcold permutes those ids and cache sends rows up to E + slots,
+    past the adapter's E experts (decode's naive block assignment does not filter them), so
+    the LoRA call gets the router's ids instead."""
+    orig = cls.apply_w13_lora
+    if getattr(orig, "_kstage", False):
+        return
+
+    def apply_w13_lora(self, lora_context, **kw):
+        ids = _lora_ids[0]
+        if ids is not None and kw.get("topk_ids") is not None and kw["topk_ids"].shape == ids.shape:
+            kw["topk_ids"] = ids
+        return orig(self, lora_context, **kw)
+
+    apply_w13_lora._kstage = True
+    cls.apply_w13_lora = apply_w13_lora
+
+
+def register():
+    if os.environ.get("KSTAGE_PFFIX") == "1":
+        from vllm.model_executor.offloader import prefetch
+        _pf_fix(prefetch.PrefetchOffloader)
+    mode = os.environ.get("KSTAGE", "")
+    if not mode:
+        return
+    assert mode in ("gather", "hotcold", "cache", "predict"), \
+        f"KSTAGE={mode}: expected gather, hotcold, cache or predict"
+    from vllm.model_executor.layers.fused_moe.experts import lora_experts_mixin
+    _lora_fix(lora_experts_mixin.LoRAExpertsMixin)
+    from vllm.model_executor.model_loader import base_loader
+    orig = base_loader.BaseModelLoader.load_model
+    if getattr(orig, "_kstage", False):
+        return
+
+    def load_model(self, *a, **k):
+        model = orig(self, *a, **k)
+        _install(model)
+        return model
+
+    load_model._kstage = True
+    base_loader.BaseModelLoader.load_model = load_model
+    log(f"registered, mode {mode}")

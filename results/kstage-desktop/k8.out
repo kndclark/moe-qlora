@@ -1,0 +1,28 @@
+== pffix_test 21:07:51Z
+Lightning G4/1 (n=7) step 2: stock 4 wrong reads in 4 passes, fixed 0
+all pffix checks passed
+== base-lp2 21:07:55Z env: none flags: 
+ready in 131s; Model loading took 17.81 GiB;Available KV cache memory: 0.69 GiB;
+decode tok/s {'1': 204.5, '4': 468.6, '16': 634.4}; prefill 7560 tokens in 1.14 s ; greedy saved to /home/david/kstage-tmp/out/base-lp2.json
+== pf4-s2-fix 21:10:22Z env: KSTAGE_PFFIX=1 flags: --offload-backend prefetch --offload-params experts --offload-group-size 4 --offload-num-in-group 1 --offload-prefetch-step 2
+ready in 155s; Model loading took 13.2 GiB;Available KV cache memory: 3.92 GiB;
+  kstage: prefetch offloader: wrap-around copies wait for their slot's last reader
+  kstage: prefetch offloader: wrap-around copies wait for their slot's last reader
+  [PrefetchOffloader] Initialized 7 modules. Total GPU memory saved: 5.0288 GB, Static buffer pool: 1.4368 GB (group_size=4, num_in_group=1, prefetch_step=2, mode=cpu)
+decode tok/s {'1': 2.3, '4': 9.2, '16': 37.2}; prefill 7560 tokens in 2.15 s ; greedy saved to /home/david/kstage-tmp/out/pf4-s2-fix.json
+== pf4-r2b 21:24:04Z env: none flags: --offload-backend prefetch --offload-params experts --offload-group-size 4 --offload-num-in-group 1
+ready in 171s; Model loading took 13.2 GiB;Available KV cache memory: 4.6 GiB;
+  [PrefetchOffloader] Initialized 7 modules. Total GPU memory saved: 5.0288 GB, Static buffer pool: 0.7184 GB (group_size=4, num_in_group=1, prefetch_step=1, mode=cpu)
+decode tok/s {'1': 2.4, '4': 9.2, '16': 37.3}; prefill 7560 tokens in 2.33 s ; greedy saved to /home/david/kstage-tmp/out/pf4-r2b.json
+== pf4k2-s2 21:37:59Z env: none flags: --offload-backend prefetch --offload-params experts --offload-group-size 4 --offload-num-in-group 2 --offload-prefetch-step 2
+ready in 196s; Model loading took 9.89 GiB;Available KV cache memory: 7.21 GiB;
+  [PrefetchOffloader] Initialized 12 modules. Total GPU memory saved: 8.6209 GB, Static buffer pool: 1.4368 GB (group_size=4, num_in_group=2, prefetch_step=2, mode=cpu)
+decode tok/s {'1': 1.4, '4': 5.4, '16': 21.9}; prefill 7560 tokens in 3.59 s ; greedy saved to /home/david/kstage-tmp/out/pf4k2-s2.json
+== off4-lp2 22:00:12Z env: none flags: --cpu-offload-params experts --cpu-offload-gb 4
+ready in 161s; Total CPU offloaded parameters: 4.01;Model loading took 13.86 GiB;Available KV cache memory: 4.63 GiB;
+decode tok/s {'1': 28.0, '4': 37.1, '16': 57.7}; prefill 7560 tokens in 6.08 s ; greedy saved to /home/david/kstage-tmp/out/off4-lp2.json
+pf4-s2-fix   full 4/8  first-diff(base margin) drift: 96 d0.05 | 34(m0.12) d0.26 | 96 d0.06 | 62(m0.00) d0.09 | 1(m0.00) d0.20 | 96 d0.12 | 63(m0.25) d0.22 | 96 d0.12
+pf4-r2b      full 5/8  first-diff(base margin) drift: 96 d0.08 | 34(m0.12) d0.26 | 96 d0.07 | 62(m0.00) d0.10 | 88(m0.25) d0.15 | 96 d0.12 | 96 d0.26 | 96 d0.14
+pf4k2-s2     full 5/8  first-diff(base margin) drift: 96 d0.06 | 34(m0.12) d0.26 | 96 d0.07 | 96 d0.09 | 71(m0.12) d0.09 | 96 d0.20 | 96 d0.17 | 12(m0.12) d0.38
+off4-lp2     full 8/8  first-diff(base margin) drift: 96 d0.08 | 96 d0.00 | 96 d0.03 | 96 d0.19 | 96 d0.00 | 96 d0.00 | 96 d0.06 | 96 d0.00
+k8 done 22:05:18Z

@@ -1,0 +1,127 @@
+== lora_fix_test 22:15:07Z
+lora fix: LoRA got the router's ids, Marlin the remapped ones, nothing leaked; all checks passed
+== cache_test C=16,4 22:15:22Z
+cuda: 23 layers, 45300 tokens (eval,code), cold per layer [3, 5, 11, 36, 42, 42, 37, 40, 46, 25, 49, 37, 32, 28, 36, 36, 41, 47, 39, 32, 35, 39, 27]
+lru C=16 slots= all: 2543 steps x 23 layers, ref misses 357201 copies 357201, stats equal, simulator 357201 equal (788.4 MB a step); rows ok; 28.2s
+lru C=16 slots=  16: 2543 steps x 23 layers, ref misses 344429 copies 323881, stats equal, simulator 344429 equal (760.2 MB a step); rows ok; 24.1s
+lru C=16 slots=  64: 2543 steps x 23 layers, ref misses 356484 copies 356484, stats equal, simulator 356484 equal (786.8 MB a step); rows ok; 25.8s
+lru C= 4 slots= all: 10896 steps x 23 layers, ref misses 362360 copies 362360, stats equal, simulator 362360 equal (186.7 MB a step); rows ok; 103.5s
+lru C= 4 slots=  16: 10896 steps x 23 layers, ref misses 362750 copies 362750, stats equal, simulator 362750 equal (186.9 MB a step); rows ok; 96.5s
+lru C= 4 slots=  64: 10896 steps x 23 layers, ref misses 364014 copies 364014, stats equal, simulator 364014 equal (187.5 MB a step); rows ok; 101.0s
+lfu C=16 slots= all: 2543 steps x 23 layers, ref misses 290430 copies 290430, stats equal, simulator 290430 equal (641.0 MB a step); rows ok; 28.6s
+lfu C=16 slots=  16: 2543 steps x 23 layers, ref misses 331983 copies 311435, stats equal, simulator 331983 equal (732.7 MB a step); rows ok; 25.6s
+lfu C=16 slots=  64: 2543 steps x 23 layers, ref misses 297185 copies 297185, stats equal, simulator 297185 equal (655.9 MB a step); rows ok; 27.2s
+lfu C= 4 slots= all: 10896 steps x 23 layers, ref misses 284645 copies 284645, stats equal, simulator 284645 equal (146.6 MB a step); rows ok; 110.6s
+lfu C= 4 slots=  16: 10896 steps x 23 layers, ref misses 331959 copies 331959, stats equal, simulator 331959 equal (171.0 MB a step); rows ok; 102.4s
+lfu C= 4 slots=  64: 10896 steps x 23 layers, ref misses 293412 copies 293412, stats equal, simulator 293412 equal (151.1 MB a step); rows ok; 106.9s
+graph (lru): 199 replays of a captured step match the eager twin
+graph (lfu): 199 replays of a captured step match the eager twin
+all checks passed
+cache_test rc=0 22:28:27Z
+== base-mx 22:28:27Z env: none flags: 
+ready in 131s; Model loading took 17.81 GiB;Available KV cache memory: 0.69 GiB;
+decode tok/s {'1': 204.5, '4': 464.6, '16': 633.9}, mixed {'1': 203.6, '4': 479.7, '16': 622.1}; prefill 7560 tokens in 1.14 s ; greedy saved to /home/david/kstage-tmp/out/base-mx.json
+== cache4-s64-lfu 22:31:04Z env: KSTAGE=cache KSTAGE_COLD_GB=4 KSTAGE_PROFILE=/k/p7-all.json KSTAGE_STATS=30 KSTAGE_SLOTS=64 KSTAGE_EVICT=lfu flags: 
+ready in 151s; Model loading took 2.27 GiB;Available KV cache memory: 4.71 GiB;
+  kstage: registered, mode cache
+  kstage: registered, mode cache
+  kstage: model.layers.1.mixer.experts:    304.50 MiB (128, 116, 5376)       torch.int32    dev  expert-major experts.w2_weight
+  kstage: model.layers.1.mixer.experts:    304.50 MiB (128, 168, 3712)       torch.int32    dev  expert-major experts.w13_weight
+  kstage: model.layers.1.mixer.experts:     38.06 MiB (128, 116, 2688)       torch.float8_e4m3fn dev  expert-major fused.qcfg._w2.scale
+  kstage: model.layers.1.mixer.experts:     38.06 MiB (128, 168, 1856)       torch.float8_e4m3fn dev  expert-major fused.qcfg._w1.scale
+  kstage: model.layers.1.mixer.experts:      0.00 MiB (128,)                 torch.float32  dev  expert-major fused.qcfg._w2.alpha_or_gscale
+  kstage: model.layers.1.mixer.experts:      0.00 MiB (128,)                 torch.float32  dev  expert-major fused.qcfg._w1.alpha_or_gscale
+  kstage: cache: 23 layers, 765 experts cold (33.3 a layer), 11.70 GiB host pages, 11.48 GiB device, policy global, profile /k/p7-all.json (all); slots 64: pinned/slots per layer ['61/64', '59/64', '53/64', '28/64', '22/64', '22/64', '27/64', '24/64', '18/64', '39/64', '15/64', '27/64', '32/64', '36/64', '28/64', '28/64', '23/64', '17/64', '25/64', '32/64', '29/64', '25/64', '37/64']; evict lfu6; frozen from never tokens
+  kstage: installed in 1.9s; device memory free 9.40 GiB
+decode tok/s {'1': 122.2, '4': 189.2, '16': 233.2}, mixed {'1': 84.0, '4': 122.4, '16': 118.7}; prefill 7560 tokens in 3.14 s ; greedy saved to /home/david/kstage-tmp/out/cache4-s64-lfu.json
+== cache4-s64-mx 22:34:59Z env: KSTAGE=cache KSTAGE_COLD_GB=4 KSTAGE_PROFILE=/k/p7-all.json KSTAGE_STATS=30 KSTAGE_SLOTS=64 flags: 
+ready in 151s; Model loading took 2.27 GiB;Available KV cache memory: 4.71 GiB;
+  kstage: registered, mode cache
+  kstage: registered, mode cache
+  kstage: model.layers.1.mixer.experts:    304.50 MiB (128, 116, 5376)       torch.int32    dev  expert-major experts.w2_weight
+  kstage: model.layers.1.mixer.experts:    304.50 MiB (128, 168, 3712)       torch.int32    dev  expert-major experts.w13_weight
+  kstage: model.layers.1.mixer.experts:     38.06 MiB (128, 116, 2688)       torch.float8_e4m3fn dev  expert-major fused.qcfg._w2.scale
+  kstage: model.layers.1.mixer.experts:     38.06 MiB (128, 168, 1856)       torch.float8_e4m3fn dev  expert-major fused.qcfg._w1.scale
+  kstage: model.layers.1.mixer.experts:      0.00 MiB (128,)                 torch.float32  dev  expert-major fused.qcfg._w2.alpha_or_gscale
+  kstage: model.layers.1.mixer.experts:      0.00 MiB (128,)                 torch.float32  dev  expert-major fused.qcfg._w1.alpha_or_gscale
+  kstage: cache: 23 layers, 765 experts cold (33.3 a layer), 11.70 GiB host pages, 11.48 GiB device, policy global, profile /k/p7-all.json (all); slots 64: pinned/slots per layer ['61/64', '59/64', '53/64', '28/64', '22/64', '22/64', '27/64', '24/64', '18/64', '39/64', '15/64', '27/64', '32/64', '36/64', '28/64', '28/64', '23/64', '17/64', '25/64', '32/64', '29/64', '25/64', '37/64']; evict lru; frozen from never tokens
+  kstage: installed in 2.3s; device memory free 9.40 GiB
+  kstage: cache: 598 layer-steps, 0.85 misses and 0.49 copies a layer-step (508 / 293)
+decode tok/s {'1': 129.8, '4': 151.2, '16': 212.0}, mixed {'1': 92.3, '4': 111.4, '16': 112.9}; prefill 7560 tokens in 3.07 s ; greedy saved to /home/david/kstage-tmp/out/cache4-s64-mx.json
+== cache4-s16-lfu 22:38:58Z env: KSTAGE=cache KSTAGE_COLD_GB=4 KSTAGE_PROFILE=/k/p7-all.json KSTAGE_STATS=30 KSTAGE_SLOTS=16 KSTAGE_EVICT=lfu flags: 
+ready in 145s; Model loading took 2.27 GiB;Available KV cache memory: 4.73 GiB;
+  kstage: registered, mode cache
+  kstage: registered, mode cache
+  kstage: model.layers.1.mixer.experts:    304.50 MiB (128, 116, 5376)       torch.int32    dev  expert-major experts.w2_weight
+  kstage: model.layers.1.mixer.experts:    304.50 MiB (128, 168, 3712)       torch.int32    dev  expert-major experts.w13_weight
+  kstage: model.layers.1.mixer.experts:     38.06 MiB (128, 116, 2688)       torch.float8_e4m3fn dev  expert-major fused.qcfg._w2.scale
+  kstage: model.layers.1.mixer.experts:     38.06 MiB (128, 168, 1856)       torch.float8_e4m3fn dev  expert-major fused.qcfg._w1.scale
+  kstage: model.layers.1.mixer.experts:      0.00 MiB (128,)                 torch.float32  dev  expert-major fused.qcfg._w2.alpha_or_gscale
+  kstage: model.layers.1.mixer.experts:      0.00 MiB (128,)                 torch.float32  dev  expert-major fused.qcfg._w1.alpha_or_gscale
+  kstage: cache: 23 layers, 765 experts cold (33.3 a layer), 5.95 GiB host pages, 11.48 GiB device, policy global, profile /k/p7-all.json (all); slots 16: pinned/slots per layer ['109/16', '107/16', '101/16', '76/16', '70/16', '70/16', '75/16', '72/16', '66/16', '87/16', '63/16', '75/16', '80/16', '84/16', '76/16', '76/16', '71/16', '65/16', '73/16', '80/16', '77/16', '73/16', '85/16']; evict lfu6; frozen from never tokens
+  kstage: installed in 1.1s; device memory free 9.41 GiB
+  kstage: cache: 1 layer-steps, 3.00 misses and 0.00 copies a layer-step (3 / 0)
+decode tok/s {'1': 103.6, '4': 127.9, '16': 123.9}, mixed {'1': 77.9, '4': 97.0, '16': 67.7}; prefill 7560 tokens in 4.7 s ; greedy saved to /home/david/kstage-tmp/out/cache4-s16-lfu.json
+== cache4-s16-mx 22:43:38Z env: KSTAGE=cache KSTAGE_COLD_GB=4 KSTAGE_PROFILE=/k/p7-all.json KSTAGE_STATS=30 KSTAGE_SLOTS=16 flags: 
+ready in 130s; Model loading took 2.27 GiB;Available KV cache memory: 4.73 GiB;
+  kstage: registered, mode cache
+  kstage: registered, mode cache
+  kstage: model.layers.1.mixer.experts:    304.50 MiB (128, 116, 5376)       torch.int32    dev  expert-major experts.w2_weight
+  kstage: model.layers.1.mixer.experts:    304.50 MiB (128, 168, 3712)       torch.int32    dev  expert-major experts.w13_weight
+  kstage: model.layers.1.mixer.experts:     38.06 MiB (128, 116, 2688)       torch.float8_e4m3fn dev  expert-major fused.qcfg._w2.scale
+  kstage: model.layers.1.mixer.experts:     38.06 MiB (128, 168, 1856)       torch.float8_e4m3fn dev  expert-major fused.qcfg._w1.scale
+  kstage: model.layers.1.mixer.experts:      0.00 MiB (128,)                 torch.float32  dev  expert-major fused.qcfg._w2.alpha_or_gscale
+  kstage: model.layers.1.mixer.experts:      0.00 MiB (128,)                 torch.float32  dev  expert-major fused.qcfg._w1.alpha_or_gscale
+  kstage: cache: 23 layers, 765 experts cold (33.3 a layer), 5.95 GiB host pages, 11.48 GiB device, policy global, profile /k/p7-all.json (all); slots 16: pinned/slots per layer ['109/16', '107/16', '101/16', '76/16', '70/16', '70/16', '75/16', '72/16', '66/16', '87/16', '63/16', '75/16', '80/16', '84/16', '76/16', '76/16', '71/16', '65/16', '73/16', '80/16', '77/16', '73/16', '85/16']; evict lru; frozen from never tokens
+  kstage: installed in 1.1s; device memory free 9.41 GiB
+  kstage: cache: 2 layer-steps, 4.00 misses and 0.00 copies a layer-step (8 / 0)
+decode tok/s {'1': 98.4, '4': 124.3, '16': 126.1}, mixed {'1': 81.2, '4': 90.7, '16': 68.0}; prefill 7560 tokens in 4.84 s ; greedy saved to /home/david/kstage-tmp/out/cache4-s16-mx.json
+MemAvailable 28 GiB
+== cache4-all-lfu 22:48:01Z env: KSTAGE=cache KSTAGE_COLD_GB=4 KSTAGE_PROFILE=/k/p7-all.json KSTAGE_STATS=30 KSTAGE_EVICT=lfu flags: 
+ready in 135s; Model loading took 2.27 GiB;Available KV cache memory: 4.71 GiB;
+  kstage: registered, mode cache
+  kstage: registered, mode cache
+  kstage: model.layers.1.mixer.experts:    304.50 MiB (128, 116, 5376)       torch.int32    dev  expert-major experts.w2_weight
+  kstage: model.layers.1.mixer.experts:    304.50 MiB (128, 168, 3712)       torch.int32    dev  expert-major experts.w13_weight
+  kstage: model.layers.1.mixer.experts:     38.06 MiB (128, 116, 2688)       torch.float8_e4m3fn dev  expert-major fused.qcfg._w2.scale
+  kstage: model.layers.1.mixer.experts:     38.06 MiB (128, 168, 1856)       torch.float8_e4m3fn dev  expert-major fused.qcfg._w1.scale
+  kstage: model.layers.1.mixer.experts:      0.00 MiB (128,)                 torch.float32  dev  expert-major fused.qcfg._w2.alpha_or_gscale
+  kstage: model.layers.1.mixer.experts:      0.00 MiB (128,)                 torch.float32  dev  expert-major fused.qcfg._w1.alpha_or_gscale
+  kstage: cache: 23 layers, 765 experts cold (33.3 a layer), 15.38 GiB host pages, 11.48 GiB device, policy global, profile /k/p7-all.json (all); slots all: pinned/slots per layer ['0/125', '0/123', '0/117', '0/92', '0/86', '0/86', '0/91', '0/88', '0/82', '0/103', '0/79', '0/91', '0/96', '0/100', '0/92', '0/92', '0/87', '0/81', '0/89', '0/96', '0/93', '0/89', '0/101']; evict lfu6; frozen from never tokens
+  kstage: installed in 2.4s; device memory free 9.39 GiB
+decode tok/s {'1': 126.0, '4': 194.6, '16': 271.8}, mixed {'1': 87.9, '4': 130.9, '16': 123.0}; prefill 7560 tokens in 2.65 s ; greedy saved to /home/david/kstage-tmp/out/cache4-all-lfu.json
+== cache4-all-mx 22:51:35Z env: KSTAGE=cache KSTAGE_COLD_GB=4 KSTAGE_PROFILE=/k/p7-all.json KSTAGE_STATS=30 flags: 
+ready in 155s; Model loading took 2.27 GiB;Available KV cache memory: 4.71 GiB;
+  kstage: registered, mode cache
+  kstage: registered, mode cache
+  kstage: model.layers.1.mixer.experts:    304.50 MiB (128, 116, 5376)       torch.int32    dev  expert-major experts.w2_weight
+  kstage: model.layers.1.mixer.experts:    304.50 MiB (128, 168, 3712)       torch.int32    dev  expert-major experts.w13_weight
+  kstage: model.layers.1.mixer.experts:     38.06 MiB (128, 116, 2688)       torch.float8_e4m3fn dev  expert-major fused.qcfg._w2.scale
+  kstage: model.layers.1.mixer.experts:     38.06 MiB (128, 168, 1856)       torch.float8_e4m3fn dev  expert-major fused.qcfg._w1.scale
+  kstage: model.layers.1.mixer.experts:      0.00 MiB (128,)                 torch.float32  dev  expert-major fused.qcfg._w2.alpha_or_gscale
+  kstage: model.layers.1.mixer.experts:      0.00 MiB (128,)                 torch.float32  dev  expert-major fused.qcfg._w1.alpha_or_gscale
+  kstage: cache: 23 layers, 765 experts cold (33.3 a layer), 15.38 GiB host pages, 11.48 GiB device, policy global, profile /k/p7-all.json (all); slots all: pinned/slots per layer ['0/125', '0/123', '0/117', '0/92', '0/86', '0/86', '0/91', '0/88', '0/82', '0/103', '0/79', '0/91', '0/96', '0/100', '0/92', '0/92', '0/87', '0/81', '0/89', '0/96', '0/93', '0/89', '0/101']; evict lru; frozen from never tokens
+  kstage: installed in 2.7s; device memory free 9.39 GiB
+  kstage: cache: 598 layer-steps, 1.09 misses and 0.51 copies a layer-step (649 / 305)
+decode tok/s {'1': 130.0, '4': 181.6, '16': 219.7}, mixed {'1': 96.0, '4': 118.7, '16': 113.5}; prefill 7560 tokens in 2.52 s ; greedy saved to /home/david/kstage-tmp/out/cache4-all-mx.json
+== off4-mx 22:55:37Z env: none flags: --cpu-offload-params experts --cpu-offload-gb 4
+ready in 166s; Total CPU offloaded parameters: 4.01;Model loading took 13.86 GiB;Available KV cache memory: 4.63 GiB;
+decode tok/s {'1': 28.0, '4': 36.9, '16': 55.8}, mixed {'1': 27.6, '4': 32.3, '16': 45.0}; prefill 7560 tokens in 6.07 s ; greedy saved to /home/david/kstage-tmp/out/off4-mx.json
+reference base-lp2
+base-mx         full 8/8  first-diff(ref margin) drift: 96 d0.04 | 96 d0.00 | 96 d0.12 | 96 d0.00 | 96 d0.00 | 96 d0.00 | 96 d0.06 | 96 d0.00
+cache4-s64-lfu  full 4/8  first-diff(ref margin) drift: 96 d0.08 | 34(m0.12) d0.17 | 96 d0.07 | 96 d0.13 | 88(m0.25) d0.19 | 96 d0.21 | 47(m0.25) d0.22 | 7(m0.00) d0.09
+cache4-s64-mx   full 3/8  first-diff(ref margin) drift: 96 d0.06 | 34(m0.12) d0.14 | 96 d0.03 | 96 d0.14 | 89(m0.25) d0.15 | 18(m0.12) d0.09 | 47(m0.25) d0.11 | 7(m0.00) d0.10
+cache4-s16-lfu  full 5/8  first-diff(ref margin) drift: 96 d0.06 | 34(m0.12) d0.11 | 96 d0.05 | 96 d0.11 | 88(m0.25) d0.13 | 96 d0.22 | 96 d0.09 | 12(m0.12) d0.13
+cache4-s16-mx   full 5/8  first-diff(ref margin) drift: 96 d0.08 | 34(m0.12) d0.14 | 96 d0.04 | 96 d0.12 | 96 d0.15 | 96 d0.24 | 47(m0.25) d0.12 | 7(m0.00) d0.09
+cache4-all-lfu  full 6/8  first-diff(ref margin) drift: 96 d0.05 | 34(m0.12) d0.17 | 96 d0.07 | 96 d0.10 | 96 d0.22 | 31(m0.12) d0.17 | 96 d0.13 | 96 d0.18
+cache4-all-mx   full 5/8  first-diff(ref margin) drift: 96 d0.05 | 34(m0.12) d0.18 | 96 d0.05 | 96 d0.21 | 1(m0.00) d0.09 | 96 d0.22 | 47(m0.25) d0.08 | 96 d0.17
+off4-mx         full 8/8  first-diff(ref margin) drift: 96 d0.08 | 96 d0.00 | 96 d0.03 | 96 d0.19 | 96 d0.00 | 96 d0.00 | 96 d0.06 | 96 d0.00
+== cache_test C=1 23:03:02Z
+cuda: 23 layers, 45300 tokens (eval,code), cold per layer [3, 5, 11, 36, 42, 42, 37, 40, 46, 25, 49, 37, 32, 28, 36, 36, 41, 47, 39, 32, 35, 39, 27]
+lfu C= 1 slots= all: 45300 steps x 23 layers, ref misses 285004 copies 285004, stats equal, simulator 285004 equal (35.3 MB a step); rows ok; 451.6s
+lfu C= 1 slots=  16: 45300 steps x 23 layers, ref misses 323263 copies 323263, stats equal, simulator 323263 equal (40.1 MB a step); rows ok; 417.8s
+lfu C= 1 slots=  64: 45300 steps x 23 layers, ref misses 292292 copies 292292, stats equal, simulator 292292 equal (36.2 MB a step); rows ok; 437.8s
+graph (lfu): 199 replays of a captured step match the eager twin
+all checks passed
+cache_test C=1 rc=0 23:24:55Z
+k10 done 23:24:55Z

@@ -1,0 +1,99 @@
+== base 16:08:42Z env: none flags: 
+ready in 131s; Model loading took 17.81 GiB;Available KV cache memory: 0.69 GiB;
+Traceback (most recent call last):
+  File "/home/david/kstage-tmp/kstage_client.py", line 51, in <module>
+    t0 = time.perf_counter(); complete(" ".join(words), 1); res["prefill_8k_s"] = round(time.perf_counter() - t0, 2)
+                              ~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/home/david/kstage-tmp/kstage_client.py", line 25, in complete
+    return post("/v1/completions", {"model": model, "prompt": prompt, "max_tokens": n, "temperature": 0,
+           ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                    "return_token_ids": True, **kw})["choices"][0]
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/david/kstage-tmp/kstage_client.py", line 20, in post
+    with urllib.request.urlopen(req, timeout=1800) as r:
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/urllib/request.py", line 187, in urlopen
+    return opener.open(url, data, timeout)
+           ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/urllib/request.py", line 493, in open
+    response = meth(req, response)
+  File "/usr/lib/python3.14/urllib/request.py", line 602, in http_response
+    response = self.parent.error(
+        'http', request, response, code, msg, hdrs)
+  File "/usr/lib/python3.14/urllib/request.py", line 531, in error
+    return self._call_chain(*args)
+           ~~~~~~~~~~~~~~~~^^^^^^^
+  File "/usr/lib/python3.14/urllib/request.py", line 464, in _call_chain
+    result = func(*args)
+  File "/usr/lib/python3.14/urllib/request.py", line 611, in http_error_default
+    raise HTTPError(req.full_url, code, msg, hdrs, fp)
+urllib.error.HTTPError: HTTP Error 400: Bad Request
+== off4 16:11:07Z env: none flags: --cpu-offload-params experts --cpu-offload-gb 4
+ready in 151s; Total CPU offloaded parameters: 4.01;Model loading took 13.86 GiB;Available KV cache memory: 4.63 GiB;
+decode tok/s {'1': 28.1, '4': 37.0, '16': 55.3}; prefill 7560 tokens in 6.06 s ; greedy saved to /home/david/kstage-tmp/out/off4.json
+== off4-gather 16:16:06Z env: KSTAGE=gather flags: --cpu-offload-params experts --cpu-offload-gb 4
+ready in 161s; Total CPU offloaded parameters: 4.01;Model loading took 14.54 GiB;Available KV cache memory: 3.95 GiB;
+  kstage: registered, mode gather
+  kstage: registered, mode gather
+  kstage: model.layers.1.mixer.experts:    304.50 MiB (128, 116, 5376)       torch.int32    host expert-major experts.w2_weight
+  kstage: model.layers.1.mixer.experts:    304.50 MiB (128, 168, 3712)       torch.int32    host expert-major experts.w13_weight
+  kstage: model.layers.1.mixer.experts:     38.06 MiB (128, 116, 2688)       torch.float8_e4m3fn host expert-major fused.qcfg._w2.scale
+  kstage: model.layers.1.mixer.experts:     38.06 MiB (128, 168, 1856)       torch.float8_e4m3fn host expert-major fused.qcfg._w1.scale
+  kstage: model.layers.1.mixer.experts:      0.00 MiB (128,)                 torch.float32  host expert-major fused.qcfg._w2.alpha_or_gscale
+  kstage: model.layers.1.mixer.experts:      0.00 MiB (128,)                 torch.float32  host expert-major fused.qcfg._w1.alpha_or_gscale
+  kstage: gather: 6 layers, 4.01 GiB of experts staged through 0.67 GiB of device buffers; DMA from never tokens
+  kstage: installed in 0.1s; device memory free 6.32 GiB
+decode tok/s {'1': 44.7, '4': 61.4, '16': 92.1}; prefill 7560 tokens in 2.82 s ; greedy saved to /home/david/kstage-tmp/out/off4-gather.json
+== off4-hotcold 16:20:16Z env: KSTAGE=hotcold flags: --cpu-offload-params experts --cpu-offload-gb 4
+ready in 161s; Total CPU offloaded parameters: 4.01;Model loading took 2.37 GiB;Available KV cache memory: 4.62 GiB;
+  kstage: registered, mode hotcold
+  kstage: registered, mode hotcold
+  kstage: model.layers.1.mixer.experts:    304.50 MiB (128, 116, 5376)       torch.int32    host expert-major experts.w2_weight
+  kstage: model.layers.1.mixer.experts:    304.50 MiB (128, 168, 3712)       torch.int32    host expert-major experts.w13_weight
+  kstage: model.layers.1.mixer.experts:     38.06 MiB (128, 116, 2688)       torch.float8_e4m3fn host expert-major fused.qcfg._w2.scale
+  kstage: model.layers.1.mixer.experts:     38.06 MiB (128, 168, 1856)       torch.float8_e4m3fn host expert-major fused.qcfg._w1.scale
+  kstage: model.layers.1.mixer.experts:      0.00 MiB (128,)                 torch.float32  host expert-major fused.qcfg._w2.alpha_or_gscale
+  kstage: model.layers.1.mixer.experts:      0.00 MiB (128,)                 torch.float32  host expert-major fused.qcfg._w1.alpha_or_gscale
+  kstage: hotcold: 23 layers, 768 experts cold (33.4 a layer, 4.05 GiB host pages, 11.49 GiB device), policy global, profile none (expert index order); cold per layer [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128, 128, 128, 128, 128, 128]
+  kstage: installed in 3.8s; device memory free 9.29 GiB
+decode tok/s {'1': 28.0, '4': 37.6, '16': 56.3}; prefill 7560 tokens in 5.79 s ; greedy saved to /home/david/kstage-tmp/out/off4-hotcold.json
+== hotcold4 16:25:22Z env: KSTAGE=hotcold KSTAGE_COLD_GB=4 flags: 
+ready in 125s; Model loading took 2.27 GiB;Available KV cache memory: 4.71 GiB;
+  kstage: registered, mode hotcold
+  kstage: registered, mode hotcold
+  kstage: model.layers.1.mixer.experts:    304.50 MiB (128, 116, 5376)       torch.int32    dev  expert-major experts.w2_weight
+  kstage: model.layers.1.mixer.experts:    304.50 MiB (128, 168, 3712)       torch.int32    dev  expert-major experts.w13_weight
+  kstage: model.layers.1.mixer.experts:     38.06 MiB (128, 116, 2688)       torch.float8_e4m3fn dev  expert-major fused.qcfg._w2.scale
+  kstage: model.layers.1.mixer.experts:     38.06 MiB (128, 168, 1856)       torch.float8_e4m3fn dev  expert-major fused.qcfg._w1.scale
+  kstage: model.layers.1.mixer.experts:      0.00 MiB (128,)                 torch.float32  dev  expert-major fused.qcfg._w2.alpha_or_gscale
+  kstage: model.layers.1.mixer.experts:      0.00 MiB (128,)                 torch.float32  dev  expert-major fused.qcfg._w1.alpha_or_gscale
+  kstage: hotcold: 23 layers, 765 experts cold (33.3 a layer, 4.04 GiB host pages, 11.51 GiB device), policy global, profile none (expert index order); cold per layer [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 125, 128, 128, 128, 128, 128]
+  kstage: installed in 0.8s; device memory free 9.39 GiB
+decode tok/s {'1': 28.1, '4': 36.8, '16': 56.6}; prefill 7560 tokens in 5.77 s ; greedy saved to /home/david/kstage-tmp/out/hotcold4.json
+suite done 16:29:53Z
+== base 16:30:00Z env: none flags: 
+ready in 121s; Model loading took 17.81 GiB;Available KV cache memory: 0.69 GiB;
+decode tok/s {'1': 204.1, '4': 464.7, '16': 630.9}; prefill 7560 tokens in 1.14 s ; greedy saved to /home/david/kstage-tmp/out/base.json
+base rerun done
+== pf4 16:32:37Z env: none flags: --offload-backend prefetch --offload-num-in-group 1 --offload-params experts --offload-group-size 4
+ready in 151s; Model loading took 13.2 GiB;Available KV cache memory: 4.6 GiB;
+  [PrefetchOffloader] Initialized 7 modules. Total GPU memory saved: 5.0288 GB, Static buffer pool: 0.7184 GB (group_size=4, num_in_group=1, prefetch_step=1, mode=cpu)
+decode tok/s {'1': 2.4, '4': 9.2, '16': 37.3}; prefill 7560 tokens in 2.33 s ; greedy saved to /home/david/kstage-tmp/out/pf4.json
+== pf4-s2 16:46:10Z env: none flags: --offload-backend prefetch --offload-num-in-group 1 --offload-params experts --offload-group-size 4 --offload-prefetch-step 2
+ready in 166s; Model loading took 13.2 GiB;Available KV cache memory: 3.92 GiB;
+  [PrefetchOffloader] Initialized 7 modules. Total GPU memory saved: 5.0288 GB, Static buffer pool: 1.4368 GB (group_size=4, num_in_group=1, prefetch_step=2, mode=cpu)
+decode tok/s {'1': 2.4, '4': 9.2, '16': 37.4}; prefill 7560 tokens in 2.12 s ; greedy saved to /home/david/kstage-tmp/out/pf4-s2.json
+== off4-gdma 16:59:58Z env: KSTAGE=gather KSTAGE_DMA_M=256 flags: --cpu-offload-params experts --cpu-offload-gb 4
+ready in 155s; Total CPU offloaded parameters: 4.01;Model loading took 14.54 GiB;Available KV cache memory: 3.95 GiB;
+  kstage: registered, mode gather
+  kstage: registered, mode gather
+  kstage: model.layers.1.mixer.experts:    304.50 MiB (128, 116, 5376)       torch.int32    host expert-major experts.w2_weight
+  kstage: model.layers.1.mixer.experts:    304.50 MiB (128, 168, 3712)       torch.int32    host expert-major experts.w13_weight
+  kstage: model.layers.1.mixer.experts:     38.06 MiB (128, 116, 2688)       torch.float8_e4m3fn host expert-major fused.qcfg._w2.scale
+  kstage: model.layers.1.mixer.experts:     38.06 MiB (128, 168, 1856)       torch.float8_e4m3fn host expert-major fused.qcfg._w1.scale
+  kstage: model.layers.1.mixer.experts:      0.00 MiB (128,)                 torch.float32  host expert-major fused.qcfg._w2.alpha_or_gscale
+  kstage: model.layers.1.mixer.experts:      0.00 MiB (128,)                 torch.float32  host expert-major fused.qcfg._w1.alpha_or_gscale
+  kstage: gather: 6 layers, 4.01 GiB of experts staged through 0.67 GiB of device buffers; DMA from 256 tokens
+  kstage: installed in 0.1s; device memory free 6.32 GiB
+decode tok/s {'1': 44.6, '4': 60.2, '16': 88.7}; prefill 7560 tokens in 2.81 s ; greedy saved to /home/david/kstage-tmp/out/off4-gdma.json
+pf done

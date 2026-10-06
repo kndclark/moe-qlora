@@ -1,0 +1,270 @@
+== phase x-copy 19:32:37Z (no server)
+NVIDIA GeForce RTX 5090 Laptop GPU 430 rows of 2494464 B = 1.00 GiB
+view ptr == host ptr: True; freed block reused by next pin: False; view intact after del: True
+CPU alias: pinned=True, equal=True
+GB/s  device read 145.5 | view read (Marlin's path) 27.2 | copy view->dev 51.6 | copy alias->dev non_blocking 51.6
+    6 rows: triton gather 36.2, index_select 35.0, per-row DMA 48.5 GB/s; rows equal True
+   22 rows: triton gather 35.8, index_select 31.3, per-row DMA 49.9 GB/s; rows equal True
+   36 rows: triton gather 34.2, index_select 30.8, per-row DMA 50.6 GB/s; rows equal True
+   68 rows: triton gather 33.9, index_select 30.0, per-row DMA 50.7 GB/s; rows equal True
+graph: plan+gather replayed with new ids, rows equal True
+graph: whole-tensor DMA captured, equal True
+VMM mixed 430 rows, 215 device: equal True; GB/s device half 114.1, host half 26.7, copy host half->dev 50.6
+done
+== phase x-gsweep 19:32:51Z (no server)
+NVIDIA GeForce RTX 5090 Laptop GPU 36 rows
+  plain BLOCK   512: w1  25.8  w2  26.3  w4  31.5  w8  34.5  w16  36.5
+  plain BLOCK  1024: w1  25.3  w2  24.7  w4  26.0  w8  34.7  w16  36.6
+  plain BLOCK  2048: w1  24.1  w2  24.3  w4  24.8  w8  26.9  w16  31.5
+  plain BLOCK  4096: w1  26.3  w2  25.7  w4  25.5  w8  26.1  w16  25.9
+  plain BLOCK  8192: w1  25.3  w2  25.3  w4  24.8  w8  25.1  w16  24.1
+  plain BLOCK 16384: w1  25.4  w2  25.0  w4  25.2  w8  25.4  w16  24.8
+  cg/cs BLOCK   512: w1  26.6  w2  25.5  w4  30.1  w8  34.8  w16  34.8
+  cg/cs BLOCK  1024: w1  24.4  w2  24.7  w4  28.1  w8  33.4  w16  36.8
+  cg/cs BLOCK  2048: w1  24.8  w2  24.3  w4  24.9  w8  27.7  w16  29.8
+  cg/cs BLOCK  4096: w1  25.3  w2  25.6  w4  25.4  w8  26.0  w16  26.8
+  cg/cs BLOCK  8192: w1  23.9  w2  24.7  w4  24.8  w8  25.2  w16  24.2
+  cg/cs BLOCK 16384: w1  24.5  w2  24.3  w4  25.2  w8  25.4  w16  24.9
+per-row DMA 50.9 GB/s; best kernel 36.8 (cg/cs BLOCK=1024 warps=16); rows equal True
+== phase x-ks-lora 19:33:05Z (kstage_check.sh, port 8313)
+== lora-base 19:33:05Z env: none flags: --gpu-memory-utilization 0.92 --enable-lora --max-lora-rank 16 --max-loras 1 --lora-modules g6q=/adapter --lora-target-modules q_proj k_proj v_proj o_proj in_proj up_proj down_proj
+ready in 105s; Model loading took 17.88 GiB;Available KV cache memory: 1.72 GiB;
+decode tok/s {'1': 196.2, '4': 491.6, '16': 922.7}; prefill 7560 tokens in 1.13 s ; greedy saved to /home/david/moe-qlora/.claude/worktrees/next-round/probes/kstage/out/lora-base.json
+== lora-off4 19:35:04Z env: none flags: --cpu-offload-params experts --cpu-offload-gb 4 --gpu-memory-utilization 0.92 --enable-lora --max-lora-rank 16 --max-loras 1 --lora-modules g6q=/adapter --lora-target-modules q_proj k_proj v_proj o_proj in_proj up_proj down_proj
+ready in 106s; Total CPU offloaded parameters: 4.01;Model loading took 13.93 GiB;Available KV cache memory: 5.63 GiB;
+decode tok/s {'1': 74.7, '4': 109.5, '16': 183.2}; prefill 7560 tokens in 2.45 s ; greedy saved to /home/david/moe-qlora/.claude/worktrees/next-round/probes/kstage/out/lora-off4.json
+== lora-off4-gather 19:37:37Z env: KSTAGE=gather flags: --cpu-offload-params experts --cpu-offload-gb 4 --gpu-memory-utilization 0.92 --enable-lora --max-lora-rank 16 --max-loras 1 --lora-modules g6q=/adapter --lora-target-modules q_proj k_proj v_proj o_proj in_proj up_proj down_proj
+ready in 106s; Total CPU offloaded parameters: 4.01;Model loading took 14.61 GiB;Available KV cache memory: 4.95 GiB;
+  kstage: registered, mode gather
+  kstage: registered, mode gather
+  kstage: model.layers.1.mixer.experts:    304.50 MiB (128, 116, 5376)       torch.int32    host expert-major experts.w2_weight
+  kstage: model.layers.1.mixer.experts:    304.50 MiB (128, 168, 3712)       torch.int32    host expert-major experts.w13_weight
+  kstage: model.layers.1.mixer.experts:     38.06 MiB (128, 116, 2688)       torch.float8_e4m3fn host expert-major fused.qcfg._w2.scale
+  kstage: model.layers.1.mixer.experts:     38.06 MiB (128, 168, 1856)       torch.float8_e4m3fn host expert-major fused.qcfg._w1.scale
+  kstage: model.layers.1.mixer.experts:      0.00 MiB (128,)                 torch.float32  host expert-major fused.qcfg._w2.alpha_or_gscale
+  kstage: model.layers.1.mixer.experts:      0.00 MiB (128,)                 torch.float32  host expert-major fused.qcfg._w1.alpha_or_gscale
+  kstage: gather: 6 layers, 4.01 GiB of experts staged through 0.67 GiB of device buffers; DMA from never tokens
+  kstage: installed in 0.0s; device memory free 5.00 GiB
+decode tok/s {'1': 97.6, '4': 150.4, '16': 254.2}; prefill 7560 tokens in 1.62 s ; greedy saved to /home/david/moe-qlora/.claude/worktrees/next-round/probes/kstage/out/lora-off4-gather.json
+== lora-off4-gdma 19:39:58Z env: KSTAGE=gather KSTAGE_DMA_M=256 flags: --cpu-offload-params experts --cpu-offload-gb 4 --gpu-memory-utilization 0.92 --enable-lora --max-lora-rank 16 --max-loras 1 --lora-modules g6q=/adapter --lora-target-modules q_proj k_proj v_proj o_proj in_proj up_proj down_proj
+ready in 105s; Total CPU offloaded parameters: 4.01;Model loading took 14.61 GiB;Available KV cache memory: 4.95 GiB;
+  kstage: registered, mode gather
+  kstage: registered, mode gather
+  kstage: model.layers.1.mixer.experts:    304.50 MiB (128, 116, 5376)       torch.int32    host expert-major experts.w2_weight
+  kstage: model.layers.1.mixer.experts:    304.50 MiB (128, 168, 3712)       torch.int32    host expert-major experts.w13_weight
+  kstage: model.layers.1.mixer.experts:     38.06 MiB (128, 116, 2688)       torch.float8_e4m3fn host expert-major fused.qcfg._w2.scale
+  kstage: model.layers.1.mixer.experts:     38.06 MiB (128, 168, 1856)       torch.float8_e4m3fn host expert-major fused.qcfg._w1.scale
+  kstage: model.layers.1.mixer.experts:      0.00 MiB (128,)                 torch.float32  host expert-major fused.qcfg._w2.alpha_or_gscale
+  kstage: model.layers.1.mixer.experts:      0.00 MiB (128,)                 torch.float32  host expert-major fused.qcfg._w1.alpha_or_gscale
+  kstage: gather: 6 layers, 4.01 GiB of experts staged through 0.67 GiB of device buffers; DMA from 256 tokens
+  kstage: installed in 0.0s; device memory free 5.00 GiB
+decode tok/s {'1': 96.8, '4': 151.5, '16': 256.0}; prefill 7560 tokens in 1.46 s ; greedy saved to /home/david/moe-qlora/.claude/worktrees/next-round/probes/kstage/out/lora-off4-gdma.json
+== lora-hotcold4 19:42:19Z env: KSTAGE=hotcold KSTAGE_COLD_GB=4 KSTAGE_PROFILE=/prof/p7-all.json flags: --gpu-memory-utilization 0.92 --enable-lora --max-lora-rank 16 --max-loras 1 --lora-modules g6q=/adapter --lora-target-modules q_proj k_proj v_proj o_proj in_proj up_proj down_proj
+ready in 101s; Model loading took 2.34 GiB;Available KV cache memory: 5.74 GiB;
+  kstage: registered, mode hotcold
+  kstage: registered, mode hotcold
+  kstage: model.layers.1.mixer.experts:    304.50 MiB (128, 116, 5376)       torch.int32    dev  expert-major experts.w2_weight
+  kstage: model.layers.1.mixer.experts:    304.50 MiB (128, 168, 3712)       torch.int32    dev  expert-major experts.w13_weight
+  kstage: model.layers.1.mixer.experts:     38.06 MiB (128, 116, 2688)       torch.float8_e4m3fn dev  expert-major fused.qcfg._w2.scale
+  kstage: model.layers.1.mixer.experts:     38.06 MiB (128, 168, 1856)       torch.float8_e4m3fn dev  expert-major fused.qcfg._w1.scale
+  kstage: model.layers.1.mixer.experts:      0.00 MiB (128,)                 torch.float32  dev  expert-major fused.qcfg._w2.alpha_or_gscale
+  kstage: model.layers.1.mixer.experts:      0.00 MiB (128,)                 torch.float32  dev  expert-major fused.qcfg._w1.alpha_or_gscale
+  kstage: hotcold: 23 layers, 765 experts cold (33.3 a layer, 4.06 GiB host pages, 11.48 GiB device), policy global, profile /prof/p7-all.json (all); cold per layer [3, 5, 11, 36, 42, 42, 37, 40, 46, 25, 49, 37, 32, 28, 36, 36, 41, 47, 39, 32, 35, 39, 27]
+  kstage: installed in 0.7s; device memory free 8.92 GiB
+decode tok/s {'1': 85.8, '4': 136.4, '16': 232.0}; prefill 7560 tokens in 2.41 s ; greedy saved to /home/david/moe-qlora/.claude/worktrees/next-round/probes/kstage/out/lora-hotcold4.json
+== phase p9-ks-gather4 19:44:38Z maxlen 131072 work: decode prefill ks: KSTAGE=gather
+ready in 105s; Model loading took 14.61 GiB;Available KV cache memory: 4.95 GiB;GPU KV cache size: 1,356,595 tokens;
+  mem: Total CPU offloaded parameters: 4.01;Maximum concurrency for 131,072 tokens per request: 10.35x;Actual usage is 15.44 GiB for consumed memory (weights + non-torch), 1.13 GiB for peak activation, and 0.09 GiB for CUDAGraph;
+  kstage: gather: 6 layers, 4.01 GiB of experts staged through 0.67 GiB of device buffers; DMA from never tokens
+  kstage: installed in 0.0s; device memory free 5.02 GiB
+  kstage: registered, mode gather
+  host RAM used: +11234 MiB, 47757 MiB available
+  bench: exit 0, 68s
+  decode c=1: per-stream median 98.9 tok/s, aggregate 99.3 tok/s, 1/1 ok
+  decode c=4: per-stream median 36.7 tok/s, aggregate 141.2 tok/s, 4/4 ok
+  decode c=16: per-stream median 13.1 tok/s, aggregate 192.9 tok/s, 16/16 ok
+  prefill 8192: cold 1.43s (5723 tok/s), warm 0.67s, cached 4176 []
+  prefill 32768: cold 6.61s (4955 tok/s), warm 0.75s, cached 29232 []
+  prefill 98304: cold 23.52s (4179 tok/s), warm 0.76s, cached 96048 []
+  max running/waiting: Running: 16 reqs, Waiting: 0 reqs
+== phase p9-ks-gather4-dma 19:47:32Z maxlen 131072 work: decode prefill ks: KSTAGE=gather KSTAGE_DMA_M=256
+ready in 105s; Model loading took 14.61 GiB;Available KV cache memory: 4.95 GiB;GPU KV cache size: 1,356,595 tokens;
+  mem: Total CPU offloaded parameters: 4.01;Maximum concurrency for 131,072 tokens per request: 10.35x;Actual usage is 15.44 GiB for consumed memory (weights + non-torch), 1.13 GiB for peak activation, and 0.09 GiB for CUDAGraph;
+  kstage: gather: 6 layers, 4.01 GiB of experts staged through 0.67 GiB of device buffers; DMA from 256 tokens
+  kstage: installed in 0.0s; device memory free 5.02 GiB
+  kstage: registered, mode gather
+  host RAM used: +11510 MiB, 47542 MiB available
+  bench: exit 0, 55s
+  decode c=1: per-stream median 98.3 tok/s, aggregate 98.7 tok/s, 1/1 ok
+  decode c=16: per-stream median 13.2 tok/s, aggregate 199.4 tok/s, 16/16 ok
+  prefill 8192: cold 1.19s (6891 tok/s), warm 0.54s, cached 4176 []
+  prefill 32768: cold 5.64s (5805 tok/s), warm 0.63s, cached 29232 []
+  prefill 98304: cold 20.92s (4700 tok/s), warm 0.71s, cached 96048 []
+  max running/waiting: Running: 16 reqs, Waiting: 0 reqs
+== phase p9-ks-gather4-a6 19:50:13Z maxlen 131072 work: agent ks: KSTAGE=gather
+ready in 106s; Model loading took 14.61 GiB;Available KV cache memory: 4.95 GiB;GPU KV cache size: 1,356,595 tokens;
+  mem: Total CPU offloaded parameters: 4.01;Maximum concurrency for 131,072 tokens per request: 10.35x;Actual usage is 15.44 GiB for consumed memory (weights + non-torch), 1.13 GiB for peak activation, and 0.09 GiB for CUDAGraph;
+  kstage: gather: 6 layers, 4.01 GiB of experts staged through 0.67 GiB of device buffers; DMA from never tokens
+  kstage: installed in 0.0s; device memory free 5.02 GiB
+  kstage: registered, mode gather
+  host RAM used: +11296 MiB, 47751 MiB available
+  bench: exit 0, 404s
+  agent x6 to 98304: 126 turns, 0 errors, wall 402s, decode median 15.2 tok/s, late TTFT median 2.63s, preemptions 0, prefix hits/queries 5737824/6515712, external hits 0
+  max running/waiting: Running: 6 reqs, Waiting: 0 reqs
+== phase p9-ks-gather8 19:58:44Z maxlen 131072 work: decode prefill ks: KSTAGE=gather
+ready in 115s; Model loading took 10.66 GiB;Available KV cache memory: 8.89 GiB;GPU KV cache size: 2,437,939 tokens;
+  mem: Total CPU offloaded parameters: 8.03;Maximum concurrency for 131,072 tokens per request: 18.60x;Actual usage is 11.5 GiB for consumed memory (weights + non-torch), 1.13 GiB for peak activation, and 0.09 GiB for CUDAGraph;
+  kstage: gather: 12 layers, 8.03 GiB of experts staged through 0.67 GiB of device buffers; DMA from never tokens
+  kstage: installed in 0.0s; device memory free 8.96 GiB
+  kstage: registered, mode gather
+  host RAM used: +18415 MiB, 40661 MiB available
+  bench: exit 0, 102s
+  decode c=1: per-stream median 65.2 tok/s, aggregate 65.4 tok/s, 1/1 ok
+  decode c=4: per-stream median 21.4 tok/s, aggregate 78.7 tok/s, 4/4 ok
+  decode c=16: per-stream median 7.6 tok/s, aggregate 114.3 tok/s, 16/16 ok
+  prefill 8192: cold 2.09s (3922 tok/s), warm 0.95s, cached 4176 []
+  prefill 32768: cold 9.57s (3425 tok/s), warm 1.04s, cached 29232 []
+  prefill 98304: cold 32.18s (3055 tok/s), warm 0.98s, cached 96048 []
+  max running/waiting: Running: 16 reqs, Waiting: 0 reqs
+== phase p9-ks-gather16 20:02:23Z maxlen 131072 work: decode prefill ks: KSTAGE=gather
+ready in 130s; Model loading took 3.37 GiB;Available KV cache memory: 16.15 GiB;GPU KV cache size: 4,426,956 tokens;
+  mem: Total CPU offloaded parameters: 15.39;Maximum concurrency for 131,072 tokens per request: 33.77x;Actual usage is 4.24 GiB for consumed memory (weights + non-torch), 1.13 GiB for peak activation, and 0.1 GiB for CUDAGraph;
+  kstage: gather: 23 layers, 15.39 GiB of experts staged through 0.67 GiB of device buffers; DMA from never tokens
+  kstage: installed in 0.0s; device memory free 16.21 GiB
+  kstage: registered, mode gather
+  host RAM used: +31255 MiB, 27780 MiB available
+  bench: exit 0, 167s
+  decode c=1: per-stream median 39.1 tok/s, aggregate 39.3 tok/s, 1/1 ok
+  decode c=4: per-stream median 12.0 tok/s, aggregate 44.9 tok/s, 4/4 ok
+  decode c=16: per-stream median 4.3 tok/s, aggregate 65.0 tok/s, 16/16 ok
+  prefill 8192: cold 3.29s (2487 tok/s), warm 1.47s, cached 4176 []
+  prefill 32768: cold 14.92s (2196 tok/s), warm 1.54s, cached 29232 []
+  prefill 98304: cold 47.97s (2049 tok/s), warm 1.41s, cached 96048 []
+  max running/waiting: Running: 16 reqs, Waiting: 0 reqs
+== phase p9-ks-hotcold4 20:07:23Z maxlen 131072 work: decode prefill ks: KSTAGE=hotcold KSTAGE_COLD_GB=4 KSTAGE_PROFILE=/prof/p7-all.json
+ready in 101s; Model loading took 2.34 GiB;Available KV cache memory: 5.74 GiB;GPU KV cache size: 1,572,864 tokens;
+  mem: Maximum concurrency for 131,072 tokens per request: 12.00x;Actual usage is 14.65 GiB for consumed memory (weights + non-torch), 1.13 GiB for peak activation, and 0.09 GiB for CUDAGraph;
+  kstage: hotcold: 23 layers, 765 experts cold (33.3 a layer, 4.06 GiB host pages, 11.48 GiB device), policy global, profile /prof/p7-all.json (all); cold per layer [3, 5, 11, 36, 42, 42, 37, 40, 46, 25, 49, 37, 32, 28, 36, 36, 41, 47, 39, 32, 35, 39, 27]
+  kstage: installed in 0.6s; device memory free 8.95 GiB
+  kstage: registered, mode hotcold
+  host RAM used: +8613 MiB, 50439 MiB available
+  bench: exit 0, 66s
+  decode c=1: per-stream median 109.7 tok/s, aggregate 110.1 tok/s, 1/1 ok
+  decode c=4: per-stream median 45.7 tok/s, aggregate 173.1 tok/s, 4/4 ok
+  decode c=16: per-stream median 16.1 tok/s, aggregate 232.1 tok/s, 16/16 ok
+  prefill 8192: cold 1.52s (5382 tok/s), warm 0.73s, cached 4176 []
+  prefill 32768: cold 6.87s (4771 tok/s), warm 0.79s, cached 29232 []
+  prefill 98304: cold 26.67s (3686 tok/s), warm 0.99s, cached 96048 []
+  max running/waiting: Running: 16 reqs, Waiting: 0 reqs
+== phase p9-ks-hotcold8 20:10:10Z maxlen 131072 work: decode prefill ks: KSTAGE=hotcold KSTAGE_COLD_GB=8 KSTAGE_PROFILE=/prof/p7-all.json
+ready in 100s; Model loading took 2.34 GiB;Available KV cache memory: 9.75 GiB;GPU KV cache size: 2,673,868 tokens;
+  mem: Maximum concurrency for 131,072 tokens per request: 20.40x;Actual usage is 10.64 GiB for consumed memory (weights + non-torch), 1.13 GiB for peak activation, and 0.09 GiB for CUDAGraph;
+  kstage: hotcold: 23 layers, 1530 experts cold (66.5 a layer, 8.08 GiB host pages, 7.46 GiB device), policy global, profile /prof/p7-all.json (all); cold per layer [35, 46, 56, 70, 70, 69, 70, 77, 82, 62, 74, 66, 71, 60, 71, 66, 70, 76, 73, 68, 73, 68, 57]
+  kstage: installed in 0.9s; device memory free 12.96 GiB
+  kstage: registered, mode hotcold
+  host RAM used: +12895 MiB, 46166 MiB available
+  bench: exit 0, 124s
+  decode c=1: per-stream median 59.8 tok/s, aggregate 60.0 tok/s, 1/1 ok
+  decode c=4: per-stream median 20.9 tok/s, aggregate 80.2 tok/s, 4/4 ok
+  decode c=16: per-stream median 7.0 tok/s, aggregate 102.8 tok/s, 16/16 ok
+  prefill 8192: cold 2.74s (2985 tok/s), warm 1.30s, cached 4176 []
+  prefill 32768: cold 12.25s (2675 tok/s), warm 1.30s, cached 29232 []
+  prefill 98304: cold 44.71s (2199 tok/s), warm 1.56s, cached 96048 []
+  max running/waiting: Running: 16 reqs, Waiting: 0 reqs
+== phase p9-pf-a6 20:13:56Z maxlen 131072 work: agent
+ready in 111s; Model loading took 13.26 GiB;Available KV cache memory: 5.61 GiB;GPU KV cache size: 1,536,819 tokens;
+  mem: Total GPU memory saved: 5.0288 GB, Static buffer pool: 0.7184 GB;Maximum concurrency for 131,072 tokens per request: 11.72x;Actual usage is 14.78 GiB for consumed memory (weights + non-torch), 1.13 GiB for peak activation, and 0.1 GiB for CUDAGraph;
+  host RAM used: +12534 MiB, 46457 MiB available
+  bench: exit 0, 661s
+  agent x6 to 98304: 126 turns, 0 errors, wall 660s, decode median 8.7 tok/s, late TTFT median 2.04s, preemptions 0, prefix hits/queries 5737824/6515712, external hits 0
+  max running/waiting: Running: 6 reqs, Waiting: 0 reqs
+== phase p9-ks-gather4-s64 20:26:49Z maxlen 131072 work: decode ks: KSTAGE=gather
+ready in 116s; Model loading took 14.61 GiB;Available KV cache memory: 4.66 GiB;GPU KV cache size: 1,277,952 tokens;
+  mem: Total CPU offloaded parameters: 4.01;Maximum concurrency for 131,072 tokens per request: 9.75x;Actual usage is 15.46 GiB for consumed memory (weights + non-torch), 1.41 GiB for peak activation, and 0.12 GiB for CUDAGraph;
+  kstage: gather: 6 layers, 4.01 GiB of experts staged through 0.67 GiB of device buffers; DMA from never tokens
+  kstage: installed in 0.0s; device memory free 5.02 GiB
+  kstage: registered, mode gather
+  host RAM used: +11353 MiB, 47677 MiB available
+  bench: exit 0, 103s
+  decode c=16: per-stream median 12.9 tok/s, aggregate 191.3 tok/s, 16/16 ok
+  decode c=32: per-stream median 8.4 tok/s, aggregate 245.4 tok/s, 32/32 ok
+  decode c=64: per-stream median 6.5 tok/s, aggregate 356.5 tok/s, 64/64 ok
+  max running/waiting: Running: 64 reqs, Waiting: 0 reqs
+== phase p9-base-s64 20:30:29Z maxlen 131072 work: decode
+ready in 105s; Model loading took 17.88 GiB;Available KV cache memory: 1.4 GiB;GPU KV cache size: 383,385 tokens;
+  mem: Maximum concurrency for 131,072 tokens per request: 2.92x;Actual usage is 18.72 GiB for consumed memory (weights + non-torch), 1.41 GiB for peak activation, and 0.12 GiB for CUDAGraph;
+  host RAM used: +4386 MiB, 54641 MiB available
+  bench: exit 0, 42s
+  decode c=16: per-stream median 48.9 tok/s, aggregate 668.9 tok/s, 16/16 ok
+  decode c=32: per-stream median 38.2 tok/s, aggregate 691.1 tok/s, 32/32 ok
+  decode c=64: per-stream median 37.1 tok/s, aggregate 769.4 tok/s, 64/64 ok
+  max running/waiting: Running: 23 reqs, Waiting: 41 reqs
+== phase p9-ks-gather4-async 20:32:56Z maxlen 131072 work: decode ks: KSTAGE=gather
+ready in 106s; Model loading took 14.61 GiB;Available KV cache memory: 4.95 GiB;GPU KV cache size: 1,356,595 tokens;
+  mem: Total CPU offloaded parameters: 4.01;Maximum concurrency for 131,072 tokens per request: 10.35x;Actual usage is 15.44 GiB for consumed memory (weights + non-torch), 1.13 GiB for peak activation, and 0.09 GiB for CUDAGraph;
+  kstage: gather: 6 layers, 4.01 GiB of experts staged through 0.67 GiB of device buffers; DMA from never tokens
+  kstage: installed in 0.0s; device memory free 5.02 GiB
+  kstage: registered, mode gather
+  host RAM used: +11333 MiB, 47664 MiB available
+  bench: exit 0, 34s
+  decode c=1: per-stream median 97.8 tok/s, aggregate 98.2 tok/s, 1/1 ok
+  decode c=4: per-stream median 36.5 tok/s, aggregate 140.6 tok/s, 4/4 ok
+  decode c=16: per-stream median 13.0 tok/s, aggregate 191.6 tok/s, 16/16 ok
+  max running/waiting: Running: 16 reqs, Waiting: 0 reqs
+== phase p9-off4-async 20:35:17Z maxlen 131072 work: decode
+ready in 105s; Model loading took 13.93 GiB;Available KV cache memory: 5.63 GiB;GPU KV cache size: 1,543,372 tokens;
+  mem: Total CPU offloaded parameters: 4.01;Maximum concurrency for 131,072 tokens per request: 11.78x;Actual usage is 14.76 GiB for consumed memory (weights + non-torch), 1.13 GiB for peak activation, and 0.09 GiB for CUDAGraph;
+  host RAM used: +11437 MiB, 47570 MiB available
+  bench: exit 0, 46s
+  decode c=1: per-stream median 77.0 tok/s, aggregate 77.3 tok/s, 1/1 ok
+  decode c=4: per-stream median 26.8 tok/s, aggregate 96.7 tok/s, 4/4 ok
+  decode c=16: per-stream median 9.5 tok/s, aggregate 138.0 tok/s, 16/16 ok
+  max running/waiting: Running: 16 reqs, Waiting: 0 reqs
+== phase p9-ks-gather4-eval 20:37:49Z ks: KSTAGE=gather
+ready in 110s; Model loading took 14.61 GiB;Available KV cache memory: 4.95 GiB;GPU KV cache size: 565,248 tokens;
+  mem: Total CPU offloaded parameters: 4.01;Maximum concurrency for 16,384 tokens per request: 34.50x;Actual usage is 15.44 GiB for consumed memory (weights + non-torch), 1.13 GiB for peak activation, and 0.09 GiB for CUDAGraph;
+  kstage: gather: 6 layers, 4.01 GiB of experts staged through 0.67 GiB of device buffers; DMA from never tokens
+  kstage: installed in 0.0s; device memory free 5.02 GiB
+  kstage: registered, mode gather
+  host RAM used: +11408 MiB, 47584 MiB available
+  v1-g6q-p9-ks-gather4-eval: exit 0, 97s
+  v2-g6q-p9-ks-gather4-eval: exit 0, 89s
+  alert-g6q-p9-ks-gather4-eval: exit 0, 13s
+  trap3-g6q-p9-ks-gather4-eval: exit 0, 7s
+  max running/waiting: Running: 16 reqs, Waiting: 0 reqs
+== phase p7-off4-eager 20:43:07Z maxlen 131072 work: decode
+ready in 90s; Model loading took 13.93 GiB;Available KV cache memory: 7.03 GiB;GPU KV cache size: 1,926,758 tokens;
+  mem: Total CPU offloaded parameters: 4.01;Maximum concurrency for 131,072 tokens per request: 14.70x;Actual usage is 14.31 GiB for consumed memory (weights + non-torch), 0.18 GiB for peak activation, and 0.0 GiB for CUDAGraph;
+  host RAM used: +11359 MiB, 47512 MiB available
+  bench: exit 0, 58s
+  decode c=1: per-stream median 24.1 tok/s, aggregate 24.2 tok/s, 1/1 ok
+  decode c=4: per-stream median 24.2 tok/s, aggregate 85.2 tok/s, 4/4 ok
+  decode c=16: per-stream median 9.1 tok/s, aggregate 133.3 tok/s, 16/16 ok
+  max running/waiting: Running: 16 reqs, Waiting: 0 reqs
+== phase p7-off4-f16 20:45:37Z maxlen 131072 work: decode agent
+ready in 106s; Model loading took 13.93 GiB;Available KV cache memory: 6.28 GiB;GPU KV cache size: 1,930,503 tokens;
+  mem: Total CPU offloaded parameters: 4.01;Maximum concurrency for 131,072 tokens per request: 14.73x;Actual usage is 14.76 GiB for consumed memory (weights + non-torch), 0.48 GiB for peak activation, and 0.09 GiB for CUDAGraph;
+  host RAM used: +11375 MiB, 47619 MiB available
+  bench: exit 0, 547s
+  decode c=1: per-stream median 76.3 tok/s, aggregate 76.6 tok/s, 1/1 ok
+  decode c=16: per-stream median 9.2 tok/s, aggregate 136.4 tok/s, 16/16 ok
+  agent x4 to 126976: 112 turns, 0 errors, wall 511s, decode median 16.9 tok/s, late TTFT median 3.09s, preemptions 0, prefix hits/queries 6869184/7497728, external hits 0
+  max running/waiting: Running: 16 reqs, Waiting: 0 reqs
+== phase p7-off4-f16-none 20:56:31Z maxlen 131072 work: decode agent
+ready in 105s; Model loading took 13.93 GiB;Available KV cache memory: 6.28 GiB;GPU KV cache size: 2,047,503 tokens;
+  mem: Total CPU offloaded parameters: 4.01;Maximum concurrency for 131,072 tokens per request: 15.62x;Actual usage is 14.76 GiB for consumed memory (weights + non-torch), 0.48 GiB for peak activation, and 0.09 GiB for CUDAGraph;
+  host RAM used: +11548 MiB, 47428 MiB available
+  bench: exit 0, 2511s
+  decode c=1: per-stream median 75.8 tok/s, aggregate 76.1 tok/s, 1/1 ok
+  decode c=16: per-stream median 9.1 tok/s, aggregate 134.9 tok/s, 16/16 ok
+  agent x4 to 126976: 112 turns, 0 errors, wall 2474s, decode median 4.1 tok/s, late TTFT median 33.85s, preemptions 0, prefix hits/queries 0/0, external hits 0
+  max running/waiting: Running: 16 reqs, Waiting: 0 reqs
+== phase p7-kvoff16 21:40:08Z maxlen 131072 work: agent
+ready in 110s; Model loading took 17.88 GiB;Available KV cache memory: 1.69 GiB;GPU KV cache size: 462,028 tokens;
+  mem: Maximum concurrency for 131,072 tokens per request: 3.52x;Actual usage is 18.7 GiB for consumed memory (weights + non-torch), 1.13 GiB for peak activation, and 0.09 GiB for CUDAGraph;
+  host RAM used: +20908 MiB, 37771 MiB available
+  bench: exit 0, 197s
+  agent x4 to 126976: 112 turns, 0 errors, wall 195s, decode median 56.0 tok/s, late TTFT median 2.50s, preemptions 0, prefix hits/queries 4576896/7497728, external hits 2204928
+  max running/waiting: Running: 4 reqs, Waiting: 0 reqs
+== done 21:45:18Z
+profile: performance

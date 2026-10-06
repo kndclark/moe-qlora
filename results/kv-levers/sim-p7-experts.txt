@@ -1,0 +1,74 @@
+23 MoE layers (decoder layers 1..51), top-6, 128 experts, 5.61 MB each; code: 8 requests, 34808 tokens, eval: 120 requests, 10492 tokens
+skew code: median layer's top 16/32/64/96 experts take 0.34/0.52/0.77/0.93 of routings (uniform: 0.12/0.25/0.50/0.75)
+skew eval: median layer's top 16/32/64/96 experts take 0.45/0.63/0.84/0.95 of routings (uniform: 0.12/0.25/0.50/0.75)
+fit: layers policy at 4 GiB, c=1: 202 MB per step over 8.24 ms -> 24.5 GB/s
+
+extra ms per decode step (bytes from RAM / 24.5 GB/s); prefill: GB read per 2,048-token batch, each touched expert once (K2) and as Marlin re-reads it through UVA (now)
+
+2 GiB in RAM = 382 experts (16.6 a layer)
+  layers                scored on code: 0.130 of routings cold; decode +4.1 / 15.2 / 0.0 ms at c=1,4,16; prefill GB/batch 2.14 once, 4.28 Marlin UVA
+  layers                scored on eval: 0.130 of routings cold; decode +4.1 / 13.6 / 33.9 ms at c=1,4,16; prefill GB/batch 2.14 once, 4.29 Marlin UVA
+  static learned on code scored on code: 0.029 of routings cold; decode +0.9 / 3.6 / 0.0 ms at c=1,4,16; prefill GB/batch 2.07 once, 2.18 Marlin UVA
+  static learned on code scored on eval: 0.070 of routings cold; decode +2.2 / 6.7 / 16.9 ms at c=1,4,16; prefill GB/batch 2.07 once, 3.05 Marlin UVA
+  static learned on eval scored on code: 0.077 of routings cold; decode +2.4 / 8.8 / 0.0 ms at c=1,4,16; prefill GB/batch 2.11 once, 3.13 Marlin UVA
+  static learned on eval scored on eval: 0.017 of routings cold; decode +0.5 / 1.8 / 5.7 ms at c=1,4,16; prefill GB/batch 1.99 once, 2.01 Marlin UVA
+  global learned on code scored on code: 0.025 of routings cold; decode +0.8 / 3.0 / 0.0 ms at c=1,4,16; prefill GB/batch 2.07 once, 2.11 Marlin UVA
+  global learned on code scored on eval: 0.071 of routings cold; decode +2.2 / 6.6 / 16.3 ms at c=1,4,16; prefill GB/batch 2.06 once, 3.11 Marlin UVA
+  global learned on eval scored on code: 0.072 of routings cold; decode +2.3 / 8.3 / 0.0 ms at c=1,4,16; prefill GB/batch 2.10 once, 3.03 Marlin UVA
+  global learned on eval scored on eval: 0.013 of routings cold; decode +0.4 / 1.4 / 4.6 ms at c=1,4,16; prefill GB/batch 1.98 once, 1.98 Marlin UVA
+  lru    111 slots a layer, scored on code: 20 MB copied per token (+0.8 ms at the read rate)
+  lru    111 slots a layer, scored on eval: 134 MB copied per token (+5.5 ms at the read rate)
+
+4 GiB in RAM = 765 experts (33.3 a layer)
+  layers                scored on code: 0.260 of routings cold; decode +8.2 / 29.5 / 0.0 ms at c=1,4,16; prefill GB/batch 4.28 once, 8.65 Marlin UVA
+  layers                scored on eval: 0.261 of routings cold; decode +8.2 / 25.5 / 61.2 ms at c=1,4,16; prefill GB/batch 4.26 once, 8.72 Marlin UVA
+  static learned on code scored on code: 0.084 of routings cold; decode +2.7 / 10.3 / 0.0 ms at c=1,4,16; prefill GB/batch 4.21 once, 4.72 Marlin UVA
+  static learned on code scored on eval: 0.165 of routings cold; decode +5.2 / 15.8 / 38.8 ms at c=1,4,16; prefill GB/batch 4.18 once, 6.62 Marlin UVA
+  static learned on eval scored on code: 0.177 of routings cold; decode +5.6 / 20.3 / 0.0 ms at c=1,4,16; prefill GB/batch 4.24 once, 6.77 Marlin UVA
+  static learned on eval scored on eval: 0.053 of routings cold; decode +1.7 / 5.7 / 17.6 ms at c=1,4,16; prefill GB/batch 4.13 once, 4.24 Marlin UVA
+  global learned on code scored on code: 0.078 of routings cold; decode +2.5 / 9.6 / 0.0 ms at c=1,4,16; prefill GB/batch 4.21 once, 4.57 Marlin UVA
+  global learned on code scored on eval: 0.162 of routings cold; decode +5.1 / 15.3 / 36.8 ms at c=1,4,16; prefill GB/batch 4.18 once, 6.60 Marlin UVA
+  global learned on eval scored on code: 0.174 of routings cold; decode +5.5 / 19.8 / 0.0 ms at c=1,4,16; prefill GB/batch 4.24 once, 6.72 Marlin UVA
+  global learned on eval scored on eval: 0.045 of routings cold; decode +1.4 / 4.9 / 15.4 ms at c=1,4,16; prefill GB/batch 4.12 once, 4.18 Marlin UVA
+  lru    94 slots a layer, scored on code: 53 MB copied per token (+2.1 ms at the read rate)
+  lru    94 slots a layer, scored on eval: 139 MB copied per token (+5.7 ms at the read rate)
+
+8 GiB in RAM = 1530 experts (66.5 a layer)
+  layers                scored on code: 0.520 of routings cold; decode +16.4 / 58.0 / 0.0 ms at c=1,4,16; prefill GB/batch 8.55 once, 17.36 Marlin UVA
+  layers                scored on eval: 0.521 of routings cold; decode +16.5 / 49.2 / 114.3 ms at c=1,4,16; prefill GB/batch 8.48 once, 17.57 Marlin UVA
+  static learned on code scored on code: 0.257 of routings cold; decode +8.1 / 31.1 / 0.0 ms at c=1,4,16; prefill GB/batch 8.50 once, 11.12 Marlin UVA
+  static learned on code scored on eval: 0.381 of routings cold; decode +12.1 / 37.4 / 91.7 ms at c=1,4,16; prefill GB/batch 8.44 once, 14.28 Marlin UVA
+  static learned on eval scored on code: 0.414 of routings cold; decode +13.1 / 47.3 / 0.0 ms at c=1,4,16; prefill GB/batch 8.52 once, 14.84 Marlin UVA
+  static learned on eval scored on eval: 0.177 of routings cold; decode +5.6 / 19.1 / 56.6 ms at c=1,4,16; prefill GB/batch 8.42 once, 9.37 Marlin UVA
+  global learned on code scored on code: 0.254 of routings cold; decode +8.0 / 30.8 / 0.0 ms at c=1,4,16; prefill GB/batch 8.50 once, 11.02 Marlin UVA
+  global learned on code scored on eval: 0.377 of routings cold; decode +11.9 / 36.8 / 90.1 ms at c=1,4,16; prefill GB/batch 8.44 once, 14.19 Marlin UVA
+  global learned on eval scored on code: 0.411 of routings cold; decode +13.0 / 46.9 / 0.0 ms at c=1,4,16; prefill GB/batch 8.52 once, 14.78 Marlin UVA
+  global learned on eval scored on eval: 0.173 of routings cold; decode +5.5 / 18.6 / 55.4 ms at c=1,4,16; prefill GB/batch 8.41 once, 9.17 Marlin UVA
+  lru    61 slots a layer, scored on code: 158 MB copied per token (+6.5 ms at the read rate)
+  lru    61 slots a layer, scored on eval: 186 MB copied per token (+7.6 ms at the read rate)
+
+12 GiB in RAM = 2295 experts (99.8 a layer)
+  layers                scored on code: 0.780 of routings cold; decode +24.7 / 86.7 / 0.0 ms at c=1,4,16; prefill GB/batch 12.81 once, 26.09 Marlin UVA
+  layers                scored on eval: 0.780 of routings cold; decode +24.7 / 72.8 / 168.7 ms at c=1,4,16; prefill GB/batch 12.71 once, 26.34 Marlin UVA
+  static learned on code scored on code: 0.523 of routings cold; decode +16.5 / 62.2 / 0.0 ms at c=1,4,16; prefill GB/batch 12.79 once, 19.84 Marlin UVA
+  static learned on code scored on eval: 0.651 of routings cold; decode +20.6 / 63.9 / 155.0 ms at c=1,4,16; prefill GB/batch 12.72 once, 23.18 Marlin UVA
+  static learned on eval scored on code: 0.694 of routings cold; decode +22.0 / 78.6 / 0.0 ms at c=1,4,16; prefill GB/batch 12.80 once, 23.96 Marlin UVA
+  static learned on eval scored on eval: 0.419 of routings cold; decode +13.3 / 44.8 / 123.8 ms at c=1,4,16; prefill GB/batch 12.71 once, 17.49 Marlin UVA
+  global learned on code scored on code: 0.522 of routings cold; decode +16.5 / 62.2 / 0.0 ms at c=1,4,16; prefill GB/batch 12.79 once, 19.82 Marlin UVA
+  global learned on code scored on eval: 0.651 of routings cold; decode +20.6 / 64.0 / 155.3 ms at c=1,4,16; prefill GB/batch 12.72 once, 23.18 Marlin UVA
+  global learned on eval scored on code: 0.690 of routings cold; decode +21.8 / 78.3 / 0.0 ms at c=1,4,16; prefill GB/batch 12.80 once, 23.87 Marlin UVA
+  global learned on eval scored on eval: 0.418 of routings cold; decode +13.2 / 44.7 / 123.8 ms at c=1,4,16; prefill GB/batch 12.71 once, 17.45 Marlin UVA
+  lru    28 slots a layer, scored on code: 343 MB copied per token (+14.0 ms at the read rate)
+  lru    28 slots a layer, scored on eval: 321 MB copied per token (+13.1 ms at the read rate)
+
+16 GiB in RAM = 2944 experts (128.0 a layer)
+  layers                scored on code: 1.000 of routings cold; decode +31.6 / 111.2 / 0.0 ms at c=1,4,16; prefill GB/batch 16.44 once, 33.44 Marlin UVA
+  layers                scored on eval: 1.000 of routings cold; decode +31.6 / 94.1 / 219.2 ms at c=1,4,16; prefill GB/batch 16.35 once, 33.65 Marlin UVA
+  static learned on code scored on code: 1.000 of routings cold; decode +31.6 / 111.2 / 0.0 ms at c=1,4,16; prefill GB/batch 16.44 once, 33.44 Marlin UVA
+  static learned on code scored on eval: 1.000 of routings cold; decode +31.6 / 94.1 / 219.2 ms at c=1,4,16; prefill GB/batch 16.35 once, 33.65 Marlin UVA
+  static learned on eval scored on code: 1.000 of routings cold; decode +31.6 / 111.2 / 0.0 ms at c=1,4,16; prefill GB/batch 16.44 once, 33.44 Marlin UVA
+  static learned on eval scored on eval: 1.000 of routings cold; decode +31.6 / 94.1 / 219.2 ms at c=1,4,16; prefill GB/batch 16.35 once, 33.65 Marlin UVA
+  global learned on code scored on code: 1.000 of routings cold; decode +31.6 / 111.2 / 0.0 ms at c=1,4,16; prefill GB/batch 16.44 once, 33.44 Marlin UVA
+  global learned on code scored on eval: 1.000 of routings cold; decode +31.6 / 94.1 / 219.2 ms at c=1,4,16; prefill GB/batch 16.35 once, 33.65 Marlin UVA
+  global learned on eval scored on code: 1.000 of routings cold; decode +31.6 / 111.2 / 0.0 ms at c=1,4,16; prefill GB/batch 16.44 once, 33.44 Marlin UVA
+  global learned on eval scored on eval: 1.000 of routings cold; decode +31.6 / 94.1 / 219.2 ms at c=1,4,16; prefill GB/batch 16.35 once, 33.65 Marlin UVA

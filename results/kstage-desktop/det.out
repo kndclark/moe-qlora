@@ -1,0 +1,32 @@
+== base-lp 19:33:23Z env: none flags: 
+ready in 125s; Model loading took 17.81 GiB;Available KV cache memory: 0.69 GiB;
+decode tok/s {'1': 202.7, '4': 465.1, '16': 633.0}; prefill 7560 tokens in 1.12 s ; greedy saved to /home/david/kstage-tmp/out/base-lp.json
+== off4-lp 19:35:45Z env: none flags: --cpu-offload-params experts --cpu-offload-gb 4
+ready in 146s; Total CPU offloaded parameters: 4.01;Model loading took 13.86 GiB;Available KV cache memory: 4.63 GiB;
+decode tok/s {'1': 28.1, '4': 37.0, '16': 56.0}; prefill 7560 tokens in 6.08 s ; greedy saved to /home/david/kstage-tmp/out/off4-lp.json
+== pf4-s2-r2 19:40:38Z env: none flags: --offload-backend prefetch --offload-num-in-group 1 --offload-params experts --offload-group-size 4 --offload-prefetch-step 2
+ready in 146s; Model loading took 13.2 GiB;Available KV cache memory: 3.92 GiB;
+  [PrefetchOffloader] Initialized 7 modules. Total GPU memory saved: 5.0288 GB, Static buffer pool: 1.4368 GB (group_size=4, num_in_group=1, prefetch_step=2, mode=cpu)
+decode tok/s {'1': 2.4, '4': 9.3, '16': 37.5}; prefill 7560 tokens in 2.12 s ; greedy saved to /home/david/kstage-tmp/out/pf4-s2-r2.json
+== pf4-s2-r3 19:54:06Z env: none flags: --offload-backend prefetch --offload-num-in-group 1 --offload-params experts --offload-group-size 4 --offload-prefetch-step 2
+ready in 156s; Model loading took 13.2 GiB;Available KV cache memory: 3.92 GiB;
+  [PrefetchOffloader] Initialized 7 modules. Total GPU memory saved: 5.0288 GB, Static buffer pool: 1.4368 GB (group_size=4, num_in_group=1, prefetch_step=2, mode=cpu)
+decode tok/s {'1': 2.4, '4': 9.3, '16': 37.4}; prefill 7560 tokens in 2.12 s ; greedy saved to /home/david/kstage-tmp/out/pf4-s2-r3.json
+== pf4-r2 20:07:44Z env: none flags: --offload-backend prefetch --offload-num-in-group 1 --offload-params experts --offload-group-size 4
+ready in 150s; Model loading took 13.2 GiB;Available KV cache memory: 4.6 GiB;
+  [PrefetchOffloader] Initialized 7 modules. Total GPU memory saved: 5.0288 GB, Static buffer pool: 0.7184 GB (group_size=4, num_in_group=1, prefetch_step=1, mode=cpu)
+decode tok/s {'1': 2.3, '4': 9.0, '16': 37.2}; prefill 7560 tokens in 2.33 s ; greedy saved to /home/david/kstage-tmp/out/pf4-r2.json
+== hotcold4-prof 20:21:29Z env: KSTAGE=hotcold KSTAGE_COLD_GB=4 KSTAGE_PROFILE=/k/p7-all.json flags: 
+ready in 130s; Model loading took 2.27 GiB;Available KV cache memory: 4.73 GiB;
+  kstage: registered, mode hotcold
+  kstage: registered, mode hotcold
+  kstage: model.layers.1.mixer.experts:    304.50 MiB (128, 116, 5376)       torch.int32    dev  expert-major experts.w2_weight
+  kstage: model.layers.1.mixer.experts:    304.50 MiB (128, 168, 3712)       torch.int32    dev  expert-major experts.w13_weight
+  kstage: model.layers.1.mixer.experts:     38.06 MiB (128, 116, 2688)       torch.float8_e4m3fn dev  expert-major fused.qcfg._w2.scale
+  kstage: model.layers.1.mixer.experts:     38.06 MiB (128, 168, 1856)       torch.float8_e4m3fn dev  expert-major fused.qcfg._w1.scale
+  kstage: model.layers.1.mixer.experts:      0.00 MiB (128,)                 torch.float32  dev  expert-major fused.qcfg._w2.alpha_or_gscale
+  kstage: model.layers.1.mixer.experts:      0.00 MiB (128,)                 torch.float32  dev  expert-major fused.qcfg._w1.alpha_or_gscale
+  kstage: hotcold: 23 layers, 765 experts cold (33.3 a layer, 4.06 GiB host pages, 11.48 GiB device), policy global, profile /k/p7-all.json (all); cold per layer [3, 5, 11, 36, 42, 42, 37, 40, 46, 25, 49, 37, 32, 28, 36, 36, 41, 47, 39, 32, 35, 39, 27]
+  kstage: installed in 0.9s; device memory free 9.41 GiB
+decode tok/s {'1': 30.5, '4': 42.8, '16': 67.1}; prefill 7560 tokens in 5.93 s ; greedy saved to /home/david/kstage-tmp/out/hotcold4-prof.json
+det done
