@@ -58,7 +58,19 @@ phase() {  # tag [extra serve flags...]; env NOLORA=1 (no adapter), CAP=1 (capac
     for v in $KS; do envx+=(-e "$v"); done
   fi
   for v in ${ENVS:-}; do envx+=(-e "$v"); done   # extra container env, VAR=value ...
+  if [ "${TRACE:-0}" = 1 ]; then   # torch profiler traces (probes/kstage/trace_drive.py) to trace-TAG/
+    mkdir -p "$J/trace-$tag"; envx+=(-v "$J/trace-$tag":/trace)
+    set -- "$@" --profiler-config.profiler=torch --profiler-config.torch_profiler_dir=/trace \
+      --profiler-config.torch_profiler_with_stack=false --profiler-config.ignore_frontend=true
+  fi
   echo "== phase $tag $(date -u +%H:%M:%SZ)${NOLORA:+ nolora}$( [ "${CAP:-0}" = 1 ] && echo ' cap-only')${MAXLEN:+ maxlen $MAXLEN}${WORK:+ work: $WORK}${KS:+ ks: $KS}"
+  # K6 pins its host pages with cuMemCreate in 2 MiB pieces; after days of uptime the page cache
+  # left 34 MiB of free 2 MiB blocks and p19 died with CUDA_ERROR_OUT_OF_MEMORY at load. Drop the
+  # clean cache and compact first (no-op without passwordless sudo).
+  if sudo -n true 2>/dev/null; then
+    sync; sudo -n sh -c 'echo 3 > /proc/sys/vm/drop_caches; echo 1 > /proc/sys/vm/compact_memory'
+  fi
+  awk '/Normal/{for(i=14;i<=NF;i++)s+=$i*2^(i-5)/256} END{printf "  free in 2 MiB+ blocks: %.1f GiB\n", s/1024}' /proc/buddyinfo
   local ram0=$(free -m | awk '/^Mem:/{print $3}')
   docker run -d --name "$name" --gpus all --ipc=host -p 127.0.0.1:8303:8000 \
     -v /srv/model-cache:/hf:ro -v "$adapter":/adapter:ro -e HF_HOME=/hf -e HF_HUB_OFFLINE=1 "${envx[@]}" \
@@ -83,6 +95,11 @@ phase() {  # tag [extra serve flags...]; env NOLORA=1 (no adapter), CAP=1 (capac
   if [ "${CAP:-0}" = 1 ]; then
     local m=g6q; [ "${NOLORA:-0}" = 1 ] && m=lightning-nvfp4
     echo "  smoke: $(curl -s $B/v1/completions -H 'Content-Type: application/json' -d "{\"model\":\"$m\",\"prompt\":\"2+2=\",\"max_tokens\":4,\"temperature\":0}" | python3 -c 'import json,sys; print(repr(json.load(sys.stdin)["choices"][0]["text"]))' 2>&1)"
+    docker logs "$name" > "$J/serve-$tag.log" 2>&1; docker rm -f "$name" >/dev/null 2>&1; return 0
+  fi
+  if [ "${TRACE:-0}" = 1 ]; then
+    python3 "$here/probes/kstage/trace_drive.py" --base $B --model g6q --conc "${TCONC:-1,4,16}" > "$J/trace-$tag.log" 2>&1
+    echo "  trace: exit $?"; sed 's/^/  /' "$J/trace-$tag.log"; ls "$J/trace-$tag" | sed 's/^/  trace file: /'
     docker logs "$name" > "$J/serve-$tag.log" 2>&1; docker rm -f "$name" >/dev/null 2>&1; return 0
   fi
   if [ -n "${WORK:-}" ]; then
@@ -324,6 +341,12 @@ run() {  # the doc's lever table, row by row
       local k="$KC6 KSTAGE_SLOTS=all KSTAGE_DMA_M=64 KSTAGE_DMA_BUF=1"
       case $1 in *-ahead-*) k="$k KSTAGE_AHEAD=1" ;; esac
       KS="$k" MAXLEN=131072 WORK=agent BARGS="$AGENT8L" phase "$1" "${G92[@]}" ;;
+    # Row O, lever B1: kernel traces of steady decode (1 / 4 / 16 streams), fill-ahead off and on,
+    # so each node it adds to a layer has a GPU time; probes/kstage/trace_ahead.py compares them.
+    p19-trace-base|p19-trace-ahead)
+      local k="$KC6 KSTAGE_SLOTS=all KSTAGE_DMA_M=64 KSTAGE_DMA_BUF=1"
+      case $1 in *-ahead) k="$k KSTAGE_AHEAD=1" ;; esac
+      KS="$k" MAXLEN=131072 TRACE=1 phase "$1" "${G92[@]}" ;;
     *) echo "unknown phase $1"; return 9 ;;
   esac
 }
