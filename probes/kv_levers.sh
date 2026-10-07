@@ -5,7 +5,7 @@
 # flags in the table below, runs v1, v2, alert and trap3 thinking-on, and keeps its log.
 # Outputs go to results/kv-levers/; kv_levers_agree.py compares them with G6q's three runs.
 # usage: kv_levers.sh PHASE...   (or "round4" / "round5" for the doc's rows 2-9 / 10-14,
-#        "round6" / "round8" / "round7" / "round9" / "k6" / "p13" / "p14" / "p20" / "p21" / "p22" / "p23" for the experts-in-RAM program's passes)
+#        "round6" / "round8" / "round7" / "round9" / "k6" / "p13" / "p14" / "p20" / "p21" / "p22" / "p23" / "p24" / "p25" for the experts-in-RAM program's passes)
 # Env per phase: MAXLEN / SEQS (default 16384 / 16); WORK="MODE..." runs probes/offload_bench.py
 # modes (decode prefill agent needle experts) with BARGS instead of the eval, to bench-TAG.json.
 # KS="KSTAGE=... VAR=..." loads the kstage plugin (probes/kstage) with those variables set;
@@ -353,7 +353,12 @@ run() {  # the doc's lever table, row by row
     # (COPY_LIVE=82), lfu, ahead; -rN is the draw, -trace a p19-style trace. p21 (B5): one
     # concurrency a server (-c1/-c4/-c16), since the cumulative stats lines carry no times; the
     # last "kstage: cache:" line of serve-TAG.log counts ahead fills used / evicted unused.
-    p20-*|p21-*)
+    # p24: fuse = KSTAGE_AHEAD_FUSE, the predictor in one launch (ahead_fused_test.py: 8-11 vs
+    # 17-34 us a layer at 1-16 tokens), against live + LFU with and without the unfused ahead.
+    # p25 (B6): where ahead's ~29 us a layer goes at one stream, fused or not (p24): dry =
+    # KSTAGE_AHEAD_DRY, the predictor and flags with no copies; tick = KSTAGE_AHEAD_TICK, the flag
+    # waits timed on the GPU ("ahead waits:" in serve-TAG.log).
+    p20-*|p21-*|p24-*|p25-*)
       local c=1,4,16
       case $1 in *-c16*) c=16 ;; *-c1*) c=1 ;; *-c4*) c=4 ;; esac
       local k="${KC6/KSTAGE_STATS=30/KSTAGE_STATS=1} KSTAGE_SLOTS=all KSTAGE_DMA_M=64 KSTAGE_DMA_BUF=1"
@@ -361,6 +366,9 @@ run() {  # the doc's lever table, row by row
       case $1 in *-live*) k="$k KSTAGE_COPY_LIVE=82" ;; esac
       case $1 in *-lfu*) k="$k KSTAGE_EVICT=lfu" ;; esac
       case $1 in *-ahead*) k="$k KSTAGE_AHEAD=1" ;; esac
+      case $1 in *-fuse*) k="$k KSTAGE_AHEAD_FUSE=1" ;; esac
+      case $1 in *-dry*) k="$k KSTAGE_AHEAD_DRY=1" ;; esac
+      case $1 in *-tick*) k="$k KSTAGE_AHEAD_TICK=1" ;; esac
       case $1 in
         *-trace) KS="${k/KSTAGE_STATS=1/KSTAGE_STATS=30}" MAXLEN=131072 TRACE=1 phase "$1" "${G92[@]}" ;;
         *) KS="$k" MAXLEN=131072 WORK=decode BARGS="--conc $c" phase "$1" "${G92[@]}" ;;
@@ -413,6 +421,12 @@ for p in "$@"; do
     p21) for c in 1 4 16; do for q in live-ahead live-lfu-ahead; do run p21-$q-c$c; done; done ;;
     p22) for q in live-lfu-a8l live-a8l live-lfu-kvoff16-a16l; do run p22-$q; done ;;
     p23) for g in 3 2.5; do run p23-cg$g-lfu-a8l; done ;;
+    p24) for c in 1 4 16; do for q in live-lfu-ahead-fuse live-lfu live-lfu-ahead; do run p24-$q-c$c; done; done ;;
+    p25) for c in 1 4 16; do
+           for q in live-lfu live-lfu-ahead-fuse-dry live-lfu-ahead-fuse-tick live-lfu-ahead-fuse; do
+             run p25-$q-c$c
+           done
+         done ;;
     p18) for q in p18-ks-dma64-b1-ahead p18-ks-dma64-b1-ahead-eval p18-ks-dma64-b1-ahead-k10 \
                   p18-ks-dma64-b1-a8l p18-ks-dma64-b1-ahead-a8l; do run $q; done ;;
     *) run "$p" ;;
