@@ -5,7 +5,7 @@
 # flags in the table below, runs v1, v2, alert and trap3 thinking-on, and keeps its log.
 # Outputs go to results/kv-levers/; kv_levers_agree.py compares them with G6q's three runs.
 # usage: kv_levers.sh PHASE...   (or "round4" / "round5" for the doc's rows 2-9 / 10-14,
-#        "round6" / "round8" / "round7" / "round9" / "k6" / "p13" / "p14" / "p20" / "p21" / "p22" / "p23" / "p24" / "p25" / "p26" / "p27" / "p28" / "p29" / "p30" for the experts-in-RAM program's passes)
+#        "round6" / "round8" / "round7" / "round9" / "k6" / "p13" / "p14" / "p20" / "p21" / "p22" / "p23" / "p24" / "p25" / "p26" / "p27" / "p28" / "p29" / "p30" / "p31" for the experts-in-RAM program's passes)
 # Env per phase: MAXLEN / SEQS (default 16384 / 16); WORK="MODE..." runs probes/offload_bench.py
 # modes (decode prefill agent needle experts) with BARGS instead of the eval, to bench-TAG.json.
 # KS="KSTAGE=... VAR=..." loads the kstage plugin (probes/kstage) with those variables set;
@@ -411,6 +411,26 @@ run() {  # the doc's lever table, row by row
       case $1 in *kvoff16*) o=(--kv-offloading-size 16 --kv-offloading-backend native) ;; esac
       case $1 in *-a16l) w=$AGENT16L ;; esac
       KS="$k" MAXLEN=131072 WORK=agent BARGS="$w" phase "$1" "${G92[@]}" "${o[@]}" ;;
+    # p31: the prefill chunk on the agent loads. To 127k the agents prefill ~1.4M uncached tokens,
+    # and K6 stages its ~4 GiB of cold experts once a chunk of 64+ tokens (row U: 98k 18.0 s at
+    # 2,048 tokens a step, 13.6 s at 8,192), so larger chunks should cut agent wall. Host KV
+    # (-base: no K6, all experts on the card; p13 374 s) gets the same chunk. -bNk = N x 1024
+    # tokens a step; -ahead = K=3 from 8 tokens; -c1 = one stream, p29's unresolved pair again.
+    p31-*)
+      local o=() w=$AGENT8L k="${KC6/KSTAGE_STATS=30/KSTAGE_STATS=1} KSTAGE_SLOTS=all KSTAGE_DMA_M=64"
+      k="$k KSTAGE_DMA_BUF=1 KSTAGE_COPY_LIVE=82 KSTAGE_EVICT=lfu"
+      case $1 in *-base*) k="" ;; esac
+      case $1 in *-ahead*) k="$k KSTAGE_AHEAD=1 KSTAGE_AHEAD_FUSE=1 KSTAGE_AHEAD_K=3 KSTAGE_AHEAD_MIN=8" ;; esac
+      case $1 in
+        *-kvoff8*) o=(--kv-offloading-size 8 --kv-offloading-backend native) ;;
+        *-kvoff16*) o=(--kv-offloading-size 16 --kv-offloading-backend native) ;;
+      esac
+      case $1 in *-b[0-9]*k-*) local b=${1##*-b}; o+=(--max-num-batched-tokens $((${b%%k*} * 1024))) ;; esac
+      case $1 in *-a16l) w=$AGENT16L ;; esac
+      case $1 in
+        *-c1-*) KS="$k" MAXLEN=131072 WORK=decode BARGS="--conc 1" phase "$1" "${G92[@]}" ;;
+        *) KS="$k" MAXLEN=131072 WORK=agent BARGS="$w" phase "$1" "${G92[@]}" "${o[@]}" ;;
+      esac ;;
     *) echo "unknown phase $1"; return 9 ;;
   esac
 }
@@ -461,6 +481,9 @@ for p in "$@"; do
          for q in $a $a-side; do run p30-$q-c8; done
          run p30-$a-side-stale8-eval
          run p30-$a-side-a8l ;;
+    p31) for q in base-kvoff8-a8l base-kvoff8-b8k-a8l live-lfu-a8l live-lfu-b8k-a8l live-lfu-b12k-a8l \
+                  base-kvoff16-a16l base-kvoff16-b8k-a16l live-lfu-kvoff16-b8k-a16l; do run p31-$q; done
+         for r in 1 2 3 4; do for q in live-lfu live-lfu-ahead; do run p31-$q-c1-r$r; done; done ;;
     p27) a=live-lfu-ahead-fuse
          for r in 1 2; do
            for q in live-lfu $a-k1 $a-k2 $a-k3; do run p27-$q-c16-r$r; done
