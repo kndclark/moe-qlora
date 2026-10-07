@@ -1,0 +1,82 @@
+# trace_ahead.py results/kv-levers/trace-p20-live-trace vs trace-p20-live-ahead-trace and trace-p20-live-lfu-trace, --top 8 (2026-10-07)
+##### live vs live-ahead
+== 1377503549601.pt.trace.json.gz vs 8588621392032.pt.trace.json.gz: steps 112 (+0 dropped) vs 99 (+0)
+  step period 5336 -> 6015 us (median 5344 -> 5998): +679 a step, +29.5 a layer
+  GPU busy    5070 -> 5645 us: +575 a step, +25.0 a layer; idle 266 -> 370 us: +4.5 a layer
+      -9.35 us a layer  ( 20.88 ->  11.53)  _lora_shrink_kernel
+      -7.32 us a layer  ( 42.15 ->  34.83)  void marlin::Marlin<1125899906909960l, 562949953487106l, 112589990690996
+      -6.17 us a layer  ( 55.74 ->  49.57)  void marlin_moe_wna16::Marlin<1125899906909960l, 562949953487106l, 11258
+      +5.89 us a layer  (  7.36 ->  13.25)  _copy_rows_live
+      +5.39 us a layer  (  4.07 ->   9.46)  std::enable_if<!(false), void>::type internal::gemvx::kernel<int, int, f
+      +5.37 us a layer  (  8.16 ->  13.53)  _cache_kernel
+      +4.90 us a layer  (  0.00 ->   4.90)  void at::native::sbtopk::gatherTopK<float, unsigned int, 1, false>(at::c
+      -3.87 us a layer  (  8.60 ->   4.74)  void at::native::vectorized_elementwise_kernel<4, at::native::FillFuncto
+  side copies (ce_helper): Memcpy DtoH (Device -> Pinned): 2.00 a step, 2 us, 0.00 MiB a step
+  side copies (ce_helper): Memcpy HtoD (Pinned -> Device): 0.20 a step, 6 us, 0.27 MiB a step
+== 1392155187113.pt.trace.json.gz vs 8604410333403.pt.trace.json.gz: steps 72 (+0 dropped) vs 58 (+0)
+  step period 8372 -> 10334 us (median 8393 -> 10336): +1961 a step, +85.3 a layer
+  GPU busy    8071 -> 9801 us: +1730 a step, +75.2 a layer; idle 301 -> 532 us: +10.1 a layer
+     +43.66 us a layer  ( 13.32 ->  56.98)  _copy_rows_live
+     +17.44 us a layer  ( 19.33 ->  36.77)  void gemmSN_TN_kernel<float, 128, 16, 2, 4, 4, 4, true, cublasGemvTensor
+     -10.64 us a layer  ( 23.33 ->  12.69)  _lora_shrink_kernel
+      +5.49 us a layer  (  9.04 ->  14.53)  _cache_kernel
+      +5.09 us a layer  (  0.00 ->   5.09)  void at::native::sbtopk::gatherTopK<float, unsigned int, 2, false>(at::c
+      -4.89 us a layer  (  9.89 ->   5.00)  void at::native::vectorized_elementwise_kernel<4, at::native::FillFuncto
+      -4.56 us a layer  (151.12 -> 146.55)  void marlin_moe_wna16::Marlin<1125899906909960l, 562949953487106l, 11258
+      -4.02 us a layer  ( 21.96 ->  17.94)  _lora_expand_kernel
+  side copies (ce_helper): Memcpy DtoH (Device -> Pinned): 2.00 a step, 3 us, 0.00 MiB a step
+  side copies (ce_helper): Memcpy HtoD (Pinned -> Device): 57.45 a step, 1695 us, 77.38 MiB a step
+  side copies (ce_helper): Memcpy DtoD (Device -> Device): 0.48 a step, 1 us, 0.14 MiB a step
+== 1408085218175.pt.trace.json.gz vs 8622204975582.pt.trace.json.gz: steps 26 (+0 dropped) vs 28 (+0)
+  step period 22992 -> 21888 us (median 22903 -> 21594): -1104 a step, -48.0 a layer
+  GPU busy    22709 -> 19789 us: -2919 a step, -126.9 a layer; idle 283 -> 2098 us: +78.9 a layer
+    -192.97 us a layer  (448.50 -> 255.53)  _copy_rows_live
+     +22.05 us a layer  ( 21.11 ->  43.16)  void gemmSN_TN_kernel<float, 128, 16, 2, 4, 8, 9, false, cublasGemvTenso
+     +11.87 us a layer  (321.81 -> 333.68)  void marlin_moe_wna16::Marlin<1125899906909960l, 562949953487106l, 11258
+      -8.75 us a layer  ( 20.60 ->  11.85)  _lora_shrink_kernel
+      -6.79 us a layer  ( 45.57 ->  38.78)  void marlin::Marlin<1125899906909960l, 562949953487106l, 112589990690996
+      +5.18 us a layer  (  8.60 ->  13.78)  _cache_kernel
+      +4.71 us a layer  (  0.00 ->   4.71)  void at::native::sbtopk::gatherTopK<float, unsigned int, 2, false>(at::c
+      +3.08 us a layer  (  0.00 ->   3.08)  void at::native::bitonicSortKVInPlace<2, -1, 16, 16, float, long, at::na
+  side copies (ce_helper): Memcpy DtoH (Device -> Pinned): 2.00 a step, 2 us, 0.00 MiB a step
+  side copies (ce_helper): Memcpy HtoD (Pinned -> Device): 281.14 a step, 8356 us, 379.48 MiB a step
+  side copies (ce_helper): Memcpy DtoD (Device -> Device): 3.14 a step, 5 us, 0.93 MiB a step
+##### live vs live-lfu
+== 1377503549601.pt.trace.json.gz vs 8764176571542.pt.trace.json.gz: steps 112 (+0 dropped) vs 111 (+0)
+  step period 5336 -> 5351 us (median 5344 -> 5360): +15 a step, +0.7 a layer
+  GPU busy    5070 -> 5083 us: +13 a step, +0.6 a layer; idle 266 -> 268 us: +0.1 a layer
+      -0.73 us a layer  ( 42.15 ->  41.42)  void marlin::Marlin<1125899906909960l, 562949953487106l, 112589990690996
+      +0.19 us a layer  (  8.16 ->   8.35)  _cache_kernel
+      +0.13 us a layer  (  7.36 ->   7.49)  _copy_rows_live
+      -0.13 us a layer  ( 20.88 ->  20.75)  _lora_shrink_kernel
+      +0.10 us a layer  ( 25.96 ->  26.06)  _lora_expand_kernel
+      -0.10 us a layer  (  4.17 ->   4.07)  void at::native::vectorized_elementwise_kernel<4, at::native::(anonymous
+      +0.07 us a layer  ( 55.74 ->  55.80)  void marlin_moe_wna16::Marlin<1125899906909960l, 562949953487106l, 11258
+      +0.06 us a layer  ( 38.16 ->  38.22)  nvjet_sm120_qqtst_mma_64x32x64_16_32x16x64_tmaAB_bz_TNNN
+  side copies (ce_helper): Memcpy DtoH (Device -> Pinned): 2.00 a step, 2 us, 0.00 MiB a step
+== 1392155187113.pt.trace.json.gz vs 8778657480382.pt.trace.json.gz: steps 72 (+0 dropped) vs 66 (+0)
+  step period 8372 -> 9142 us (median 8393 -> 9075): +770 a step, +33.5 a layer
+  GPU busy    8071 -> 8850 us: +779 a step, +33.9 a layer; idle 301 -> 291 us: -0.4 a layer
+     +41.38 us a layer  ( 13.32 ->  54.70)  _copy_rows_live
+      -1.76 us a layer  (151.12 -> 149.36)  void marlin_moe_wna16::Marlin<1125899906909960l, 562949953487106l, 11258
+      -1.45 us a layer  ( 21.96 ->  20.51)  _lora_expand_kernel
+      -1.32 us a layer  ( 23.33 ->  22.01)  _lora_shrink_kernel
+      -0.96 us a layer  (  9.89 ->   8.93)  void at::native::vectorized_elementwise_kernel<4, at::native::FillFuncto
+      -0.67 us a layer  ( 19.33 ->  18.66)  void gemmSN_TN_kernel<float, 128, 16, 2, 4, 4, 4, true, cublasGemvTensor
+      -0.53 us a layer  (  4.28 ->   3.75)  void vllm::moe::moe_align_block_size_kernel<int>(int const*, int*, int*,
+      -0.37 us a layer  ( 13.30 ->  12.94)  _selective_scan_update_kernel
+  side copies (ce_helper): Memcpy DtoH (Device -> Pinned): 2.00 a step, 2 us, 0.00 MiB a step
+== 1408085218175.pt.trace.json.gz vs 8794937467849.pt.trace.json.gz: steps 26 (+0 dropped) vs 32 (+0)
+  step period 22992 -> 18883 us (median 22903 -> 18824): -4109 a step, -178.7 a layer
+  GPU busy    22709 -> 18574 us: -4134 a step, -179.8 a layer; idle 283 -> 308 us: +1.1 a layer
+    -204.03 us a layer  (448.50 -> 244.46)  _copy_rows_live
+     +15.30 us a layer  (321.81 -> 337.11)  void marlin_moe_wna16::Marlin<1125899906909960l, 562949953487106l, 11258
+      +2.07 us a layer  ( 21.11 ->  23.18)  void gemmSN_TN_kernel<float, 128, 16, 2, 4, 8, 9, false, cublasGemvTenso
+      +2.02 us a layer  ( 19.13 ->  21.15)  _lora_expand_kernel
+      +1.75 us a layer  (  6.55 ->   8.31)  void at::native::vectorized_elementwise_kernel<4, at::native::FillFuncto
+      +1.65 us a layer  ( 20.60 ->  22.25)  _lora_shrink_kernel
+      +0.85 us a layer  (  3.03 ->   3.88)  void at::native::vectorized_elementwise_kernel<4, at::native::(anonymous
+      -0.61 us a layer  ( 46.47 ->  45.86)  _selective_scan_update_kernel
+  side copies (ce_helper): Memcpy DtoH (Device -> Pinned): 2.00 a step, 2 us, 0.00 MiB a step
+
+[exited with code 0]

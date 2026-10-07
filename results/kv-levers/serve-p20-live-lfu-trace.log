@@ -1,0 +1,553 @@
+kstage: registered, mode cache
+WARNING 10-07 15:57:44 [argparse_utils.py:276] With `vllm serve`, you should provide the model as a positional argument or in a config file instead of via the `--model` option. The `--model` option will be removed in a future version.
+WARNING 10-07 15:57:44 [argparse_utils.py:441] Found duplicate keys --gpu-memory-utilization
+(APIServer pid=1) INFO 10-07 15:57:44 [api_utils.py:347] 
+(APIServer pid=1) INFO 10-07 15:57:44 [api_utils.py:347]        █     █     █▄   ▄█
+(APIServer pid=1) INFO 10-07 15:57:44 [api_utils.py:347]  ▄▄ ▄█ █     █     █ ▀▄▀ █  version 0.29.0
+(APIServer pid=1) INFO 10-07 15:57:44 [api_utils.py:347]   █▄█▀ █     █     █     █  model   nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4
+(APIServer pid=1) INFO 10-07 15:57:44 [api_utils.py:347]    ▀▀  ▀▀▀▀▀ ▀▀▀▀▀ ▀     ▀
+(APIServer pid=1) INFO 10-07 15:57:44 [api_utils.py:347] 
+(APIServer pid=1) INFO 10-07 15:57:44 [api_utils.py:286] non-default args: {'model_tag': 'nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4', 'lora_modules': [LoRAModulePath(name='g6q', path='/adapter', base_model_name=None, is_3d_lora_weight=False)], 'model': 'nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4', 'revision': 'bee7596271d1495f6992ae224aefde4410e816b8', 'max_model_len': 131072, 'served_model_name': ['lightning-nvfp4'], 'kv_cache_dtype': 'fp8', 'mamba_cache_mode': 'align', 'enable_lora': True, 'lora_target_modules': ['q_proj', 'k_proj', 'v_proj', 'o_proj', 'in_proj', 'up_proj', 'down_proj'], 'max_num_seqs': 16, 'moe_backend': 'marlin', 'profiler_config': ProfilerConfig(profiler='torch', torch_profiler_dir='/trace', proton_profiler_dir='', proton_context='shadow', proton_data='tree', proton_backend=None, proton_mode=None, proton_hook=None, proton_output_format=None, torch_profiler_with_stack=False, torch_profiler_with_flops=False, torch_profiler_use_gzip=True, torch_profiler_dump_cuda_time_total=True, torch_profiler_record_shapes=False, torch_profiler_with_memory=False, capture_torch_profiler=False, detailed_trace_annotation=False, ignore_frontend=True, delay_iterations=0, max_iterations=0, warmup_iterations=0, active_iterations=5, wait_iterations=0)}
+(APIServer pid=1) INFO 10-07 15:57:44 [arg_utils.py:866] HF_HUB_OFFLINE is True, replace model_id [nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4] to model_path [/hf/hub/models--nvidia--NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4/snapshots/bee7596271d1495f6992ae224aefde4410e816b8]
+(APIServer pid=1) INFO 10-07 15:57:50 [model.py:684] Resolved architecture: NemotronHForCausalLM
+(APIServer pid=1) INFO 10-07 15:57:50 [model.py:2021] Using max model len 131072
+(APIServer pid=1) INFO 10-07 15:57:51 [cache.py:335] Using fp8 data type to store kv cache. It reduces the GPU memory footprint and boosts the performance. Meanwhile, it may cause accuracy drop without a proper scaling factor
+(APIServer pid=1) INFO 10-07 15:57:51 [config.py:676] Updating mamba_ssm_cache_dtype to 'float32' for NemotronH model
+(APIServer pid=1) WARNING 10-07 15:57:51 [modelopt.py:379] Detected ModelOpt fp8 checkpoint (quant_algo=FP8). Please note that the format is experimental and could change.
+(APIServer pid=1) WARNING 10-07 15:57:51 [modelopt.py:1029] Detected ModelOpt NVFP4 checkpoint (quant_algo=NVFP4). Please note that the format is experimental and could change in future.
+(APIServer pid=1) WARNING 10-07 15:57:51 [modelopt.py:1029] Detected ModelOpt NVFP4 checkpoint (quant_algo=W4A16_NVFP4). Please note that the format is experimental and could change in future.
+(APIServer pid=1) WARNING 10-07 15:57:51 [modelopt.py:1711] Detected ModelOpt MXFP8 checkpoint. Please note that the format is experimental and could change in future.
+(APIServer pid=1) INFO 10-07 15:57:51 [kernel.py:369] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+(EngineCore pid=225) kstage: registered, mode cache
+(EngineCore pid=225) INFO 10-07 15:57:58 [core.py:123] Initializing a V1 LLM engine (v0.29.0) with config: model='/hf/hub/models--nvidia--NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4/snapshots/bee7596271d1495f6992ae224aefde4410e816b8', speculative_config=None, tokenizer='/hf/hub/models--nvidia--NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4/snapshots/bee7596271d1495f6992ae224aefde4410e816b8', skip_tokenizer_init=False, tokenizer_mode=auto, revision=bee7596271d1495f6992ae224aefde4410e816b8, tokenizer_revision=bee7596271d1495f6992ae224aefde4410e816b8, trust_remote_code=False, dtype=torch.bfloat16, max_seq_len=131072, download_dir=None, load_format=auto, tensor_parallel_size=1, pipeline_parallel_size=1, data_parallel_size=1, decode_context_parallel_size=1, dcp_comm_backend=ag_rs, disable_custom_all_reduce=False, quantization=modelopt_mixed, quantization_config=None, enforce_eager=False, enable_return_routed_experts=False, kv_cache_dtype=fp8, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser='', reasoning_parser_plugin='', enable_in_reasoning=False), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, per_request_spec_decode_metrics='none', kv_cache_metrics=False, kv_cache_metrics_sample=0.01, cudagraph_metrics=False, enable_layerwise_nvtx_tracing=False, enable_mfu_metrics=False, enable_mm_processor_stats=False, enable_logging_iteration_details=False, jit_monitor_mode='warn', jit_monitor_verbose=False), seed=0, served_model_name=lightning-nvfp4, enable_prefix_caching=True, enable_chunked_prefill=True, pooler_config=None, compilation_config={'mode': <CompilationMode.VLLM_COMPILE: 3>, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'inductor', 'custom_ops': ['none'], 'ir_enable_torch_wrap': True, 'splitting_ops': ['vllm::unified_attention_with_output', 'vllm::unified_mla_attention_with_output', 'vllm::mamba_mixer2', 'vllm::mamba_mixer', 'vllm::short_conv', 'vllm::qwen4_exp_compute_ple_ngram_ids', 'vllm::qwen4_exp_ple_short_conv', 'vllm::qwen4_exp_qsa_with_output', 'vllm::linear_attention', 'vllm::qwen_gdn_attention_core', 'vllm::qwen_gdn_attention_core_fused_norm_packed', 'vllm::gdn_attention_core_xpu', 'vllm::olmo_hybrid_gdn_full_forward', 'vllm::sparse_attn_indexer', 'vllm::rocm_aiter_sparse_attn_indexer', 'vllm::deepseek_v4_attention', 'vllm::hpc_rope_norm_forward', 'vllm::unified_kv_cache_update', 'vllm::unified_mla_kv_cache_update'], 'compile_mm_encoder': False, 'cudagraph_mm_encoder': False, 'encoder_cudagraph_token_budgets': [], 'encoder_cudagraph_max_vision_items_per_batch': 0, 'encoder_cudagraph_max_frames_per_batch': None, 'compile_sizes': [], 'compile_ranges_endpoints': [2048], 'inductor_compile_config': {'enable_auto_functionalized_v2': False, 'combo_kernels': True, 'benchmark_combo_kernel': True}, 'inductor_passes': {}, 'cudagraph_mode': <CUDAGraphMode.FULL_AND_PIECEWISE: (2, 1)>, 'cudagraph_num_of_warmups': 1, 'cudagraph_capture_sizes': [1, 2, 4, 8, 16, 24, 32], 'cudagraph_copy_inputs': False, 'cudagraph_specialize_lora': True, 'use_inductor_graph_partition': False, 'pass_config': {'fuse_norm_quant': False, 'fuse_act_quant': False, 'fuse_attn_quant': False, 'enable_sp': False, 'fuse_gemm_comms': False, 'fuse_allreduce_rms': False, 'enable_qk_norm_rope_fusion': False, 'fuse_rope_kvcache_cat_mla': False, 'fuse_act_padding': False, 'fuse_qk_norm_rope_kvcache': False}, 'max_cudagraph_capture_size': 32, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': False}, 'local_cache_dir': None, 'fast_moe_cold_start': False, 'static_all_moe_layers': []}, kernel_config=KernelConfig(ir_op_priority=IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native']), enable_flashinfer_autotune=True, enable_cutedsl_warmup=True, enable_jit_warmup=True, enable_bf16x3_router_gemm=False, moe_backend='marlin', linear_backend='auto')
+(EngineCore pid=225) INFO 10-07 15:57:58 [parallel_state.py:1775] world_size=1 rank=0 local_rank=0 distributed_init_method=file:///tmp/vllm_dist_ff7e520395e645bd8821dba3e67930ad backend=nccl
+(EngineCore pid=225) INFO 10-07 15:57:58 [parallel_state.py:2119] rank 0 in world size 1 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, EP rank 0, EPLB rank N/A
+(EngineCore pid=225) INFO 10-07 15:57:58 [gpu_worker.py:429] Using V2 Model Runner
+(EngineCore pid=225) INFO 10-07 15:57:58 [model_runner.py:382] Loading model from scratch...
+(EngineCore pid=225) INFO 10-07 15:57:58 [__init__.py:726] Selected FlashInferFP8ScaledMMLinearKernel for ModelOptFp8LinearMethod
+(EngineCore pid=225) INFO 10-07 15:57:58 [deep_gemm.py:186] deep_gemm not found in site-packages, trying vendored vllm.third_party.deep_gemm
+(EngineCore pid=225) INFO 10-07 15:57:58 [deep_gemm.py:213] DeepGEMM PDL enabled on vllm.third_party.deep_gemm.
+(EngineCore pid=225) INFO 10-07 15:57:58 [deep_gemm.py:131] DeepGEMM E8M0 enabled on current platform.
+(EngineCore pid=225) INFO 10-07 15:57:59 [__init__.py:1066] Using MarlinNvFp4LinearKernel for NVFP4 GEMM
+(EngineCore pid=225) INFO 10-07 15:57:59 [nvfp4.py:261] Using 'MARLIN' NvFp4 MoE backend out of potential backends: ['FLASHINFER_TRTLLM', 'FLASHINFER_CUTEDSL', 'FLASHINFER_CUTEDSL_BATCHED', 'FLASHINFER_CUTLASS', 'VLLM_CUTLASS', 'MARLIN', 'HUMMING', 'EMULATION'].
+(EngineCore pid=225) INFO 10-07 15:57:59 [cuda.py:492] Using FLASHINFER attention backend out of potential backends: ['FLASHINFER', 'TRITON_ATTN'].
+(EngineCore pid=225) INFO 10-07 15:57:59 [weight_utils.py:863] Filesystem type for checkpoints: EXT4. Checkpoint size: 20.08 GiB. Available RAM: 55.34 GiB.
+(EngineCore pid=225) INFO 10-07 15:57:59 [weight_utils.py:886] Auto-prefetch is disabled because the filesystem (EXT4) is not a recognized network FS (NFS/Lustre). If you want to force prefetching, start vLLM with --safetensors-load-strategy=prefetch.
+(EngineCore pid=225) Loading safetensors checkpoint shards:   0% Completed | 0/52 [00:00<?, ?it/s]
+(EngineCore pid=225) Loading safetensors checkpoint shards:   2% Completed | 1/52 [00:00<00:09,  5.47it/s]
+(EngineCore pid=225) WARNING 10-07 15:57:59 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:   4% Completed | 2/52 [00:00<00:09,  5.21it/s]
+(EngineCore pid=225) WARNING 10-07 15:57:59 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:   8% Completed | 4/52 [00:00<00:06,  7.39it/s]
+(EngineCore pid=225) WARNING 10-07 15:57:59 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  13% Completed | 7/52 [00:00<00:04, 10.27it/s]
+(EngineCore pid=225) WARNING 10-07 15:58:00 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  17% Completed | 9/52 [00:00<00:04, 10.50it/s]
+(EngineCore pid=225) WARNING 10-07 15:58:00 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  21% Completed | 11/52 [00:01<00:03, 10.64it/s]
+(EngineCore pid=225) WARNING 10-07 15:58:00 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  27% Completed | 14/52 [00:01<00:03, 12.31it/s]
+(EngineCore pid=225) WARNING 10-07 15:58:00 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  31% Completed | 16/52 [00:01<00:03, 11.95it/s]
+(EngineCore pid=225) WARNING 10-07 15:58:00 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  35% Completed | 18/52 [00:01<00:02, 11.66it/s]
+(EngineCore pid=225) WARNING 10-07 15:58:01 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  40% Completed | 21/52 [00:01<00:02, 12.94it/s]
+(EngineCore pid=225) WARNING 10-07 15:58:01 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  44% Completed | 23/52 [00:02<00:02, 12.35it/s]
+(EngineCore pid=225) WARNING 10-07 15:58:01 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  48% Completed | 25/52 [00:02<00:02, 11.96it/s]
+(EngineCore pid=225) WARNING 10-07 15:58:01 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  54% Completed | 28/52 [00:02<00:01, 13.20it/s]
+(EngineCore pid=225) WARNING 10-07 15:58:01 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  58% Completed | 30/52 [00:02<00:01, 12.50it/s]
+(EngineCore pid=225) WARNING 10-07 15:58:01 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  62% Completed | 32/52 [00:02<00:01, 12.05it/s]
+(EngineCore pid=225) WARNING 10-07 15:58:02 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  67% Completed | 35/52 [00:03<00:01, 13.20it/s]
+(EngineCore pid=225) WARNING 10-07 15:58:02 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  71% Completed | 37/52 [00:03<00:01, 12.58it/s]
+(EngineCore pid=225) WARNING 10-07 15:58:02 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  75% Completed | 39/52 [00:03<00:01, 12.08it/s]
+(EngineCore pid=225) WARNING 10-07 15:58:02 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  79% Completed | 41/52 [00:03<00:00, 11.75it/s]
+(EngineCore pid=225) WARNING 10-07 15:58:02 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  85% Completed | 44/52 [00:03<00:00, 12.86it/s]
+(EngineCore pid=225) WARNING 10-07 15:58:03 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  88% Completed | 46/52 [00:03<00:00, 12.32it/s]
+(EngineCore pid=225) WARNING 10-07 15:58:03 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  92% Completed | 48/52 [00:04<00:00, 11.99it/s]
+(EngineCore pid=225) WARNING 10-07 15:58:03 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  96% Completed | 50/52 [00:04<00:00, 11.66it/s]
+(EngineCore pid=225) WARNING 10-07 15:58:03 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards: 100% Completed | 52/52 [00:04<00:00,  9.83it/s]
+(EngineCore pid=225) Loading safetensors checkpoint shards: 100% Completed | 52/52 [00:04<00:00, 11.36it/s]
+(EngineCore pid=225) 
+(EngineCore pid=225) INFO 10-07 15:58:03 [default_loader.py:430] Loading weights took 4.58 seconds
+(EngineCore pid=225) WARNING 10-07 15:58:03 [marlin.py:34] Your GPU does not have native support for FP4 computation but FP4 quantization is being used. Weight-only FP4 compression will be used leveraging the Marlin kernel. This may degrade performance for compute-heavy workloads.
+(EngineCore pid=225) WARNING 10-07 15:58:04 [marlin_utils_fp4.py:354] Your GPU does not have native support for FP4 computation but FP4 quantization is being used. Weight-only FP4 compression will be used leveraging the Marlin kernel. This may degrade performance for compute-heavy workloads.
+(EngineCore pid=225) INFO 10-07 15:58:04 [nvfp4.py:613] Using MoEPrepareAndFinalizeNoDPEPModular
+(EngineCore pid=225) WARNING 10-07 15:58:04 [kv_cache.py:130] Checkpoint does not provide a q scaling factor. Setting it to k_scale. This only matters for FP8 Attention backends (flash-attn or flashinfer).
+(EngineCore pid=225) WARNING 10-07 15:58:04 [kv_cache.py:185] Using uncalibrated q_scale 1.0 and/or prob_scale 1.0 with fp8 attention. This may cause accuracy issues. Please make sure q/prob scaling factors are available in the fp8 checkpoint.
+(EngineCore pid=225) kstage: model.layers.1.mixer.experts:    304.50 MiB (128, 116, 5376)       torch.int32    dev  expert-major experts.w2_weight
+(EngineCore pid=225) kstage: model.layers.1.mixer.experts:    304.50 MiB (128, 168, 3712)       torch.int32    dev  expert-major experts.w13_weight
+(EngineCore pid=225) kstage: model.layers.1.mixer.experts:     38.06 MiB (128, 116, 2688)       torch.float8_e4m3fn dev  expert-major fused.qcfg._w2.scale
+(EngineCore pid=225) kstage: model.layers.1.mixer.experts:     38.06 MiB (128, 168, 1856)       torch.float8_e4m3fn dev  expert-major fused.qcfg._w1.scale
+(EngineCore pid=225) kstage: model.layers.1.mixer.experts:      0.00 MiB (128,)                 torch.float32  dev  expert-major fused.qcfg._w2.alpha_or_gscale
+(EngineCore pid=225) kstage: model.layers.1.mixer.experts:      0.00 MiB (128,)                 torch.float32  dev  expert-major fused.qcfg._w1.alpha_or_gscale
+(EngineCore pid=225) kstage: cache: 23 layers, 765 experts cold (33.3 a layer), 15.38 GiB host pages, 11.48 GiB device, policy global, profile /prof/p7-all.json (all); slots all: pinned/slots per layer ['0/125', '0/123', '0/117', '0/92', '0/86', '0/86', '0/91', '0/88', '0/82', '0/103', '0/79', '0/91', '0/96', '0/100', '0/92', '0/92', '0/87', '0/81', '0/89', '0/96', '0/93', '0/89', '0/101']; evict lfu6; frozen from never tokens; DMA from 64 tokens: 49 staging rows, 1 buffers, 0.27 GiB
+(EngineCore pid=225) kstage: installed in 2.1s; device memory free 8.64 GiB
+(EngineCore pid=225) INFO 10-07 15:58:07 [utils.py:102] MoE model detected. Using fused MoE LoRA implementation.
+(EngineCore pid=225) INFO 10-07 15:58:07 [punica_selector.py:20] Using PunicaWrapperGPU.
+(EngineCore pid=225) INFO 10-07 15:58:07 [model_runner.py:404] Model loading took 2.34 GiB memory and 9.049188 seconds
+(EngineCore pid=225) INFO 10-07 15:58:07 [topk_topp_sampler.py:62] Using FlashInfer for top-p & top-k sampling.
+(EngineCore pid=225) INFO 10-07 15:58:07 [interface.py:918] Setting attention block size to 4176 tokens to ensure that attention page size is >= mamba page size.
+(EngineCore pid=225) INFO 10-07 15:58:07 [interface.py:942] Padding mamba page size by 0.19% to ensure that mamba page size and attention page size are exactly equal.
+(EngineCore pid=225) INFO 10-07 15:58:07 [utils.py:306] Using LBNHC KV cache layout.
+(EngineCore pid=225) INFO 10-07 15:58:12 [backends.py:1094] Using cache directory: /root/.cache/vllm/torch_compile_cache/f1c463f98e/rank_0_0/backbone for vLLM's torch.compile
+(EngineCore pid=225) INFO 10-07 15:58:12 [backends.py:1155] Dynamo bytecode transform time: 3.70 s
+(EngineCore pid=225) /usr/local/lib/python3.12/dist-packages/torch/_inductor/compile_fx.py:321: UserWarning: TensorFloat32 tensor cores for float32 matrix multiplication available but not enabled. Consider setting `torch.set_float32_matmul_precision('high')` for better performance.
+(EngineCore pid=225)   warnings.warn(
+(EngineCore pid=225) INFO 10-07 15:58:16 [backends.py:393] Compiling a graph for compile range (1, 2048) takes 3.88 s
+(EngineCore pid=225) INFO 10-07 15:58:17 [backends.py:920] collected artifacts: 30 entries, 5 artifacts, 5608294 bytes total
+(EngineCore pid=225) INFO 10-07 15:58:18 [decorators.py:719] saved AOT compiled function to /root/.cache/vllm/torch_compile_cache/torch_aot_compile/d406ec481d93313b5c4ae4cf8b1b85e293ed3336cb042db4eecdaaa50494eb0a/rank_0_0/model
+(EngineCore pid=225) INFO 10-07 15:58:18 [monitor.py:53] torch.compile took 9.57 s in total
+(EngineCore pid=225) WARNING 10-07 15:58:18 [utils.py:279] Using default LoRA kernel configs
+(EngineCore pid=225) Skipping cuDNN in bmm_fp8 auto candidates on SM12x: override_shape unavailable (cuDNN backend < 9.23.1); policy=ALL per-shape build is unbounded at serving time.
+(EngineCore pid=225) INFO 10-07 15:58:18 [mamba_mixer2.py:597] Warming up Mamba2 SSD Triton kernels...
+(EngineCore pid=225) kstage: dma: 1 big steps, 765 rows in 23 runs a step
+(EngineCore pid=225) INFO 10-07 15:58:51 [monitor.py:81] Initial profiling/warmup run took 33.60 s
+(EngineCore pid=225) WARNING 10-07 15:58:52 [kv_cache_utils.py:1326] Add 1 padding layers, may waste at most 4.35% KV cache memory
+(EngineCore pid=225) INFO 10-07 15:58:52 [flashinfer.py:910] FlashInfer resolved query dtypes: prefill=torch.bfloat16, decode=torch.bfloat16, decode_backend=xqa, kv_cache_dtype=torch.float8_e4m3fn, arch=sm120
+(EngineCore pid=225) INFO 10-07 15:58:52 [ssu_dispatch.py:310] Using triton Mamba SSU backend.
+(EngineCore pid=225) WARNING 10-07 15:58:56 [mamba_ssm.py:108] Using default Mamba SSU config. Performance might be sub-optimal! Config file not found at /usr/local/lib/python3.12/dist-packages/vllm/model_executor/layers/mamba/ops/configs/selective_state_update/headdim=64,dstate=128,device_name=NVIDIA_GeForce_RTX_5090_Laptop_GPU,cache_dtype=float32.json
+(EngineCore pid=225) Capturing CUDA graphs (PIECEWISE):   0%|          | 0/14 [00:00<?, ?it/s]Capturing CUDA graphs (PIECEWISE):   7%|▋         | 1/14 [00:02<00:34,  2.69s/it]Capturing CUDA graphs (PIECEWISE):  14%|█▍        | 2/14 [00:03<00:17,  1.49s/it]Capturing CUDA graphs (PIECEWISE):  21%|██▏       | 3/14 [00:07<00:29,  2.71s/it]Capturing CUDA graphs (PIECEWISE):  29%|██▊       | 4/14 [00:08<00:21,  2.14s/it]Capturing CUDA graphs (PIECEWISE):  36%|███▌      | 5/14 [00:08<00:12,  1.44s/it]Capturing CUDA graphs (PIECEWISE):  50%|█████     | 7/14 [00:09<00:05,  1.34it/s]Capturing CUDA graphs (PIECEWISE):  64%|██████▍   | 9/14 [00:11<00:04,  1.08it/s]Capturing CUDA graphs (PIECEWISE):  79%|███████▊  | 11/14 [00:11<00:01,  1.65it/s]Capturing CUDA graphs (PIECEWISE):  93%|█████████▎| 13/14 [00:12<00:00,  2.00it/s]Capturing CUDA graphs (PIECEWISE): 100%|██████████| 14/14 [00:13<00:00,  1.59it/s]Capturing CUDA graphs (PIECEWISE): 100%|██████████| 14/14 [00:13<00:00,  1.05it/s]
+(EngineCore pid=225) Capturing CUDA graphs (FULL):   0%|          | 0/2 [00:00<?, ?it/s]Capturing CUDA graphs (FULL): 100%|██████████| 2/2 [00:00<00:00, 13.44it/s]Capturing CUDA graphs (FULL): 100%|██████████| 2/2 [00:00<00:00, 13.43it/s]
+(EngineCore pid=225) INFO 10-07 15:59:06 [model_runner.py:960] Graph capturing finished in 14 secs, took 0.60 GiB
+(EngineCore pid=225) INFO 10-07 15:59:06 [gpu_worker.py:625] Available KV cache memory: 5.44 GiB
+(EngineCore pid=225) INFO 10-07 15:59:06 [gpu_worker.py:640] CUDA graph memory profiling is enabled (default since v0.21.0). The current --gpu-memory-utilization=0.9200 is equivalent to --gpu-memory-utilization=0.8920 without CUDA graph memory profiling. To maintain the same effective KV cache size as before, increase --gpu-memory-utilization to 0.9480. To disable, set VLLM_MEMORY_PROFILER_ESTIMATE_CUDAGRAPHS=0.
+(EngineCore pid=225) WARNING 10-07 15:59:06 [kv_cache_utils.py:1326] Add 1 padding layers, may waste at most 4.35% KV cache memory
+(EngineCore pid=225) INFO 10-07 15:59:06 [kv_cache_utils.py:2032] GPU KV cache size: 1,490,944 tokens, Maximum concurrency for 131,072 tokens per request: 11.38x
+(EngineCore pid=225) INFO 10-07 15:59:06 [kernel_warmup.py:124] JIT kernel warmup starting.
+(EngineCore pid=225) INFO 10-07 15:59:06 [kernel_warmup.py:134] JIT kernel warmup finished in 0.00s.
+(EngineCore pid=225) INFO 10-07 15:59:07 [kernel_warmup.py:309] Using FlashInfer autotune cache file: /root/.cache/vllm/flashinfer_autotune_cache/0.6.18/120f/3be1ec4e172e0bce161194314c4f707755b2909d58e0797625a529a23fe46955/autotune_configs.json
+(EngineCore pid=225) INFO 10-07 15:59:07 [kernel_warmup.py:266] Running FlashInfer autotune with 2048 tokens.
+(EngineCore pid=225) 2026-10-07 15:59:07,234 - INFO - autotuner.py:972 - flashinfer.jit: [Autotuner]: Autotuning process starts ...
+(EngineCore pid=225) [AutoTuner]: Tuning fp8_gemm:   0%|          | 0/16 [00:00<?, ?profile/s]kstage: cache: 368 layer-steps, 0.71 misses and 0.71 copies a layer-step (263 / 263)
+(EngineCore pid=225) [AutoTuner]: Tuning fp8_gemm:  12%|█▎        | 2/16 [00:00<00:00, 16.95profile/s][AutoTuner]: Tuning fp8_gemm:  25%|██▌       | 4/16 [00:00<00:00, 18.30profile/s][AutoTuner]: Tuning fp8_gemm:  38%|███▊      | 6/16 [00:00<00:00, 18.82profile/s][AutoTuner]: Tuning fp8_gemm:  50%|█████     | 8/16 [00:00<00:00, 18.98profile/s][AutoTuner]: Tuning fp8_gemm:  62%|██████▎   | 10/16 [00:00<00:00, 18.02profile/s][AutoTuner]: Tuning fp8_gemm:  75%|███████▌  | 12/16 [00:00<00:00, 16.45profile/s][AutoTuner]: Tuning fp8_gemm:  88%|████████▊ | 14/16 [00:00<00:00, 14.86profile/s][AutoTuner]: Tuning fp8_gemm: 100%|██████████| 16/16 [00:01<00:00, 13.15profile/s][AutoTuner]: Tuning fp8_gemm: 100%|██████████| 16/16 [00:01<00:00, 15.35profile/s]
+(EngineCore pid=225) [AutoTuner]: Tuning fp8_gemm:   0%|          | 0/16 [00:00<?, ?profile/s][AutoTuner]: Tuning fp8_gemm:  12%|█▎        | 2/16 [00:00<00:00, 19.71profile/s][AutoTuner]: Tuning fp8_gemm:  25%|██▌       | 4/16 [00:00<00:00, 19.72profile/s][AutoTuner]: Tuning fp8_gemm:  38%|███▊      | 6/16 [00:00<00:00, 19.73profile/s][AutoTuner]: Tuning fp8_gemm:  50%|█████     | 8/16 [00:00<00:00, 19.67profile/s][AutoTuner]: Tuning fp8_gemm:  62%|██████▎   | 10/16 [00:00<00:00, 19.15profile/s][AutoTuner]: Tuning fp8_gemm:  75%|███████▌  | 12/16 [00:00<00:00, 18.08profile/s][AutoTuner]: Tuning fp8_gemm:  88%|████████▊ | 14/16 [00:00<00:00, 16.80profile/s][AutoTuner]: Tuning fp8_gemm: 100%|██████████| 16/16 [00:00<00:00, 15.52profile/s][AutoTuner]: Tuning fp8_gemm: 100%|██████████| 16/16 [00:00<00:00, 17.30profile/s]
+(EngineCore pid=225) kstage: dma: 2 big steps, 765 rows in 130 runs a step
+(EngineCore pid=225) 2026-10-07 15:59:09,304 - INFO - autotuner.py:995 - flashinfer.jit: [Autotuner]: Autotuning process ends
+(EngineCore pid=225) 2026-10-07 15:59:09,312 - INFO - autotuner.py:2652 - flashinfer.jit: [Autotuner]: Saved 32 configs to /root/.cache/vllm/flashinfer_autotune_cache/0.6.18/120f/3be1ec4e172e0bce161194314c4f707755b2909d58e0797625a529a23fe46955/autotune_configs.json (32 new, 0 from previous config)
+(EngineCore pid=225) Capturing CUDA graphs (PIECEWISE):   0%|          | 0/14 [00:00<?, ?it/s]Capturing CUDA graphs (PIECEWISE):  14%|█▍        | 2/14 [00:00<00:01,  9.51it/s]Capturing CUDA graphs (PIECEWISE):  21%|██▏       | 3/14 [00:00<00:01,  9.67it/s]Capturing CUDA graphs (PIECEWISE):  29%|██▊       | 4/14 [00:00<00:01,  9.05it/s]Capturing CUDA graphs (PIECEWISE):  43%|████▎     | 6/14 [00:00<00:00, 10.63it/s]Capturing CUDA graphs (PIECEWISE):  57%|█████▋    | 8/14 [00:00<00:00, 11.27it/s]Capturing CUDA graphs (PIECEWISE):  71%|███████▏  | 10/14 [00:00<00:00, 11.71it/s]Capturing CUDA graphs (PIECEWISE):  86%|████████▌ | 12/14 [00:01<00:00, 12.04it/s]Capturing CUDA graphs (PIECEWISE): 100%|██████████| 14/14 [00:01<00:00, 12.28it/s]Capturing CUDA graphs (PIECEWISE): 100%|██████████| 14/14 [00:01<00:00, 11.40it/s]
+(EngineCore pid=225) Capturing CUDA graphs (FULL):   0%|          | 0/10 [00:00<?, ?it/s]Capturing CUDA graphs (FULL):  20%|██        | 2/10 [00:00<00:00, 13.60it/s]Capturing CUDA graphs (FULL):  40%|████      | 4/10 [00:00<00:00, 13.62it/s]Capturing CUDA graphs (FULL):  60%|██████    | 6/10 [00:00<00:00, 13.39it/s]Capturing CUDA graphs (FULL):  80%|████████  | 8/10 [00:00<00:00, 13.36it/s]Capturing CUDA graphs (FULL): 100%|██████████| 10/10 [00:00<00:00, 13.11it/s]Capturing CUDA graphs (FULL): 100%|██████████| 10/10 [00:00<00:00, 13.27it/s]
+(EngineCore pid=225) INFO 10-07 15:59:11 [model_runner.py:960] Graph capturing finished in 2 secs, took 0.10 GiB
+(EngineCore pid=225) INFO 10-07 15:59:11 [gpu_worker.py:797] CUDA graph pool memory: 0.1 GiB (actual), 0.66 GiB (estimated), difference: 0.56 GiB (584.7%).
+(EngineCore pid=225) INFO 10-07 15:59:11 [gpu_worker.py:860] Free memory on device (22.87/23.4 GiB) on startup. Desired GPU memory utilization is (0.92, 21.53 GiB). Actual usage is 14.94 GiB for consumed memory (weights + non-torch), 1.14 GiB for peak activation, and 0.1 GiB for CUDAGraph memory. Replace gpu_memory_utilization config with `--kv-cache-memory=5585238488` (5.2 GiB) to fit into requested memory, or `--kv-cache-memory=7027381760` (6.54 GiB) to fully utilize gpu memory. Current kv cache memory in use is 5.44 GiB.
+(EngineCore pid=225) INFO 10-07 15:59:14 [jit_monitor.py:85] Kernel JIT monitor activated; monitored JIT compilations during inference will use mode=warn.
+(EngineCore pid=225) INFO 10-07 15:59:14 [torch_utils.py:277] Reducing Torch threads from 24 to 1 for serving. Set OMP_NUM_THREADS in the external environment to override.
+(EngineCore pid=225) INFO 10-07 15:59:14 [core.py:361] init engine (profile, create kv cache, warmup model) took 66.74 s (compilation: 9.57 s)
+(EngineCore pid=225) INFO 10-07 15:59:15 [kernel.py:369] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+(APIServer pid=1) INFO 10-07 15:59:15 [entry.py:135] Supported tasks: ['generate']
+(APIServer pid=1) WARNING 10-07 15:59:15 [api_router.py:41] Profiler with mode 'torch' is enabled in the API server. This should ONLY be used for local development!
+(APIServer pid=1) INFO 10-07 15:59:15 [serving.py:216] Loaded new LoRA adapter: name 'g6q', path '/adapter'
+(APIServer pid=1) INFO 10-07 15:59:16 [hf.py:547] Detected the chat template content format to be 'string'. You can set `--chat-template-content-format` to override this.
+(APIServer pid=1) WARNING 10-07 15:59:16 [model.py:1759] Default vLLM sampling parameters have been overridden by the model's `generation_config.json`: `{'temperature': 1.0, 'top_p': 0.95}`. If this is not intended, please relaunch vLLM instance with `--generation-config vllm`.
+(APIServer pid=1) INFO 10-07 15:59:16 [entry.py:139] Starting vLLM server on http://0.0.0.0:8000
+(APIServer pid=1) INFO 10-07 15:59:16 [launcher.py:61] Available routes are:
+(APIServer pid=1) INFO 10-07 15:59:16 [launcher.py:70] Route: /openapi.json, Methods: GET, HEAD
+(APIServer pid=1) INFO 10-07 15:59:16 [launcher.py:70] Route: /docs, Methods: GET, HEAD
+(APIServer pid=1) INFO 10-07 15:59:16 [launcher.py:70] Route: /docs/oauth2-redirect, Methods: GET, HEAD
+(APIServer pid=1) INFO 10-07 15:59:16 [launcher.py:70] Route: /redoc, Methods: GET, HEAD
+(APIServer pid=1) INFO 10-07 15:59:16 [launcher.py:70] Route: /load, Methods: GET
+(APIServer pid=1) INFO 10-07 15:59:16 [launcher.py:70] Route: /version, Methods: GET
+(APIServer pid=1) INFO 10-07 15:59:16 [launcher.py:70] Route: /health, Methods: GET
+(APIServer pid=1) INFO 10-07 15:59:16 [launcher.py:70] Route: /metrics, Methods: GET
+(APIServer pid=1) INFO 10-07 15:59:16 [launcher.py:70] Route: /start_profile, Methods: POST
+(APIServer pid=1) INFO 10-07 15:59:16 [launcher.py:70] Route: /stop_profile, Methods: POST
+(APIServer pid=1) INFO 10-07 15:59:16 [launcher.py:70] Route: /tokenize, Methods: POST
+(APIServer pid=1) INFO 10-07 15:59:16 [launcher.py:70] Route: /detokenize, Methods: POST
+(APIServer pid=1) INFO 10-07 15:59:16 [launcher.py:70] Route: /v1/models, Methods: GET
+(APIServer pid=1) INFO 10-07 15:59:16 [launcher.py:70] Route: /ping, Methods: GET
+(APIServer pid=1) INFO 10-07 15:59:16 [launcher.py:70] Route: /ping, Methods: POST
+(APIServer pid=1) INFO 10-07 15:59:16 [launcher.py:70] Route: /invocations, Methods: POST
+(APIServer pid=1) INFO 10-07 15:59:16 [launcher.py:70] Route: /v1/chat/completions, Methods: POST
+(APIServer pid=1) INFO 10-07 15:59:16 [launcher.py:70] Route: /v1/chat/completions/batch, Methods: POST
+(APIServer pid=1) INFO 10-07 15:59:16 [launcher.py:70] Route: /v1/responses, Methods: POST
+(APIServer pid=1) INFO 10-07 15:59:16 [launcher.py:70] Route: /v1/responses/{response_id}, Methods: GET
+(APIServer pid=1) INFO 10-07 15:59:16 [launcher.py:70] Route: /v1/responses/{response_id}/cancel, Methods: POST
+(APIServer pid=1) INFO 10-07 15:59:16 [launcher.py:70] Route: /v1/completions, Methods: POST
+(APIServer pid=1) INFO 10-07 15:59:16 [launcher.py:70] Route: /v1/messages, Methods: POST
+(APIServer pid=1) INFO 10-07 15:59:16 [launcher.py:70] Route: /v1/messages/count_tokens, Methods: POST
+(APIServer pid=1) INFO 10-07 15:59:16 [launcher.py:70] Route: /generative_scoring, Methods: POST
+(APIServer pid=1) INFO 10-07 15:59:16 [launcher.py:70] Route: /scale_elastic_ep, Methods: POST
+(APIServer pid=1) INFO 10-07 15:59:16 [launcher.py:70] Route: /is_scaling_elastic_ep, Methods: POST
+(APIServer pid=1) INFO 10-07 15:59:16 [launcher.py:70] Route: /v1/chat/completions/render, Methods: POST
+(APIServer pid=1) INFO 10-07 15:59:16 [launcher.py:70] Route: /v1/messages/render, Methods: POST
+(APIServer pid=1) INFO 10-07 15:59:16 [launcher.py:70] Route: /v1/completions/render, Methods: POST
+(APIServer pid=1) INFO 10-07 15:59:16 [launcher.py:70] Route: /v1/chat/completions/derender, Methods: POST
+(APIServer pid=1) INFO 10-07 15:59:16 [launcher.py:70] Route: /v1/completions/derender, Methods: POST
+(APIServer pid=1) INFO 10-07 15:59:16 [launcher.py:70] Route: /inference/v1/generate, Methods: POST
+(APIServer pid=1) INFO:     Started server process [1]
+(APIServer pid=1) INFO:     Waiting for application startup.
+(APIServer pid=1) INFO:     Application startup complete.
+(APIServer pid=1) INFO:     172.17.0.1:37154 - "GET /health HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37168 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) WARNING 10-07 15:59:19 [input_processor.py:196] vLLM has deprecated support for supporting different tokenizers for different LoRAs. By default, vLLM uses base model's tokenizer. If you are using a LoRA with its own tokenizer, consider specifying `--tokenizer [lora_path]` to use the LoRA tokenizer.
+(EngineCore pid=225) WARNING 10-07 15:59:20 [jit_monitor.py:141] Triton kernel JIT compilation during inference: _lora_shrink_kernel. This causes a latency spike; consider extending warmup to cover this shape/config.
+(EngineCore pid=225) kstage: dma: 3 big steps, 765 rows in 202 runs a step
+(APIServer pid=1) INFO 10-07 15:59:22 [api_router.py:23] Starting profiler...
+(EngineCore pid=225) INFO 10-07 15:59:22 [wrapper.py:191] Torch profiling enabled. Traces will be saved to: /trace
+USDT:2026-10-07 15:59:22 225:225 SyncActivityProfilerHandler.cpp:52] profiler_start
+(APIServer pid=1) INFO 10-07 15:59:22 [api_router.py:25] Profiler started.
+(APIServer pid=1) INFO:     172.17.0.1:56638 - "POST /start_profile HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-07 15:59:23 [api_router.py:31] Stopping profiler...
+USDT:2026-10-07 15:59:23 225:225 SyncActivityProfilerHandler.cpp:59] profiler_stop
+(APIServer pid=1) INFO 10-07 15:59:26 [loggers.py:310] Engine 000: Avg prompt throughput: 27.0 tokens/s, Avg generation throughput: 48.0 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.1%, Prefix cache hit rate: 0.0%
+(EngineCore pid=225) -------------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+(EngineCore pid=225)                                                    Name    Self CPU %      Self CPU   CPU total %     CPU total  CPU time avg     Self CUDA   Self CUDA %    CUDA total  CUDA time avg    # of Calls  
+(EngineCore pid=225) -------------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+(EngineCore pid=225)                    execute_context_0(0)_generation_1(1)         0.00%       0.000us         0.00%       0.000us       0.000us        1.624s       222.36%        1.624s       4.835ms           336  
+(EngineCore pid=225) void marlin::Marlin<1125899906909960l, 5629499534871...         0.00%       0.000us         0.00%       0.000us       0.000us     106.772ms        14.62%     106.772ms      20.283us          5264  
+(EngineCore pid=225) nvjet_sm120_qqtst_mma_64x32x64_16_32x16x64_tmaAB_bz_...         0.00%       0.000us         0.00%       0.000us       0.000us      98.463ms        13.48%      98.463ms      38.223us          2576  
+(EngineCore pid=225) void marlin_moe_wna16::Marlin<1125899906909960l, 562...         0.00%       0.000us         0.00%       0.000us       0.000us      78.599ms        10.76%      78.599ms      30.512us          2576  
+(EngineCore pid=225)                                     _lora_expand_kernel         0.00%       0.000us         0.00%       0.000us       0.000us      67.142ms         9.19%      67.142ms       7.401us          9072  
+(EngineCore pid=225) void marlin_moe_wna16::Marlin<1125899906909960l, 562...         0.00%       0.000us         0.00%       0.000us       0.000us      65.163ms         8.92%      65.163ms      25.296us          2576  
+(EngineCore pid=225)                                     _lora_shrink_kernel         0.00%       0.000us         0.00%       0.000us       0.000us      53.465ms         7.32%      53.465ms       5.893us          9072  
+(EngineCore pid=225) sm89_xmma_gemm_e4m3bf16_e4m3f32_f32_tn_n_tilesize32x...         0.00%       0.000us         0.00%       0.000us       0.000us      44.133ms         6.04%      44.133ms      17.132us          2576  
+(EngineCore pid=225) std::enable_if<!(false), void>::type internal::gemvx...         0.00%       0.000us         0.00%       0.000us       0.000us      41.349ms         5.66%      41.349ms      30.765us          1344  
+(EngineCore pid=225)                                         _C::marlin_gemm         0.60%       3.386ms         1.03%       5.780ms      51.611us      26.943ms         3.69%      26.943ms     240.559us           112  
+(EngineCore pid=225)                                           _cache_kernel         0.00%       0.000us         0.00%       0.000us       0.000us      21.516ms         2.95%      21.516ms       8.352us          2576  
+(EngineCore pid=225)                                         _copy_rows_live         0.00%       0.000us         0.00%       0.000us       0.000us      19.287ms         2.64%      19.287ms       1.248us         15456  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us      18.211ms         2.49%      18.211ms       2.007us          9072  
+(EngineCore pid=225)                           _selective_scan_update_kernel         0.00%       0.000us         0.00%       0.000us       0.000us      13.172ms         1.80%      13.172ms       5.113us          2576  
+(EngineCore pid=225) std::enable_if<!(false), void>::type internal::gemvx...         0.00%       0.000us         0.00%       0.000us       0.000us      10.536ms         1.44%      10.536ms       4.090us          2576  
+(EngineCore pid=225) void vllm::moe::single_group_topk::detail::single_gr...         0.00%       0.000us         0.00%       0.000us       0.000us       9.688ms         1.33%       9.688ms       3.761us          2576  
+(EngineCore pid=225) kernel_mha(unsigned int, float, float const*, Vec<__...         0.00%       0.000us         0.00%       0.000us       0.000us       9.271ms         1.27%       9.271ms      13.797us           672  
+(EngineCore pid=225) void vllm::moe::moe_align_block_size_kernel<int>(int...         0.00%       0.000us         0.00%       0.000us       0.000us       9.113ms         1.25%       9.113ms       3.538us          2576  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us       6.678ms         0.91%       6.678ms       2.592us          2576  
+(EngineCore pid=225)                            _causal_conv1d_update_kernel         0.00%       0.000us         0.00%       0.000us       0.000us       5.908ms         0.81%       5.908ms       2.293us          2576  
+(EngineCore pid=225) triton_red_fused__to_copy_add_clamp_mean_mul_pow_rec...         0.00%       0.000us         0.00%       0.000us       0.000us       5.645ms         0.77%       5.645ms       2.191us          2576  
+(EngineCore pid=225) triton_red_fused__to_copy_add_clamp_fused_add_rms_no...         0.00%       0.000us         0.00%       0.000us       0.000us       5.277ms         0.72%       5.277ms       2.945us          1792  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us       3.994ms         0.55%       3.994ms       1.426us          2800  
+(EngineCore pid=225) void vllm::moe::moe_sum_vec_kernel<c10::BFloat16, in...         0.00%       0.000us         0.00%       0.000us       0.000us       3.938ms         0.54%       3.938ms       1.529us          2576  
+(EngineCore pid=225)                             triton_poi_fused_pow_relu_0         0.00%       0.000us         0.00%       0.000us       0.000us       3.769ms         0.52%       3.769ms       1.463us          2576  
+(EngineCore pid=225) triton_red_fused__to_copy_fused_add_rms_norm_moe_for...         0.00%       0.000us         0.00%       0.000us       0.000us       3.318ms         0.45%       3.318ms       1.852us          1792  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us       3.302ms         0.45%       3.302ms       1.282us          2576  
+(EngineCore pid=225) void vllm::moe::count_and_sort_expert_tokens_kernel<...         0.00%       0.000us         0.00%       0.000us       0.000us       2.994ms         0.41%       2.994ms       1.162us          2576  
+(EngineCore pid=225) void vllm::reshape_and_cache_flash_kernel<__nv_bfloa...         0.00%       0.000us         0.00%       0.000us       0.000us       2.213ms         0.30%       2.213ms       3.292us           672  
+(EngineCore pid=225) triton_red_fused__to_copy_add_clamp_fused_add_rms_no...         0.00%       0.000us         0.00%       0.000us       0.000us       1.957ms         0.27%       1.957ms       2.912us           672  
+(EngineCore pid=225)                                        Memset (Unknown)         0.00%       0.000us         0.00%       0.000us       0.000us       1.823ms         0.25%       1.823ms       0.708us          2576  
+(EngineCore pid=225)                                             aten::copy_         0.74%       4.154ms         1.89%      10.551ms       2.546us       1.589ms         0.22%       1.589ms       0.383us          4144  
+(EngineCore pid=225)          triton_red_fused__to_copy_fused_add_rms_norm_0         0.00%       0.000us         0.00%       0.000us       0.000us       1.221ms         0.17%       1.221ms       1.816us           672  
+(EngineCore pid=225)                                             aten::index         0.55%       3.086ms         1.23%       6.876ms      15.347us       1.200ms         0.16%       1.200ms       2.680us           448  
+(EngineCore pid=225)                                            aten::gather         0.53%       2.953ms         0.85%       4.755ms       8.491us       1.039ms         0.14%       1.039ms       1.854us           560  
+(EngineCore pid=225)              triton_red_fused_fused_add_rms_norm_view_1         0.00%       0.000us         0.00%       0.000us       0.000us       1.016ms         0.14%       1.016ms       1.512us           672  
+(EngineCore pid=225)                _combine_sampled_and_draft_tokens_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     911.365us         0.12%     911.365us       8.137us           112  
+(EngineCore pid=225)                                   _gumbel_sample_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     812.702us         0.11%     812.702us       7.256us           112  
+(EngineCore pid=225) void at::native::_scatter_gather_elementwise_kernel<...         0.00%       0.000us         0.00%       0.000us       0.000us     804.997us         0.11%     804.997us       1.797us           448  
+(EngineCore pid=225)                                        cuLaunchKernelEx         0.61%       3.396ms         0.61%       3.396ms       2.756us     787.202us         0.11%     787.202us       0.639us          1232  
+(EngineCore pid=225) void at::native::index_elementwise_kernel<128, 4, at...         0.00%       0.000us         0.00%       0.000us       0.000us     667.039us         0.09%     667.039us       5.956us           112  
+(EngineCore pid=225)                                      aten::floor_divide         0.22%       1.251ms         0.55%       3.085ms       6.887us     607.714us         0.08%     607.714us       1.357us           448  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us     607.714us         0.08%     607.714us       1.357us           448  
+(EngineCore pid=225)                          Memcpy DtoD (Device -> Device)         0.00%       0.000us         0.00%       0.000us       0.000us     573.128us         0.08%     573.128us       1.023us           560  
+(EngineCore pid=225) void at::native::unrolled_elementwise_kernel<at::nat...         0.00%       0.000us         0.00%       0.000us       0.000us     572.412us         0.08%     572.412us       1.278us           448  
+(EngineCore pid=225)                                   cudaStreamIsCapturing         0.05%     268.511us         0.05%     268.511us       0.218us     528.162us         0.07%     528.162us       0.429us          1232  
+(EngineCore pid=225)                                            aten::clamp_         0.23%       1.307ms         0.44%       2.481ms       5.539us     517.863us         0.07%     517.863us       1.156us           448  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us     517.863us         0.07%     517.863us       1.156us           448  
+(EngineCore pid=225)                                               aten::add         0.27%       1.516ms         0.45%       2.525ms       5.636us     504.668us         0.07%     504.668us       1.126us           448  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us     504.668us         0.07%     504.668us       1.126us           448  
+(EngineCore pid=225)                                               aten::sub         0.53%       2.953ms         0.81%       4.530ms       3.111us     477.021us         0.07%     477.021us       0.328us          1456  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us     477.021us         0.07%     477.021us       1.065us           448  
+(EngineCore pid=225)                                            aten::arange         0.51%       2.869ms         1.87%      10.493ms       9.369us     458.203us         0.06%     916.406us       0.818us          1120  
+(EngineCore pid=225) void (anonymous namespace)::elementwise_kernel_with_...         0.00%       0.000us         0.00%       0.000us       0.000us     458.203us         0.06%     458.203us       0.818us           560  
+(EngineCore pid=225)                             _gather_block_tables_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     380.291us         0.05%     380.291us       3.395us           112  
+(EngineCore pid=225) triton_red_fused__to_copy_clamp_embedding_mul_recipr...         0.00%       0.000us         0.00%       0.000us       0.000us     378.535us         0.05%     378.535us       3.380us           112  
+(EngineCore pid=225)                                     _post_update_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     378.144us         0.05%     378.144us       3.376us           112  
+(EngineCore pid=225)                                            aten::argmax         0.14%     771.772us         0.20%       1.116ms       9.965us     356.197us         0.05%     356.197us       3.180us           112  
+(EngineCore pid=225) void at::native::reduce_kernel<512, 1, at::native::R...         0.00%       0.000us         0.00%       0.000us       0.000us     356.197us         0.05%     356.197us       3.180us           112  
+(EngineCore pid=225)                                             aten::fill_         0.36%       2.022ms         0.79%       4.401ms       3.929us     346.497us         0.05%     347.937us       0.311us          1120  
+(EngineCore pid=225) void at::native::index_elementwise_kernel<128, 4, at...         0.00%       0.000us         0.00%       0.000us       0.000us     282.594us         0.04%     282.594us       2.523us           112  
+(EngineCore pid=225)                          Memcpy DtoH (Device -> Pinned)         0.00%       0.000us         0.00%       0.000us       0.000us     272.829us         0.04%     272.829us       1.218us           224  
+(EngineCore pid=225)                    _get_num_sampled_and_rejected_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     266.052us         0.04%     266.052us       2.375us           112  
+(EngineCore pid=225)      triton_red_fused_add_fused_add_rms_norm_mul_view_2         0.00%       0.000us         0.00%       0.000us       0.000us     262.911us         0.04%     262.911us       2.347us           112  
+(EngineCore pid=225) void at::native::index_elementwise_kernel<128, 4, at...         0.00%       0.000us         0.00%       0.000us       0.000us     250.820us         0.03%     250.820us       2.239us           112  
+(EngineCore pid=225)                           _compute_slot_mappings_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     243.010us         0.03%     243.010us       2.170us           112  
+(EngineCore pid=225)                                         cudaGraphLaunch        10.98%      61.474ms        11.20%      62.687ms     559.709us     242.081us         0.03%     242.081us       2.161us           112  
+(EngineCore pid=225) void at::native::_scatter_gather_elementwise_kernel<...         0.00%       0.000us         0.00%       0.000us       0.000us     233.504us         0.03%     233.504us       2.085us           112  
+(EngineCore pid=225)     triton_red_fused__to_copy_fused_add_rms_norm_view_1         0.00%       0.000us         0.00%       0.000us       0.000us     195.131us         0.03%     195.131us       1.742us           112  
+(EngineCore pid=225)                                           memcpy32_post         0.00%       0.000us         0.00%       0.000us       0.000us     185.728us         0.03%     185.728us       1.658us           112  
+(EngineCore pid=225)                     preprocess_mamba_align_fused_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     177.314us         0.02%     177.314us       1.583us           112  
+(EngineCore pid=225)                          Memcpy HtoD (Pinned -> Device)         0.00%       0.000us         0.00%       0.000us       0.000us     170.687us         0.02%     170.687us       0.762us           224  
+(EngineCore pid=225)                        precopy_mamba_align_fused_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     168.160us         0.02%     168.160us       1.501us           112  
+(EngineCore pid=225)                          postprocess_mamba_fused_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     147.714us         0.02%     147.714us       1.319us           112  
+(EngineCore pid=225)                            _prepare_pos_seq_lens_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     121.085us         0.02%     121.085us       1.081us           112  
+(EngineCore pid=225)                            _scatter_num_accepted_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     111.779us         0.02%     111.779us       0.998us           112  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us      99.361us         0.01%      99.361us       0.887us           112  
+(EngineCore pid=225)                                cudaEventRecordWithFlags         0.10%     575.719us         0.10%     575.719us       0.857us      31.840us         0.00%      31.840us       0.047us           672  
+(EngineCore pid=225)                                    cudaEventSynchronize        55.68%     311.670ms        55.68%     311.670ms       2.783ms       9.376us         0.00%       9.376us       0.084us           112  
+(EngineCore pid=225)                                     cudaStreamWaitEvent         0.02%      88.868us         0.02%      88.868us       0.793us       8.928us         0.00%       8.928us       0.080us           112  
+(EngineCore pid=225)                                 Activity Buffer Request         0.44%       2.448ms         0.47%       2.613ms     326.573us       7.296us         0.00%     262.913us      32.864us             8  
+(EngineCore pid=225)                                            Buffer Flush         0.39%       2.184ms         0.39%       2.193ms     313.243us       6.240us         0.00%       6.240us       0.891us             7  
+(EngineCore pid=225)                    execute_context_0(0)_generation_1(1)        15.58%      87.191ms        39.06%     218.651ms       1.952ms       0.000us         0.00%       5.068ms      45.250us           112  
+(EngineCore pid=225)                                             aten::slice         1.18%       6.618ms         1.48%       8.267ms       1.054us       0.000us         0.00%       0.000us       0.000us          7840  
+(EngineCore pid=225)                                        aten::as_strided         0.56%       3.125ms         0.56%       3.125ms       0.243us       0.000us         0.00%       0.000us       0.000us         12880  
+(EngineCore pid=225)                                        cudaLaunchKernel         2.54%      14.201ms         2.54%      14.201ms       3.337us       0.000us         0.00%       0.000us       0.000us          4256  
+(EngineCore pid=225)                                        aten::lift_fresh         0.01%      59.486us         0.01%      59.486us       0.059us       0.000us         0.00%       0.000us       0.000us          1008  
+(EngineCore pid=225)                                        aten::empty_like         0.19%       1.044ms         0.31%       1.713ms       7.646us       0.000us         0.00%       0.000us       0.000us           224  
+(EngineCore pid=225)                                     aten::empty_strided         0.47%       2.657ms         0.51%       2.864ms       1.218us       0.000us         0.00%       0.000us       0.000us          2352  
+(EngineCore pid=225)                                        aten::pin_memory         0.06%     356.374us         0.48%       2.696ms      12.036us       0.000us         0.00%       0.000us       0.000us           224  
+(EngineCore pid=225)                                         aten::is_pinned         0.07%     365.802us         0.13%     718.791us       3.209us       0.000us         0.00%       0.000us       0.000us           224  
+(EngineCore pid=225)                                cudaPointerGetAttributes         0.06%     352.989us         0.06%     352.989us       1.576us       0.000us         0.00%       0.000us       0.000us           224  
+(EngineCore pid=225)                                       aten::_pin_memory         0.15%     829.212us         0.29%       1.621ms       7.236us       0.000us         0.00%       0.000us       0.000us           224  
+(EngineCore pid=225)                                          cudaEventQuery         0.10%     541.168us         0.10%     541.168us       0.607us       0.000us         0.00%       0.000us       0.000us           892  
+(EngineCore pid=225)                                              aten::set_         0.03%     156.160us         0.03%     156.160us       0.697us       0.000us         0.00%       0.000us       0.000us           224  
+(EngineCore pid=225)                                         cudaMemcpyAsync         0.92%       5.136ms         0.92%       5.136ms       5.095us       0.000us         0.00%       0.000us       0.000us          1008  
+(EngineCore pid=225)                                             aten::empty         0.78%       4.357ms         0.78%       4.357ms       1.441us       0.000us         0.00%       0.000us       0.000us          3024  
+(EngineCore pid=225)                                           aten::resize_         0.14%     778.238us         0.14%     778.238us       1.390us       0.000us         0.00%       0.000us       0.000us           560  
+(EngineCore pid=225)                                             aten::zeros         0.07%     400.286us         0.24%       1.339ms       5.975us       0.000us         0.00%      96.735us       0.432us           224  
+(EngineCore pid=225)                                             aten::zero_         0.03%     158.886us         0.12%     698.534us       3.118us       0.000us         0.00%      96.735us       0.432us           224  
+(EngineCore pid=225) -------------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+(EngineCore pid=225) Self CPU time total: 559.721ms
+(EngineCore pid=225) Self CUDA time total: 730.520ms
+(EngineCore pid=225) 
+(EngineCore pid=225) INFO 10-07 15:59:31 [wrapper.py:80] Profiler stopped successfully.
+(APIServer pid=1) INFO 10-07 15:59:31 [api_router.py:33] Profiler stopped.
+(APIServer pid=1) INFO:     172.17.0.1:56640 - "POST /stop_profile HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:51502 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:51512 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:51522 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:51530 - "POST /v1/completions HTTP/1.1" 200 OK
+(EngineCore pid=225) WARNING 10-07 15:59:34 [jit_monitor.py:141] Triton kernel JIT compilation during inference: _causal_conv1d_fwd_kernel. This causes a latency spike; consider extending warmup to cover this shape/config.
+(APIServer pid=1) INFO 10-07 15:59:36 [loggers.py:310] Engine 000: Avg prompt throughput: 126.0 tokens/s, Avg generation throughput: 154.0 tokens/s, Running: 4 reqs, Waiting: 0 reqs, GPU KV cache usage: 4.4%, Prefix cache hit rate: 0.0%
+(EngineCore pid=225) kstage: cache: 34619 layer-steps, 0.11 misses and 0.11 copies a layer-step (3883 / 3883)
+(APIServer pid=1) INFO 10-07 15:59:37 [api_router.py:23] Starting profiler...
+(EngineCore pid=225) /usr/local/lib/python3.12/dist-packages/torch/profiler/profiler.py:300: UserWarning: Warning: Profiler clears events at the end of each cycle. Only events from the current cycle will be reported. To keep events across cycles, set acc_events=True.
+(EngineCore pid=225)   _warn_once(
+USDT:2026-10-07 15:59:37 225:225 SyncActivityProfilerHandler.cpp:52] profiler_start
+(APIServer pid=1) INFO 10-07 15:59:37 [api_router.py:25] Profiler started.
+(APIServer pid=1) INFO:     172.17.0.1:51534 - "POST /start_profile HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-07 15:59:38 [api_router.py:31] Stopping profiler...
+USDT:2026-10-07 15:59:38 225:225 SyncActivityProfilerHandler.cpp:59] profiler_stop
+(EngineCore pid=225) -------------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+(EngineCore pid=225)                                                    Name    Self CPU %      Self CPU   CPU total %     CPU total  CPU time avg     Self CUDA   Self CUDA %    CUDA total  CUDA time avg    # of Calls  
+(EngineCore pid=225) -------------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+(EngineCore pid=225)                    execute_context_0(0)_generation_4(4)         0.00%       0.000us         0.00%       0.000us       0.000us        1.704s       249.17%        1.704s       8.475ms           201  
+(EngineCore pid=225) void marlin_moe_wna16::Marlin<1125899906909960l, 562...         0.00%       0.000us         0.00%       0.000us       0.000us     116.613ms        17.06%     116.613ms      75.673us          1541  
+(EngineCore pid=225) void marlin_moe_wna16::Marlin<1125899906909960l, 562...         0.00%       0.000us         0.00%       0.000us       0.000us     113.384ms        16.58%     113.384ms      73.578us          1541  
+(EngineCore pid=225)                                         _copy_rows_live         0.00%       0.000us         0.00%       0.000us       0.000us      83.465ms        12.21%      83.465ms       9.027us          9246  
+(EngineCore pid=225) void marlin::Marlin<1125899906909960l, 5629499534871...         0.00%       0.000us         0.00%       0.000us       0.000us      60.178ms         8.80%      60.178ms      19.110us          3149  
+(EngineCore pid=225) nvjet_sm120_qqtst_mma_64x32x64_16_32x16x64_tmaAB_bz_...         0.00%       0.000us         0.00%       0.000us       0.000us      57.782ms         8.45%      57.782ms      37.497us          1541  
+(EngineCore pid=225)                                     _lora_shrink_kernel         0.00%       0.000us         0.00%       0.000us       0.000us      33.887ms         4.96%      33.887ms       6.244us          5427  
+(EngineCore pid=225)                                     _lora_expand_kernel         0.00%       0.000us         0.00%       0.000us       0.000us      31.541ms         4.61%      31.541ms       5.812us          5427  
+(EngineCore pid=225) void gemmSN_TN_kernel<float, 128, 16, 2, 4, 4, 4, tr...         0.00%       0.000us         0.00%       0.000us       0.000us      28.711ms         4.20%      28.711ms      18.631us          1541  
+(EngineCore pid=225) void cutlass::Kernel2<cutlass_80_wmma_tensorop_bf16_...         0.00%       0.000us         0.00%       0.000us       0.000us      27.024ms         3.95%      27.024ms      33.611us           804  
+(EngineCore pid=225) sm89_xmma_gemm_e4m3bf16_e4m3f32_f32_tn_n_tilesize32x...         0.00%       0.000us         0.00%       0.000us       0.000us      26.704ms         3.91%      26.704ms      17.329us          1541  
+(EngineCore pid=225)                           _selective_scan_update_kernel         0.00%       0.000us         0.00%       0.000us       0.000us      19.907ms         2.91%      19.907ms      12.918us          1541  
+(EngineCore pid=225)                                         _C::marlin_gemm         0.26%       1.506ms         0.51%       2.961ms      44.191us      16.187ms         2.37%      16.187ms     241.595us            67  
+(EngineCore pid=225)                                           _cache_kernel         0.00%       0.000us         0.00%       0.000us       0.000us      13.870ms         2.03%      13.870ms       9.001us          1541  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us      10.600ms         1.55%      10.600ms       1.953us          5427  
+(EngineCore pid=225) void vllm::moe::moe_align_block_size_kernel<int>(int...         0.00%       0.000us         0.00%       0.000us       0.000us       5.775ms         0.84%       5.775ms       3.747us          1541  
+(EngineCore pid=225) void vllm::moe::single_group_topk::detail::single_gr...         0.00%       0.000us         0.00%       0.000us       0.000us       5.271ms         0.77%       5.271ms       3.421us          1541  
+(EngineCore pid=225) kernel_mha(unsigned int, float, float const*, Vec<__...         0.00%       0.000us         0.00%       0.000us       0.000us       4.214ms         0.62%       4.214ms      10.484us           402  
+(EngineCore pid=225) triton_red_fused__to_copy_add_clamp_fused_add_rms_no...         0.00%       0.000us         0.00%       0.000us       0.000us       4.030ms         0.59%       4.030ms       3.760us          1072  
+(EngineCore pid=225)                            _causal_conv1d_update_kernel         0.00%       0.000us         0.00%       0.000us       0.000us       3.779ms         0.55%       3.779ms       2.452us          1541  
+(EngineCore pid=225) triton_red_fused__to_copy_add_clamp_mean_mul_pow_rec...         0.00%       0.000us         0.00%       0.000us       0.000us       3.507ms         0.51%       3.507ms       2.276us          1541  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us       3.257ms         0.48%       3.257ms       2.114us          1541  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us       3.092ms         0.45%       3.092ms       1.846us          1675  
+(EngineCore pid=225)                             triton_poi_fused_pow_relu_0         0.00%       0.000us         0.00%       0.000us       0.000us       2.757ms         0.40%       2.757ms       1.789us          1541  
+(EngineCore pid=225) triton_red_fused__to_copy_fused_add_rms_norm_moe_for...         0.00%       0.000us         0.00%       0.000us       0.000us       2.649ms         0.39%       2.649ms       2.471us          1072  
+(EngineCore pid=225) void vllm::moe::moe_sum_vec_kernel<c10::BFloat16, in...         0.00%       0.000us         0.00%       0.000us       0.000us       2.515ms         0.37%       2.515ms       1.632us          1541  
+(EngineCore pid=225) void vllm::moe::count_and_sort_expert_tokens_kernel<...         0.00%       0.000us         0.00%       0.000us       0.000us       2.335ms         0.34%       2.335ms       1.515us          1541  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us       1.916ms         0.28%       1.916ms       1.243us          1541  
+(EngineCore pid=225)                                   _gumbel_sample_kernel         0.00%       0.000us         0.00%       0.000us       0.000us       1.833ms         0.27%       1.833ms      27.352us            67  
+(EngineCore pid=225) triton_red_fused__to_copy_add_clamp_fused_add_rms_no...         0.00%       0.000us         0.00%       0.000us       0.000us       1.558ms         0.23%       1.558ms       3.875us           402  
+(EngineCore pid=225) void vllm::reshape_and_cache_flash_kernel<__nv_bfloa...         0.00%       0.000us         0.00%       0.000us       0.000us       1.383ms         0.20%       1.383ms       3.439us           402  
+(EngineCore pid=225)                                        Memset (Unknown)         0.00%       0.000us         0.00%       0.000us       0.000us       1.127ms         0.16%       1.127ms       0.731us          1541  
+(EngineCore pid=225)                                             aten::copy_         0.43%       2.508ms         1.08%       6.277ms       3.231us     975.524us         0.14%     975.524us       0.502us          1943  
+(EngineCore pid=225)          triton_red_fused__to_copy_fused_add_rms_norm_0         0.00%       0.000us         0.00%       0.000us       0.000us     889.947us         0.13%     889.947us       2.214us           402  
+(EngineCore pid=225) void at::native::elementwise_kernel<128, 4, at::nati...         0.00%       0.000us         0.00%       0.000us       0.000us     799.009us         0.12%     799.009us       1.988us           402  
+(EngineCore pid=225)              triton_red_fused_fused_add_rms_norm_view_1         0.00%       0.000us         0.00%       0.000us       0.000us     744.024us         0.11%     744.024us       1.851us           402  
+(EngineCore pid=225)                                            aten::gather         0.31%       1.818ms         0.51%       2.935ms       8.762us     604.453us         0.09%     604.453us       1.804us           335  
+(EngineCore pid=225)                _combine_sampled_and_draft_tokens_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     554.592us         0.08%     554.592us       8.277us            67  
+(EngineCore pid=225) void at::native::_scatter_gather_elementwise_kernel<...         0.00%       0.000us         0.00%       0.000us       0.000us     469.606us         0.07%     469.606us       1.752us           268  
+(EngineCore pid=225)                                             aten::index         0.31%       1.786ms         0.67%       3.912ms      14.599us     447.845us         0.07%     447.845us       1.671us           268  
+(EngineCore pid=225)                                      aten::floor_divide         0.13%     784.323us         0.33%       1.932ms       7.211us     381.960us         0.06%     381.960us       1.425us           268  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us     381.960us         0.06%     381.960us       1.425us           268  
+(EngineCore pid=225)                          Memcpy DtoD (Device -> Device)         0.00%       0.000us         0.00%       0.000us       0.000us     358.698us         0.05%     358.698us       1.071us           335  
+(EngineCore pid=225) void at::native::unrolled_elementwise_kernel<at::nat...         0.00%       0.000us         0.00%       0.000us       0.000us     351.516us         0.05%     351.516us       1.312us           268  
+(EngineCore pid=225)                                            aten::clamp_         0.14%     827.628us         0.26%       1.533ms       5.721us     316.933us         0.05%     316.933us       1.183us           268  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us     316.933us         0.05%     316.933us       1.183us           268  
+(EngineCore pid=225)                                               aten::sub         0.32%       1.871ms         0.49%       2.862ms       3.286us     307.179us         0.04%     307.179us       0.353us           871  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us     307.179us         0.04%     307.179us       1.146us           268  
+(EngineCore pid=225)                                               aten::add         0.17%     995.508us         0.28%       1.649ms       6.152us     292.965us         0.04%     292.965us       1.093us           268  
+(EngineCore pid=225) void at::native::elementwise_kernel<128, 2, at::nati...         0.00%       0.000us         0.00%       0.000us       0.000us     292.965us         0.04%     292.965us       1.093us           268  
+(EngineCore pid=225)                                            aten::arange         0.23%       1.354ms         0.98%       5.723ms       8.542us     291.219us         0.04%     582.438us       0.869us           670  
+(EngineCore pid=225) void (anonymous namespace)::elementwise_kernel_with_...         0.00%       0.000us         0.00%       0.000us       0.000us     291.219us         0.04%     291.219us       0.869us           335  
+(EngineCore pid=225) triton_red_fused__to_copy_clamp_embedding_mul_recipr...         0.00%       0.000us         0.00%       0.000us       0.000us     261.663us         0.04%     261.663us       3.905us            67  
+(EngineCore pid=225)                             _gather_block_tables_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     243.074us         0.04%     243.074us       3.628us            67  
+(EngineCore pid=225)                                     _post_update_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     222.464us         0.03%     222.464us       3.320us            67  
+(EngineCore pid=225)                                             aten::fill_         0.22%       1.300ms         0.65%       3.771ms       2.962us     217.369us         0.03%     218.969us       0.172us          1273  
+(EngineCore pid=225)                                            aten::argmax         0.09%     496.183us         0.12%     698.943us      10.432us     213.852us         0.03%     213.852us       3.192us            67  
+(EngineCore pid=225) void at::native::reduce_kernel<512, 1, at::native::R...         0.00%       0.000us         0.00%       0.000us       0.000us     213.852us         0.03%     213.852us       3.192us            67  
+(EngineCore pid=225)      triton_red_fused_add_fused_add_rms_norm_mul_view_2         0.00%       0.000us         0.00%       0.000us       0.000us     212.740us         0.03%     212.740us       3.175us            67  
+(EngineCore pid=225)                        precopy_mamba_align_fused_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     184.287us         0.03%     184.287us       2.751us            67  
+(EngineCore pid=225) void at::native::index_elementwise_kernel<128, 4, at...         0.00%       0.000us         0.00%       0.000us       0.000us     174.055us         0.03%     174.055us       2.598us            67  
+(EngineCore pid=225)                          postprocess_mamba_fused_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     171.974us         0.03%     171.974us       2.567us            67  
+(EngineCore pid=225)                    _get_num_sampled_and_rejected_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     168.038us         0.02%     168.038us       2.508us            67  
+(EngineCore pid=225)                          Memcpy DtoH (Device -> Pinned)         0.00%       0.000us         0.00%       0.000us       0.000us     165.570us         0.02%     165.570us       1.236us           134  
+(EngineCore pid=225) void at::native::index_elementwise_kernel<128, 4, at...         0.00%       0.000us         0.00%       0.000us       0.000us     158.335us         0.02%     158.335us       2.363us            67  
+(EngineCore pid=225)                           _compute_slot_mappings_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     154.368us         0.02%     154.368us       2.304us            67  
+(EngineCore pid=225)     triton_red_fused__to_copy_fused_add_rms_norm_view_1         0.00%       0.000us         0.00%       0.000us       0.000us     147.520us         0.02%     147.520us       2.202us            67  
+(EngineCore pid=225) void at::native::_scatter_gather_elementwise_kernel<...         0.00%       0.000us         0.00%       0.000us       0.000us     134.847us         0.02%     134.847us       2.013us            67  
+(EngineCore pid=225) void at::native::vectorized_gather_kernel<16, long>(...         0.00%       0.000us         0.00%       0.000us       0.000us     115.455us         0.02%     115.455us       1.723us            67  
+(EngineCore pid=225)                     preprocess_mamba_align_fused_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     112.773us         0.02%     112.773us       1.683us            67  
+(EngineCore pid=225)                                           memcpy32_post         0.00%       0.000us         0.00%       0.000us       0.000us     110.113us         0.02%     110.113us       1.643us            67  
+(EngineCore pid=225)                          Memcpy HtoD (Pinned -> Device)         0.00%       0.000us         0.00%       0.000us       0.000us      99.740us         0.01%      99.740us       0.744us           134  
+(EngineCore pid=225)                            _prepare_pos_seq_lens_kernel         0.00%       0.000us         0.00%       0.000us       0.000us      79.907us         0.01%      79.907us       1.193us            67  
+(APIServer pid=1) INFO 10-07 15:59:43 [api_router.py:33] Profiler stopped.
+(APIServer pid=1) INFO:     172.17.0.1:51544 - "POST /stop_profile HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-07 15:59:46 [loggers.py:310] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 214.8 tokens/s, Running: 4 reqs, Waiting: 0 reqs, GPU KV cache usage: 4.4%, Prefix cache hit rate: 0.0%
+(APIServer pid=1) INFO:     172.17.0.1:58488 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:58502 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:58514 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:58516 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:58532 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:58544 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:58546 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:58560 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:58568 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:58596 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:58576 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:58598 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:58592 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:58614 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:58620 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:58632 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-07 15:59:54 [api_router.py:23] Starting profiler...
+USDT:2026-10-07 15:59:54 225:225 SyncActivityProfilerHandler.cpp:52] profiler_start
+(APIServer pid=1) INFO 10-07 15:59:54 [api_router.py:25] Profiler started.
+(APIServer pid=1) INFO:     172.17.0.1:58640 - "POST /start_profile HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-07 15:59:54 [api_router.py:31] Stopping profiler...
+USDT:2026-10-07 15:59:54 225:225 SyncActivityProfilerHandler.cpp:59] profiler_stop
+(APIServer pid=1) INFO 10-07 15:59:56 [loggers.py:310] Engine 000: Avg prompt throughput: 506.2 tokens/s, Avg generation throughput: 434.8 tokens/s, Running: 16 reqs, Waiting: 0 reqs, GPU KV cache usage: 17.6%, Prefix cache hit rate: 0.0%
+(EngineCore pid=225)                            _scatter_num_accepted_kernel         0.00%       0.000us         0.00%       0.000us       0.000us      68.958us         0.01%      68.958us       1.029us            67  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us      62.783us         0.01%      62.783us       0.937us            67  
+(EngineCore pid=225)                                            Buffer Flush         0.18%       1.040ms         0.18%       1.044ms     347.955us       1.792us         0.00%       1.792us       0.597us             3  
+(EngineCore pid=225)                                 Activity Buffer Request         0.32%       1.871ms         0.32%       1.871ms     467.721us       1.600us         0.00%       1.600us       0.400us             4  
+(EngineCore pid=225)                    execute_context_0(0)_generation_4(4)         9.04%      52.526ms        23.11%     134.268ms       2.004ms       0.000us         0.00%       2.914ms      43.492us            67  
+(EngineCore pid=225)                                             aten::slice         0.66%       3.820ms         0.83%       4.821ms       1.028us       0.000us         0.00%       0.000us       0.000us          4690  
+(EngineCore pid=225)                                        aten::as_strided         0.31%       1.815ms         0.31%       1.815ms       0.217us       0.000us         0.00%       0.000us       0.000us          8375  
+(EngineCore pid=225)                                        cudaLaunchKernel         1.49%       8.634ms         1.49%       8.634ms       3.391us       0.000us         0.00%       0.000us       0.000us          2546  
+(EngineCore pid=225)                                        aten::lift_fresh         0.01%      44.103us         0.01%      44.103us       0.073us       0.000us         0.00%       0.000us       0.000us           603  
+(EngineCore pid=225)                                        aten::empty_like         0.02%     126.126us         0.10%     564.726us       4.214us       0.000us         0.00%       0.000us       0.000us           134  
+(EngineCore pid=225)                                     aten::empty_strided         0.26%       1.535ms         0.29%       1.658ms       1.178us       0.000us         0.00%       0.000us       0.000us          1407  
+(EngineCore pid=225)                                        aten::pin_memory         0.03%     174.419us         0.28%       1.652ms      12.331us       0.000us         0.00%       0.000us       0.000us           134  
+(EngineCore pid=225)                                         aten::is_pinned         0.04%     235.444us         0.08%     477.286us       3.562us       0.000us         0.00%       0.000us       0.000us           134  
+(EngineCore pid=225)                                cudaPointerGetAttributes         0.04%     241.842us         0.04%     241.842us       1.805us       0.000us         0.00%       0.000us       0.000us           134  
+(EngineCore pid=225)                                       aten::_pin_memory         0.08%     490.837us         0.17%       1.001ms       7.467us       0.000us         0.00%       0.000us       0.000us           134  
+(EngineCore pid=225)                                          cudaEventQuery         0.06%     334.968us         0.06%     334.968us       0.630us       0.000us         0.00%       0.000us       0.000us           532  
+(EngineCore pid=225)                                              aten::set_         0.02%     102.055us         0.02%     102.055us       0.762us       0.000us         0.00%       0.000us       0.000us           134  
+(EngineCore pid=225)                                   cudaStreamIsCapturing         0.03%     169.856us         0.03%     169.856us       0.230us       0.000us         0.00%       0.000us       0.000us           737  
+(EngineCore pid=225)                                         cudaMemcpyAsync         0.52%       3.004ms         0.52%       3.004ms       4.982us       0.000us         0.00%       0.000us       0.000us           603  
+(EngineCore pid=225)                                cudaEventRecordWithFlags         0.06%     370.066us         0.06%     370.066us       0.921us       0.000us         0.00%       0.000us       0.000us           402  
+(EngineCore pid=225)                                             aten::empty         0.46%       2.645ms         0.46%       2.645ms       1.462us       0.000us         0.00%       0.000us       0.000us          1809  
+(EngineCore pid=225)                                           aten::resize_         0.08%     465.526us         0.08%     465.526us       1.390us       0.000us         0.00%       0.000us       0.000us           335  
+(EngineCore pid=225)                                             aten::zeros         0.04%     207.958us         0.14%     819.494us       6.116us       0.000us         0.00%      61.374us       0.458us           134  
+(EngineCore pid=225)                                             aten::zero_         0.02%      95.147us         0.08%     441.289us       3.293us       0.000us         0.00%      61.374us       0.458us           134  
+(EngineCore pid=225)                                        cuLaunchKernelEx         0.35%       2.056ms         0.35%       2.056ms       2.789us       0.000us         0.00%       0.000us       0.000us           737  
+(EngineCore pid=225)                                            aten::unbind         0.04%     252.114us         0.10%     572.400us       8.543us       0.000us         0.00%       0.000us       0.000us            67  
+(EngineCore pid=225)                                            aten::select         0.18%       1.063ms         0.21%       1.242ms       0.927us       0.000us         0.00%       0.000us       0.000us          1340  
+(EngineCore pid=225) -------------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+(EngineCore pid=225) Self CPU time total: 581.080ms
+(EngineCore pid=225) Self CUDA time total: 683.682ms
+(EngineCore pid=225) 
+(EngineCore pid=225) -------------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+(EngineCore pid=225)                                                    Name    Self CPU %      Self CPU   CPU total %     CPU total  CPU time avg     Self CUDA   Self CUDA %    CUDA total  CUDA time avg    # of Calls  
+(EngineCore pid=225) -------------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+(EngineCore pid=225)                  execute_context_0(0)_generation_16(16)         0.00%       0.000us         0.00%       0.000us       0.000us        1.786s       268.71%        1.786s      18.037ms            99  
+(EngineCore pid=225)                                         _copy_rows_live         0.00%       0.000us         0.00%       0.000us       0.000us     187.691ms        28.25%     187.691ms      41.215us          4554  
+(EngineCore pid=225) void marlin_moe_wna16::Marlin<1125899906909960l, 562...         0.00%       0.000us         0.00%       0.000us       0.000us     128.429ms        19.33%     128.429ms     169.208us           759  
+(EngineCore pid=225) void marlin_moe_wna16::Marlin<1125899906909960l, 562...         0.00%       0.000us         0.00%       0.000us       0.000us     126.971ms        19.11%     126.971ms     167.288us           759  
+(EngineCore pid=225)                           _selective_scan_update_kernel         0.00%       0.000us         0.00%       0.000us       0.000us      34.820ms         5.24%      34.820ms      45.876us           759  
+(EngineCore pid=225) void marlin::Marlin<1125899906909960l, 5629499534871...         0.00%       0.000us         0.00%       0.000us       0.000us      34.323ms         5.17%      34.323ms      22.130us          1551  
+(EngineCore pid=225) nvjet_sm120_qqtst_mma_64x32x64_16_32x16x64_tmaAB_bz_...         0.00%       0.000us         0.00%       0.000us       0.000us      29.192ms         4.39%      29.192ms      38.461us           759  
+(EngineCore pid=225) void gemmSN_TN_kernel<float, 128, 16, 2, 4, 8, 9, fa...         0.00%       0.000us         0.00%       0.000us       0.000us      17.537ms         2.64%      17.537ms      23.105us           759  
+(EngineCore pid=225)                                     _lora_shrink_kernel         0.00%       0.000us         0.00%       0.000us       0.000us      16.927ms         2.55%      16.927ms       6.333us          2673  
+(EngineCore pid=225)                                     _lora_expand_kernel         0.00%       0.000us         0.00%       0.000us       0.000us      15.982ms         2.41%      15.982ms       5.979us          2673  
+(EngineCore pid=225) void cutlass::Kernel2<cutlass_80_wmma_tensorop_bf16_...         0.00%       0.000us         0.00%       0.000us       0.000us      14.959ms         2.25%      14.959ms      37.775us           396  
+(EngineCore pid=225) sm89_xmma_gemm_e4m3bf16_e4m3f32_f32_tn_n_tilesize32x...         0.00%       0.000us         0.00%       0.000us       0.000us      14.066ms         2.12%      14.066ms      18.532us           759  
+(EngineCore pid=225)                                         _C::marlin_gemm         0.14%     855.194us         0.26%       1.560ms      47.281us       8.334ms         1.25%       8.334ms     252.556us            33  
+(EngineCore pid=225)                                           _cache_kernel         0.00%       0.000us         0.00%       0.000us       0.000us       6.723ms         1.01%       6.723ms       8.858us           759  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us       5.436ms         0.82%       5.436ms       2.034us          2673  
+(EngineCore pid=225) void vllm::moe::single_group_topk::detail::single_gr...         0.00%       0.000us         0.00%       0.000us       0.000us       2.570ms         0.39%       2.570ms       3.386us           759  
+(EngineCore pid=225) void vllm::moe::moe_align_block_size_kernel<int>(int...         0.00%       0.000us         0.00%       0.000us       0.000us       2.535ms         0.38%       2.535ms       3.340us           759  
+(EngineCore pid=225) kernel_mha(unsigned int, float, float const*, Vec<__...         0.00%       0.000us         0.00%       0.000us       0.000us       2.531ms         0.38%       2.531ms      12.782us           198  
+(EngineCore pid=225)                            _causal_conv1d_update_kernel         0.00%       0.000us         0.00%       0.000us       0.000us       2.421ms         0.36%       2.421ms       3.189us           759  
+(EngineCore pid=225) triton_red_fused__to_copy_add_clamp_mean_mul_pow_rec...         0.00%       0.000us         0.00%       0.000us       0.000us       2.414ms         0.36%       2.414ms       3.181us           759  
+(EngineCore pid=225) triton_red_fused__to_copy_add_clamp_fused_add_rms_no...         0.00%       0.000us         0.00%       0.000us       0.000us       1.937ms         0.29%       1.937ms       3.668us           528  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us       1.687ms         0.25%       1.687ms       2.223us           759  
+(EngineCore pid=225) triton_red_fused__to_copy_fused_add_rms_norm_moe_for...         0.00%       0.000us         0.00%       0.000us       0.000us       1.540ms         0.23%       1.540ms       2.917us           528  
+(EngineCore pid=225)                             triton_poi_fused_pow_relu_0         0.00%       0.000us         0.00%       0.000us       0.000us       1.538ms         0.23%       1.538ms       2.026us           759  
+(EngineCore pid=225) void vllm::moe::moe_sum_vec_kernel<c10::BFloat16, in...         0.00%       0.000us         0.00%       0.000us       0.000us       1.432ms         0.22%       1.432ms       1.886us           759  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us       1.079ms         0.16%       1.079ms       1.422us           759  
+(EngineCore pid=225) void vllm::moe::count_and_sort_expert_tokens_kernel<...         0.00%       0.000us         0.00%       0.000us       0.000us       1.029ms         0.15%       1.029ms       1.356us           759  
+(EngineCore pid=225)                                   _gumbel_sample_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     850.277us         0.13%     850.277us      25.766us            33  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us     805.814us         0.12%     805.814us       0.977us           825  
+(EngineCore pid=225) triton_red_fused__to_copy_add_clamp_fused_add_rms_no...         0.00%       0.000us         0.00%       0.000us       0.000us     761.381us         0.11%     761.381us       3.845us           198  
+(EngineCore pid=225) void vllm::reshape_and_cache_flash_kernel<__nv_bfloa...         0.00%       0.000us         0.00%       0.000us       0.000us     697.069us         0.10%     697.069us       3.521us           198  
+(EngineCore pid=225)                                        Memset (Unknown)         0.00%       0.000us         0.00%       0.000us       0.000us     573.591us         0.09%     573.591us       0.756us           759  
+(EngineCore pid=225)                                             aten::copy_         0.20%       1.238ms         0.51%       3.122ms       3.262us     484.771us         0.07%     484.771us       0.507us           957  
+(EngineCore pid=225)              triton_red_fused_fused_add_rms_norm_view_1         0.00%       0.000us         0.00%       0.000us       0.000us     461.124us         0.07%     461.124us       2.329us           198  
+(EngineCore pid=225)          triton_red_fused__to_copy_fused_add_rms_norm_0         0.00%       0.000us         0.00%       0.000us       0.000us     455.487us         0.07%     455.487us       2.300us           198  
+(EngineCore pid=225) void at::native::elementwise_kernel<128, 4, at::nati...         0.00%       0.000us         0.00%       0.000us       0.000us     408.131us         0.06%     408.131us       2.061us           198  
+(EngineCore pid=225)                                            aten::gather         0.15%     883.635us         0.24%       1.454ms       8.811us     307.745us         0.05%     307.745us       1.865us           165  
+(EngineCore pid=225)                _combine_sampled_and_draft_tokens_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     299.840us         0.05%     299.840us       9.086us            33  
+(EngineCore pid=225)                          postprocess_mamba_fused_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     248.097us         0.04%     248.097us       7.518us            33  
+(EngineCore pid=225)                        precopy_mamba_align_fused_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     246.272us         0.04%     246.272us       7.463us            33  
+(EngineCore pid=225) void at::native::_scatter_gather_elementwise_kernel<...         0.00%       0.000us         0.00%       0.000us       0.000us     245.889us         0.04%     245.889us       1.863us           132  
+(EngineCore pid=225)                                             aten::index         0.15%     905.616us         0.31%       1.857ms      14.067us     222.748us         0.03%     222.748us       1.687us           132  
+(EngineCore pid=225)                                      aten::floor_divide         0.06%     388.537us         0.16%     961.265us       7.282us     194.442us         0.03%     194.442us       1.473us           132  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us     194.442us         0.03%     194.442us       1.473us           132  
+(EngineCore pid=225) void at::native::unrolled_elementwise_kernel<at::nat...         0.00%       0.000us         0.00%       0.000us       0.000us     177.636us         0.03%     177.636us       1.346us           132  
+(EngineCore pid=225)                          Memcpy DtoD (Device -> Device)         0.00%       0.000us         0.00%       0.000us       0.000us     176.380us         0.03%     176.380us       1.069us           165  
+(EngineCore pid=225)                                            aten::clamp_         0.07%     403.411us         0.12%     752.755us       5.703us     161.442us         0.02%     161.442us       1.223us           132  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us     161.442us         0.02%     161.442us       1.223us           132  
+(EngineCore pid=225)                                               aten::sub         0.15%     910.748us         0.23%       1.392ms       3.245us     157.183us         0.02%     157.183us       0.366us           429  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us     157.183us         0.02%     157.183us       1.191us           132  
+(EngineCore pid=225)                             _gather_block_tables_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     152.990us         0.02%     152.990us       4.636us            33  
+(EngineCore pid=225)                                               aten::add         0.08%     495.801us         0.13%     816.288us       6.184us     150.367us         0.02%     150.367us       1.139us           132  
+(EngineCore pid=225) void at::native::elementwise_kernel<128, 2, at::nati...         0.00%       0.000us         0.00%       0.000us       0.000us     150.367us         0.02%     150.367us       1.139us           132  
+(EngineCore pid=225)                                            aten::arange         0.11%     672.239us         0.47%       2.828ms       8.570us     148.964us         0.02%     297.928us       0.903us           330  
+(EngineCore pid=225) void (anonymous namespace)::elementwise_kernel_with_...         0.00%       0.000us         0.00%       0.000us       0.000us     148.964us         0.02%     148.964us       0.903us           165  
+(EngineCore pid=225) triton_red_fused__to_copy_clamp_embedding_mul_recipr...         0.00%       0.000us         0.00%       0.000us       0.000us     134.911us         0.02%     134.911us       4.088us            33  
+(EngineCore pid=225)                                     _post_update_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     116.256us         0.02%     116.256us       3.523us            33  
+(EngineCore pid=225)                                            aten::argmax         0.04%     243.838us         0.06%     349.434us      10.589us     107.010us         0.02%     107.010us       3.243us            33  
+(EngineCore pid=225) void at::native::reduce_kernel<512, 1, at::native::R...         0.00%       0.000us         0.00%       0.000us       0.000us     107.010us         0.02%     107.010us       3.243us            33  
+(EngineCore pid=225)                                             aten::fill_         0.11%     663.847us         0.63%       3.800ms       6.060us     106.014us         0.02%     107.582us       0.172us           627  
+(EngineCore pid=225)      triton_red_fused_add_fused_add_rms_norm_mul_view_2         0.00%       0.000us         0.00%       0.000us       0.000us     102.049us         0.02%     102.049us       3.092us            33  
+(EngineCore pid=225)                    _get_num_sampled_and_rejected_kernel         0.00%       0.000us         0.00%       0.000us       0.000us      98.752us         0.01%      98.752us       2.992us            33  
+(EngineCore pid=225)     triton_red_fused__to_copy_fused_add_rms_norm_view_1         0.00%       0.000us         0.00%       0.000us       0.000us      95.489us         0.01%      95.489us       2.894us            33  
+(EngineCore pid=225) void at::native::index_elementwise_kernel<128, 4, at...         0.00%       0.000us         0.00%       0.000us       0.000us      87.969us         0.01%      87.969us       2.666us            33  
+(EngineCore pid=225)                          Memcpy DtoH (Device -> Pinned)         0.00%       0.000us         0.00%       0.000us       0.000us      81.697us         0.01%      81.697us       1.238us            66  
+(EngineCore pid=225)                           _compute_slot_mappings_kernel         0.00%       0.000us         0.00%       0.000us       0.000us      81.568us         0.01%      81.568us       2.472us            33  
+(EngineCore pid=225) void at::native::index_elementwise_kernel<128, 4, at...         0.00%       0.000us         0.00%       0.000us       0.000us      79.392us         0.01%      79.392us       2.406us            33  
+(EngineCore pid=225) void at::native::_scatter_gather_elementwise_kernel<...         0.00%       0.000us         0.00%       0.000us       0.000us      61.856us         0.01%      61.856us       1.874us            33  
+(EngineCore pid=225)                     preprocess_mamba_align_fused_kernel         0.00%       0.000us         0.00%       0.000us       0.000us      57.121us         0.01%      57.121us       1.731us            33  
+(EngineCore pid=225) void at::native::vectorized_gather_kernel<16, long>(...         0.00%       0.000us         0.00%       0.000us       0.000us      55.387us         0.01%      55.387us       1.678us            33  
+(EngineCore pid=225)                          Memcpy HtoD (Pinned -> Device)         0.00%       0.000us         0.00%       0.000us       0.000us      49.058us         0.01%      49.058us       0.743us            66  
+(EngineCore pid=225)                                           memcpy32_post         0.00%       0.000us         0.00%       0.000us       0.000us      48.287us         0.01%      48.287us       1.463us            33  
+(EngineCore pid=225)                            _prepare_pos_seq_lens_kernel         0.00%       0.000us         0.00%       0.000us       0.000us      41.823us         0.01%      41.823us       1.267us            33  
+(EngineCore pid=225)                            _scatter_num_accepted_kernel         0.00%       0.000us         0.00%       0.000us       0.000us      36.193us         0.01%      36.193us       1.097us            33  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us      32.512us         0.00%      32.512us       0.985us            33  
+(EngineCore pid=225)                                 Activity Buffer Request         0.22%       1.342ms         0.22%       1.342ms     671.086us       1.568us         0.00%       1.568us       0.784us             2  
+(EngineCore pid=225)                  execute_context_0(0)_generation_16(16)         4.35%      26.414ms        11.73%      71.209ms       2.158ms       0.000us         0.00%       1.492ms      45.198us            33  
+(EngineCore pid=225)                                             aten::slice         0.30%       1.807ms         0.39%       2.346ms       1.015us       0.000us         0.00%       0.000us       0.000us          2310  
+(EngineCore pid=225)                                        aten::as_strided         0.16%     971.884us         0.16%     971.884us       0.236us       0.000us         0.00%       0.000us       0.000us          4125  
+(EngineCore pid=225)                                        cudaLaunchKernel         0.91%       5.509ms         0.91%       5.509ms       4.393us       0.000us         0.00%       0.000us       0.000us          1254  
+(EngineCore pid=225)                                        aten::lift_fresh         0.00%      22.207us         0.00%      22.207us       0.075us       0.000us         0.00%       0.000us       0.000us           297  
+(EngineCore pid=225)                                        aten::empty_like         0.01%      62.030us         0.05%     285.561us       4.327us       0.000us         0.00%       0.000us       0.000us            66  
+(APIServer pid=1) INFO 10-07 15:59:57 [api_router.py:33] Profiler stopped.
+(APIServer pid=1) INFO:     172.17.0.1:58652 - "POST /stop_profile HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-07 16:00:06 [loggers.py:310] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 832.0 tokens/s, Running: 16 reqs, Waiting: 0 reqs, GPU KV cache usage: 17.6%, Prefix cache hit rate: 0.0%
+(EngineCore pid=225) kstage: cache: 72233 layer-steps, 0.56 misses and 0.56 copies a layer-step (40623 / 40623)

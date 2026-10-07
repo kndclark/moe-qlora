@@ -32,6 +32,7 @@ KSTAGE (unset = plugin off, vLLM untouched):
            (half-life ~0.69 * 2**KSTAGE_SHIFT steps, default 6, at most 10). KSTAGE_COPY=N
            copies with N programs that walk the copy list, not a program per 512 words of
            every possible copy (min(slots, routings, E) of them, launched with or without misses).
+           KSTAGE_COPY_LIVE=N: N programs that count the live copies first and walk only those.
            KSTAGE_DMA_M: batches of this many tokens or more that run outside CUDA graphs (prefill
            chunks) leave the cache alone and copy every non-resident expert into staging rows on
            the copy engine, KSTAGE_DMA_BUF layers ahead (default 2; each buffer is X expert rows
@@ -228,6 +229,7 @@ BLOCK = int(os.environ.get("KSTAGE_BLOCK", "512"))  # small blocks, many warps: 
 # over PCIe. 3090: 512/16 gathers at 12.0 GB/s = the copy engine; 8192/8 managed 7.2 (gather_sweep.py)
 WARPS = int(os.environ.get("KSTAGE_WARPS", "16"))
 COPY_N = int(os.environ.get("KSTAGE_COPY", "0"))  # 0: _copy_rows_kernel's grid; N: _copy_rows_few
+COPY_LIVE = int(os.environ.get("KSTAGE_COPY_LIVE", "0"))  # N: _copy_rows_live on N programs (overrides COPY)
 
 
 def plan(ids, E):
@@ -251,16 +253,21 @@ def gather(src, dst, order, n_ids=None):
 
 @triton.jit
 def _cache_kernel(ids_ptr, n, out_ptr, where_ptr, home_ptr, owner_ptr, stamp_ptr, clock_ptr, freq_ptr, need_ptr,
-                  miss_ptr, cps_ptr, cpd_ptr, stats_ptr, S, slot0,
+                  miss_ptr, cps_ptr, cpd_ptr, stats_ptr, S, slot0, pf_ptr,
                   E: tl.constexpr, BE: tl.constexpr, BS: tl.constexpr, CH: tl.constexpr, STATS: tl.constexpr,
-                  LFU: tl.constexpr, SHIFT: tl.constexpr):
+                  LFU: tl.constexpr, SHIFT: tl.constexpr, AH: tl.constexpr):
     """K6, one program per layer per step. Slots whose expert the batch routes to are stamped
     with the clock; each miss (ascending id) takes the slot of the least recently used expert
     the batch does not route to (ties: lower expert id, as expert_cache_sim.py) while such
     slots last, and is listed for copying (cps row -> cpd row, cps -1 = none). Misses left
     over stay in their home row. Then out = where[ids]. LFU: the victim is instead the expert
     with the lowest decayed use count; every step each expert's count loses count >> SHIFT,
-    and each one the batch routes to gains 2**20 (lfu in expert_cache_sim.py)."""
+    and each one the batch routes to gains 2**20 (lfu in expert_cache_sim.py).
+    AH (KSTAGE_AHEAD's tally, B5): 1 = an ahead assign, 2 = a real step with ahead on. pf per
+    expert: 1 = filled ahead and not yet routed to, 2 = evicted by the ahead assign just before
+    this step. A real step counts useful (routed to a pf 1 expert: a miss the fill avoided) and
+    polluted (missed a pf 2 one), then clears both; either kind counts wasted (evicted a pf 1
+    expert). An ahead assign leaves the LFU counts alone: a prediction is not a use."""
     e = tl.arange(0, BE)
     em = e < E
     touched = tl.zeros([BE], dtype=tl.int32)
@@ -276,9 +283,14 @@ def _cache_kernel(ids_ptr, n, out_ptr, where_ptr, home_ptr, owner_ptr, stamp_ptr
     nm = tl.sum(mi, axis=0)
     tl.store(need_ptr + e, touched, mask=em)
     tl.store(miss_ptr + tl.cumsum(mi, axis=0) - 1, e, mask=miss)
-    if LFU:  # frozen steps (S = 0) leave the counts alone, as they leave the stamps
+    if LFU and AH != 1:  # frozen steps (S = 0) leave the counts alone, as they leave the stamps
         f = tl.load(freq_ptr + e, mask=em, other=0)
         tl.store(freq_ptr + e, f - (f >> SHIFT) + touched * 1048576, mask=em & (S > 0))
+    if AH == 2:
+        pf = tl.load(pf_ptr + e, mask=em, other=0)
+        useful = tl.sum((em & (touched > 0) & ~miss & (pf == 1)).to(tl.int64), axis=0)
+        polluted = tl.sum((miss & (pf == 2)).to(tl.int64), axis=0)
+        tl.store(pf_ptr + e, tl.where((touched > 0) | (pf == 2), 0, pf), mask=em)
     clock = tl.load(clock_ptr)
     tl.debug_barrier()
     j = tl.arange(0, BS)
@@ -301,6 +313,9 @@ def _cache_kernel(ids_ptr, n, out_ptr, where_ptr, home_ptr, owner_ptr, stamp_ptr
     old = tl.load(owner_ptr + slot, mask=ok, other=-1)
     h_old = tl.load(home_ptr + tl.maximum(old, 0), mask=ok & (old >= 0), other=0)
     h_new = tl.load(home_ptr + new, mask=ok, other=-1)
+    if AH != 0:
+        pold = tl.load(pf_ptr + tl.maximum(old, 0), mask=ok & (old >= 0), other=0)
+        wasted = tl.sum((ok & (old >= 0) & (pold == 1)).to(tl.int64), axis=0)
     if STATS:
         c0 = tl.load(stats_ptr)
         c1 = tl.load(stats_ptr + 1)
@@ -313,11 +328,21 @@ def _cache_kernel(ids_ptr, n, out_ptr, where_ptr, home_ptr, owner_ptr, stamp_ptr
     tl.store(stamp_ptr + slot, clock, mask=ok)
     tl.store(cps_ptr + j, tl.where(ok, h_new, -1))
     tl.store(cpd_ptr + j, slot0 + slot, mask=ok)
+    if AH == 1:  # after the real step's per-expert store above (a debug_barrier apart)
+        tl.store(pf_ptr + old, tl.full([BS], 2, tl.int32), mask=ok & (old >= 0))
+        tl.store(pf_ptr + new, tl.full([BS], 1, tl.int32), mask=ok)
+    if AH == 2:
+        tl.store(pf_ptr + old, tl.zeros([BS], tl.int32), mask=ok & (old >= 0))
     tl.store(clock_ptr, clock + 1)
     if STATS:  # calls, misses, copies; one writer per layer, so plain stores
         tl.store(stats_ptr, c0 + 1)
         tl.store(stats_ptr + 1, c1 + nm)
         tl.store(stats_ptr + 2, c2 + na)
+        if AH != 0:
+            tl.store(stats_ptr + 5, tl.load(stats_ptr + 5) + wasted)
+        if AH == 2:
+            tl.store(stats_ptr + 3, tl.load(stats_ptr + 3) + useful)
+            tl.store(stats_ptr + 4, tl.load(stats_ptr + 4) + polluted)
     tl.debug_barrier()
     for s in range(0, n, CH):
         o = s + tl.arange(0, CH)
@@ -352,6 +377,24 @@ def _copy_rows_few(t_ptr, cps_ptr, cpd_ptr, P, row_words, BLOCK: tl.constexpr):
                 tl.store(t_ptr + d.to(tl.int64) * row_words + o, x, mask=m)
 
 
+@triton.jit
+def _copy_rows_live(t_ptr, cps_ptr, cpd_ptr, row_words, BS: tl.constexpr, BLOCK: tl.constexpr):
+    """_copy_rows_few over the live entries only. _cache_kernel lists its copies first (cps -1
+    after them), so each program counts them in one load and loops over those alone. Both
+    others pay per idle entry: _copy_rows_kernel a program per block of every entry (P x 1218
+    programs for a w13 row, 168 us at P = 96 with nothing to copy, p19), _copy_rows_few one
+    dependent load each."""
+    n = tl.sum((tl.load(cps_ptr + tl.arange(0, BS)) >= 0).to(tl.int32), axis=0)
+    for p in range(n):
+        r = tl.load(cps_ptr + p)
+        d = tl.load(cpd_ptr + p)
+        for o0 in range(tl.program_id(0) * BLOCK, row_words, tl.num_programs(0) * BLOCK):
+            o = o0 + tl.arange(0, BLOCK)
+            m = o < row_words
+            x = tl.load(t_ptr + r.to(tl.int64) * row_words + o, mask=m)
+            tl.store(t_ptr + d.to(tl.int64) * row_words + o, x, mask=m)
+
+
 def _rows(t):
     """t as [rows, units] of the widest of int32/int16/uint8 that divides a row."""
     u = t.reshape(t.shape[0], -1).view(torch.uint8)
@@ -378,34 +421,38 @@ class _Cache:
         self.miss = torch.zeros(self.BE, dtype=torch.int32, device=device)
         self.cps = torch.full((self.BS,), -1, dtype=torch.int32, device=device)
         self.cpd = torch.zeros(self.BS, dtype=torch.int32, device=device)
-        self.stats = stats  # 3 int64 the GPU writes and the CPU reads (host-mapped), or None
+        self.stats = stats  # 3 int64 the GPU writes and the CPU reads (host-mapped; 6 with ahead), or None
+        self.pf, self.ah = torch.zeros(self.BE, dtype=torch.int32, device=device), 0  # B5 (_cache_kernel)
         self.rows = []
 
-    def _assign(self, ids, S, stats):
+    def _assign(self, ids, S, stats, ah=0):
         out = torch.empty_like(ids)
         _cache_kernel[(1,)](ids, ids.numel(), out, self.where, self.home, self.owner, self.stamp, self.clock,
                             self.freq, self.need, self.miss, self.cps, self.cpd,
-                            stats if stats is not None else self.clock, S, self.slot0, E=self.E,
+                            stats if stats is not None else self.clock, S, self.slot0, self.pf, E=self.E,
                             BE=self.BE, BS=self.BS, CH=128, STATS=stats is not None, LFU=self.lfu,
-                            SHIFT=self.shift, num_warps=8)
+                            SHIFT=self.shift, AH=ah, num_warps=8)
         return out
 
     def step(self, topk_ids, frozen=False):
         ids = topk_ids.contiguous()
         S = 0 if frozen else self.S
-        out = self._assign(ids, S, self.stats)
+        out = self._assign(ids, S, self.stats, self.ah)
         self._copy(self.rows, min(S, ids.numel(), self.E))
         return out
 
     def ahead(self, ids, stats, rows):
         """K6 on predicted ids (KSTAGE_AHEAD): slots assigned and listed in cps/cpd as if the layer
         had routed them; only `rows` are copied here, the caller has the rest copied."""
-        self._assign(ids, self.S, stats)
+        self._assign(ids, self.S, stats, 1)
         self._copy(rows, min(self.S, ids.numel(), self.E))
 
     def _copy(self, rows, P):
         for r in rows if P else ():
-            if COPY_N:
+            if COPY_LIVE:
+                _copy_rows_live[(COPY_LIVE,)](r, self.cps, self.cpd, r.shape[1], BS=self.BS, BLOCK=BLOCK,
+                                              num_warps=WARPS)
+            elif COPY_N:
                 _copy_rows_few[(COPY_N,)](r, self.cps, self.cpd, P, r.shape[1], BLOCK=BLOCK, num_warps=WARPS)
             else:
                 _copy_rows_kernel[(P, triton.cdiv(r.shape[1], BLOCK))](r, self.cps, self.cpd, r.shape[1],
@@ -490,7 +537,9 @@ class _Ahead:
                                ctypes.c_void_p(self.req.data_ptr()), ctypes.c_void_p(self.done.data_ptr()),
                                B(*base), B(*base), B(*rb))
         self.lib = lib
-        self.hstats, self.dstats = _stats_buffer(L) if period else (None, None)
+        self.hstats, self.dstats = _stats_buffer(L, 6) if period else (None, None)
+        for c in self.caches:
+            c.ah = 2
         if period:
             _report(self.hstats, period, "ahead")
             threading.Thread(target=self._counts, args=(period,), daemon=True, name="kstage-ce").start()
@@ -937,7 +986,9 @@ def _report(host, period, name="cache"):
             v = host.sum(0).tolist()
             if v != last and v[0]:
                 log(f"{name}: {v[0]} layer-steps, {v[1] / v[0]:.2f} misses and {v[2] / v[0]:.2f} copies "
-                    f"a layer-step ({v[1]} / {v[2]})")
+                    f"a layer-step ({v[1]} / {v[2]})" + ("" if len(v) == 3 else f"; evicted unused fills {v[5]}"
+                    if name == "ahead" else f"; ahead fills used {v[3]}, evicted unused {v[5]}, "
+                    f"misses of experts the fill evicted {v[4]}"))
             last = v
     threading.Thread(target=run, daemon=True, name="kstage-stats").start()
 
@@ -970,7 +1021,7 @@ def _install_cache(layers, model=None):
     big = lambda g: _is_big(g[0][1], E)
     cold_n, counts, src, pol, n_cold = _cold_split(layers, groups, E)
     period = float(os.environ.get("KSTAGE_STATS", "0"))
-    hstats, dstats = _stats_buffer(len(layers)) if period else (None, None)
+    hstats, dstats = _stats_buffer(len(layers), 6 if AHEAD else 3) if period else (None, None)
     dev_bytes = host_bytes = 0
     shape = []
     on_host = {idx: any(big(g) and is_host(g[0][1]) for _, g in groups[idx]) for idx, _, _ in layers}

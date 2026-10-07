@@ -5,7 +5,7 @@
 # flags in the table below, runs v1, v2, alert and trap3 thinking-on, and keeps its log.
 # Outputs go to results/kv-levers/; kv_levers_agree.py compares them with G6q's three runs.
 # usage: kv_levers.sh PHASE...   (or "round4" / "round5" for the doc's rows 2-9 / 10-14,
-#        "round6" / "round8" / "round7" / "round9" / "k6" / "p13" / "p14" for the experts-in-RAM program's passes)
+#        "round6" / "round8" / "round7" / "round9" / "k6" / "p13" / "p14" / "p20" / "p21" / "p22" for the experts-in-RAM program's passes)
 # Env per phase: MAXLEN / SEQS (default 16384 / 16); WORK="MODE..." runs probes/offload_bench.py
 # modes (decode prefill agent needle experts) with BARGS instead of the eval, to bench-TAG.json.
 # KS="KSTAGE=... VAR=..." loads the kstage plugin (probes/kstage) with those variables set;
@@ -347,6 +347,33 @@ run() {  # the doc's lever table, row by row
       local k="$KC6 KSTAGE_SLOTS=all KSTAGE_DMA_M=64 KSTAGE_DMA_BUF=1"
       case $1 in *-ahead) k="$k KSTAGE_AHEAD=1" ;; esac
       KS="$k" MAXLEN=131072 TRACE=1 phase "$1" "${G92[@]}" ;;
+    # Rows K/O, the miss copy: p17-p19 ran the default grid, a program per 512 words of every
+    # possible copy, 224 us a big row at 96 possible with none live (copy-rows-probe.txt); 1.5
+    # with _copy_rows_live, 12 with KSTAGE_COPY=82. Tags name the levers: few (COPY=82), live
+    # (COPY_LIVE=82), lfu, ahead; -rN is the draw, -trace a p19-style trace. p21 (B5): one
+    # concurrency a server (-c1/-c4/-c16), since the cumulative stats lines carry no times; the
+    # last "kstage: cache:" line of serve-TAG.log counts ahead fills used / evicted unused.
+    p20-*|p21-*)
+      local c=1,4,16
+      case $1 in *-c16*) c=16 ;; *-c1*) c=1 ;; *-c4*) c=4 ;; esac
+      local k="${KC6/KSTAGE_STATS=30/KSTAGE_STATS=1} KSTAGE_SLOTS=all KSTAGE_DMA_M=64 KSTAGE_DMA_BUF=1"
+      case $1 in *-few*) k="$k KSTAGE_COPY=82" ;; esac
+      case $1 in *-live*) k="$k KSTAGE_COPY_LIVE=82" ;; esac
+      case $1 in *-lfu*) k="$k KSTAGE_EVICT=lfu" ;; esac
+      case $1 in *-ahead*) k="$k KSTAGE_AHEAD=1" ;; esac
+      case $1 in
+        *-trace) KS="${k/KSTAGE_STATS=1/KSTAGE_STATS=30}" MAXLEN=131072 TRACE=1 phase "$1" "${G92[@]}" ;;
+        *) KS="$k" MAXLEN=131072 WORK=decode BARGS="--conc $c" phase "$1" "${G92[@]}" ;;
+      esac ;;
+    # Rows B/K: p20's c=16 winner (live copy + LFU, 419 tok/s vs 343) on the long-context agent
+    # loads. 8 x 127k vs p18-ks-dma64-b1-a8l (grid copy, LRU: 458 s) and prefix KV in RAM alone
+    # (374 s); 16 x 127k with prefix KV in RAM vs p16 (COPY=82, LRU: 850 s) and that alone (744 s).
+    p22-*)
+      local o=() w=$AGENT8L k="$KC6 KSTAGE_SLOTS=all KSTAGE_DMA_M=64 KSTAGE_DMA_BUF=1 KSTAGE_COPY_LIVE=82"
+      case $1 in *-lfu*) k="$k KSTAGE_EVICT=lfu" ;; esac
+      case $1 in *kvoff16*) o=(--kv-offloading-size 16 --kv-offloading-backend native) ;; esac
+      case $1 in *-a16l) w=$AGENT16L ;; esac
+      KS="$k" MAXLEN=131072 WORK=agent BARGS="$w" phase "$1" "${G92[@]}" "${o[@]}" ;;
     *) echo "unknown phase $1"; return 9 ;;
   esac
 }
@@ -377,6 +404,11 @@ for p in "$@"; do
     p16) for q in p16-ks-dma128-b1 p16-ks-dma256-b1 p16-ks-dma64-b1-a16l-cb \
                   p16-ks-dma64-b1-kvoff16-a16l-cb; do run $q; done ;;
     p17) for q in p17-ks-dma64-b1-miss; do run $q; done ;;
+    p20) for q in base few live live-lfu live-ahead live-lfu-ahead; do run p20-$q-r1; done
+         for q in live-lfu-ahead live-ahead live-lfu live few base; do run p20-$q-r2; done
+         run p20-live-trace ;;
+    p21) for c in 1 4 16; do for q in live-ahead live-lfu-ahead; do run p21-$q-c$c; done; done ;;
+    p22) for q in live-lfu-a8l live-a8l live-lfu-kvoff16-a16l; do run p22-$q; done ;;
     p18) for q in p18-ks-dma64-b1-ahead p18-ks-dma64-b1-ahead-eval p18-ks-dma64-b1-ahead-k10 \
                   p18-ks-dma64-b1-a8l p18-ks-dma64-b1-ahead-a8l; do run $q; done ;;
     *) run "$p" ;;

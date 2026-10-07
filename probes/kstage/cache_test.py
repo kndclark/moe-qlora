@@ -5,8 +5,11 @@
          (int32, int16 and uint8 rows; on the GPU one layer's rows are a VMM MixedRows)
   stats  (GPU) the host-mapped counters equal the reference's misses and copies
   graph  (GPU) a captured step replays with new ids exactly as an uncaptured twin
+  ahead  (--ahead) before each step an ahead assign (KSTAGE_AHEAD) on a made-up prediction (each
+         token's last two ids taken from the next step), against the reference run the same
+         way, and the fill-ahead tally (useful, polluted, wasted) against the reference's
 usage: cache_test.py BENCH.json PROFILE.json [--kinds eval,code] [--layers N] [--steps N]
-                     [--slots all,16] [--conc 1,4,16] [--cold-gb 4] [--evict lru,lfu] [--shift 6]
+                     [--slots all,16] [--conc 1,4,16] [--cold-gb 4] [--evict lru,lfu] [--shift 6] [--ahead]
 TRITON_INTERPRET=1 runs the kernels on the CPU (torch tensors on the CPU)."""
 import argparse, json, os, sys, time
 
@@ -30,18 +33,28 @@ class Ref:
         self.last = dict(zip(lay["owner"], lay["stamp"]))
         self.t = 0
         self.lfu, self.shift, self.freq = evict == "lfu", shift, list(lay["freq"])
+        self.pf, self.tally = {}, [0, 0, 0, 0]  # ahead: useful, polluted, wasted (real steps, ahead assigns)
 
-    def step(self, ids):
+    def step(self, ids, ahead=False):
         touched = set(ids)
         miss = sorted(e for e in touched if e not in self.pin and e not in self.last)
         for e in touched & self.last.keys():
             self.last[e] = self.t
-        if self.lfu:
+        if self.lfu and not ahead:
             self.freq = [f - (f >> self.shift) + (1 << 20) * (e in touched) for e, f in enumerate(self.freq)]
         score = {e: self.freq[e] for e in self.last} if self.lfu else self.last
         cand = sorted((score[e], e) for e in self.last if e not in touched)
         na = min(len(miss), len(cand))
-        for _, e in cand[:na]:
+        out = [e for _, e in cand[:na]]
+        if ahead:
+            self.tally[3] += sum(self.pf.get(e) == 1 for e in out)
+            self.pf.update({e: 2 for e in out} | {e: 1 for e in miss[:na]})
+        else:
+            self.tally[0] += sum(self.pf.get(e) == 1 for e in touched if e not in miss)
+            self.tally[1] += sum(self.pf.get(e) == 2 for e in miss)
+            self.pf = {e: v for e, v in self.pf.items() if v == 1 and e not in touched}
+            self.tally[2] += sum(self.pf.pop(e, 0) == 1 for e in out)
+        for e in out:
             del self.last[e]
         for e in miss[:na]:
             self.last[e] = self.t
@@ -79,18 +92,19 @@ def run(a, segs, moe, K, counts, E, cold, C, slots, mixed_first, evict):
     L = len(moe)
     lays = [ks._cache_layout(counts[str(d)], E - cold[d], (E - cold[d]) if slots == "all"
                              else min(int(slots), E - cold[d])) for d in moe]
-    stats = None
-    if DEV == "cuda":
-        hstats, stats = ks._stats_buffer(L)
-    caches = [ks._Cache(lay, stats[l] if stats is not None else None, device=DEV, evict=evict, shift=a.shift)
-              for l, lay in enumerate(lays)]
+    nf = 6 if a.ahead else 3
+    buf = lambda: ks._stats_buffer(L, nf) if DEV == "cuda" else (lambda t: (t, t))(torch.zeros(L, nf, dtype=torch.int64))
+    (hstats, stats), (hahead, sahead) = buf(), buf()
+    caches = [ks._Cache(lay, stats[l], device=DEV, evict=evict, shift=a.shift) for l, lay in enumerate(lays)]
+    for c in caches:
+        c.ah = 2 if a.ahead else 0
     rows = []
     for l, (c, lay) in enumerate(zip(caches, lays)):
         c.rows = [ks._rows(t) for t in row_tensors(lay, E, mixed_first and l == 0)]
         rows.append(c.rows)
     refs = [Ref(lay, evict, a.shift) for lay in lays]
     bad = torch.zeros(1, dtype=torch.int64, device=DEV)
-    miss_r = copy_r = steps = 0
+    miss_r = copy_r = miss_a = copy_a = steps = 0
     t0 = time.perf_counter()
     for g in range(0, len(segs) - C + 1, C):
         grp = segs[g: g + C]
@@ -102,6 +116,12 @@ def run(a, segs, moe, K, counts, E, cold, C, slots, mixed_first, evict):
                 break
             for l in range(L):
                 ids = xd[s, l].view(C, K)
+                if a.ahead:
+                    pred = ids.clone()
+                    pred[:, -2:] = xd[min(s + 1, n - 1), l].view(C, K)[:, -2:]
+                    caches[l].ahead(pred, sahead[l], caches[l].rows)
+                    am, ac = refs[l].step(pred.view(-1).tolist(), ahead=True)
+                    miss_a += am; copy_a += ac
                 out = caches[l].step(ids).view(-1).long()
                 for t in rows[l]:
                     bad += (t[out, 0].long() != ids.view(-1).long()).sum()
@@ -121,11 +141,16 @@ def run(a, segs, moe, K, counts, E, cold, C, slots, mixed_first, evict):
         torch.cuda.synchronize()
     assert int(bad) == 0, f"C={C} S={slots}: {int(bad)} routed ids read another expert's row"
     msg = f"{evict} C={C:2} slots={slots:>4}: {steps} steps x {L} layers, ref misses {miss_r} copies {copy_r}"
-    if stats is not None:
-        v = hstats.sum(0).tolist()
-        assert v == [steps * L, miss_r, copy_r], f"stats {v} != {[steps * L, miss_r, copy_r]}"
-        msg += ", stats equal"
-    if not a.steps:  # the whole trace: the simulator's total too
+    v, want = hstats.sum(0).tolist(), [steps * L, miss_r, copy_r]
+    if a.ahead:
+        t = [sum(r.tally[i] for r in refs) for i in range(4)]
+        want += t[:3]
+        va = hahead.sum(0).tolist()
+        assert va == [steps * L, miss_a, copy_a, 0, 0, t[3]], f"ahead stats {va}: {miss_a} {copy_a} {t}"
+        msg += f", ahead fills {va[2]}: used {t[0]}, missed after an ahead eviction {t[1]}, evicted unused {t[2] + t[3]}"
+    assert v == want, f"stats {v} != {want}"
+    msg += ", stats equal"
+    if not a.steps and not a.ahead:  # the whole trace: the simulator's total too
         hot = np.zeros((L, E), bool)
         for l, lay in enumerate(lays):
             hot[l, lay["src"][:lay["D"]]] = True
@@ -176,6 +201,7 @@ def main():
     ap.add_argument("--cold-gb", type=float, default=4)
     ap.add_argument("--evict", default="lru", help="lru, lfu or both (lru,lfu)")
     ap.add_argument("--shift", type=int, default=6, help="lfu: counts lose count >> shift a step")
+    ap.add_argument("--ahead", action="store_true", help="an ahead assign before every step, and its tally")
     a = ap.parse_args()
     reqs, moe, K = sim.load(a.bench)
     counts = json.load(open(a.profile))["counts"]
