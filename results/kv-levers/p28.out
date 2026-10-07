@@ -1,0 +1,64 @@
+=== chain 2026-10-07 12:51:34: p28 - traces live+LFU vs dry fused vs K=3 at c=1,4,16
+== phase p28-live-lfu-trace 18:51:35Z maxlen 131072 ks: KSTAGE=cache KSTAGE_COLD_GB=4 KSTAGE_PROFILE=/prof/p7-all.json KSTAGE_STATS=30 KSTAGE_SLOTS=all KSTAGE_DMA_M=64 KSTAGE_DMA_BUF=1 KSTAGE_COPY_LIVE=82 KSTAGE_EVICT=lfu
+  free in 2 MiB+ blocks: 15.5 GiB
+ready in 111s; Model loading took 2.34 GiB;Available KV cache memory: 5.44 GiB;GPU KV cache size: 1,490,944 tokens;
+  mem: Maximum concurrency for 131,072 tokens per request: 11.38x;Actual usage is 14.94 GiB for consumed memory (weights + non-torch), 1.14 GiB for peak activation, and 0.1 GiB for CUDAGraph;
+  kstage: cache: 23 layers, 765 experts cold (33.3 a layer), 15.38 GiB host pages, 11.48 GiB device, policy global, profile /prof/p7-all.json (all); slots all: pinned/slots per layer ['0/125', '0/123', '0/117', '0/92', '0/86', '0/86', '0/91', '0/88', '0/82', '0/103', '0/79', '0/91', '0/96', '0/100', '0/92', '0/92', '0/87', '0/81', '0/89', '0/96', '0/93', '0/89', '0/101']; evict lfu6; frozen from never tokens; DMA from 64 tokens: 49 staging rows, 1 buffers, 0.27 GiB
+  kstage: cache: 368 layer-steps, 0.71 misses and 0.71 copies a layer-step (263 / 263)
+  kstage: installed in 2.1s; device memory free 8.64 GiB
+  kstage: registered, mode cache
+  host RAM used: +20349 MiB, 38364 MiB available
+  trace: exit 0
+  c=1: profiled 0.6 s, start+stop took 8.2 s, streams still running at stop: 1
+  c=1: 1 streams, median decode 85.8 tok/s
+  c=4: profiled 0.6 s, start+stop took 5.6 s, streams still running at stop: 4
+  c=4: 4 streams, median decode 74.2 tok/s
+  c=16: profiled 0.6 s, start+stop took 3.1 s, streams still running at stop: 16
+  c=16: 16 streams, median decode 45.9 tok/s
+  trace file: dp0_pp0_tp0_dcp0_ep0_rank0.1791399210771927580.pt.trace.json.gz
+  trace file: dp0_pp0_tp0_dcp0_ep0_rank0.1791399225425984307.pt.trace.json.gz
+  trace file: dp0_pp0_tp0_dcp0_ep0_rank0.1791399241783361183.pt.trace.json.gz
+  trace file: profiler_out_0.txt
+== phase p28-live-lfu-ahead-fuse-dry-trace 18:54:25Z maxlen 131072 ks: KSTAGE=cache KSTAGE_COLD_GB=4 KSTAGE_PROFILE=/prof/p7-all.json KSTAGE_STATS=30 KSTAGE_SLOTS=all KSTAGE_DMA_M=64 KSTAGE_DMA_BUF=1 KSTAGE_COPY_LIVE=82 KSTAGE_EVICT=lfu KSTAGE_AHEAD=1 KSTAGE_AHEAD_FUSE=1 KSTAGE_AHEAD_DRY=1
+  free in 2 MiB+ blocks: 15.5 GiB
+ready in 120s; Model loading took 2.37 GiB;Available KV cache memory: 5.16 GiB;GPU KV cache size: 1,412,300 tokens;
+  mem: Maximum concurrency for 131,072 tokens per request: 10.78x;Actual usage is 15.22 GiB for consumed memory (weights + non-torch), 1.15 GiB for peak activation, and 0.1 GiB for CUDAGraph;
+  kstage: cache: 161 layer-steps, 1.63 misses and 1.63 copies a layer-step (263 / 263); ahead fills used 0, evicted unused 0, misses of experts the fill evicted 0
+  kstage: cache: 23 layers, 765 experts cold (33.3 a layer), 15.38 GiB host pages, 11.48 GiB device, policy global, profile /prof/p7-all.json (all); slots all: pinned/slots per layer ['0/125', '0/123', '0/117', '0/92', '0/86', '0/86', '0/91', '0/88', '0/82', '0/103', '0/79', '0/91', '0/96', '0/100', '0/92', '0/92', '0/87', '0/81', '0/89', '0/96', '0/93', '0/89', '0/101']; evict lfu6; frozen from never tokens; DMA from 64 tokens: 49 staging rows, 1 buffers, 0.27 GiB; ahead below 64 tokens, top 6, fused to 16, DRY (no copies), 4 tensors on the copy engine
+  kstage: installed in 2.4s; device memory free 8.35 GiB
+  kstage: registered, mode cache
+  host RAM used: +20350 MiB, 38392 MiB available
+  trace: exit 0
+  c=1: profiled 0.6 s, start+stop took 8.1 s, streams still running at stop: 1
+  c=1: 1 streams, median decode 83.0 tok/s
+  c=4: profiled 0.6 s, start+stop took 5.8 s, streams still running at stop: 4
+  c=4: 4 streams, median decode 74.2 tok/s
+  c=16: profiled 0.6 s, start+stop took 3.3 s, streams still running at stop: 16
+  c=16: 16 streams, median decode 48.4 tok/s
+  trace file: dp0_pp0_tp0_dcp0_ep0_rank0.1791399391213213811.pt.trace.json.gz
+  trace file: dp0_pp0_tp0_dcp0_ep0_rank0.1791399406310179185.pt.trace.json.gz
+  trace file: dp0_pp0_tp0_dcp0_ep0_rank0.1791399422669643807.pt.trace.json.gz
+  trace file: profiler_out_0.txt
+== phase p28-live-lfu-ahead-fuse-k3-trace 18:57:24Z maxlen 131072 ks: KSTAGE=cache KSTAGE_COLD_GB=4 KSTAGE_PROFILE=/prof/p7-all.json KSTAGE_STATS=30 KSTAGE_SLOTS=all KSTAGE_DMA_M=64 KSTAGE_DMA_BUF=1 KSTAGE_COPY_LIVE=82 KSTAGE_EVICT=lfu KSTAGE_AHEAD=1 KSTAGE_AHEAD_FUSE=1 KSTAGE_AHEAD_K=3
+  free in 2 MiB+ blocks: 15.5 GiB
+ready in 126s; Model loading took 2.37 GiB;Available KV cache memory: 5.16 GiB;GPU KV cache size: 1,412,300 tokens;
+  mem: Maximum concurrency for 131,072 tokens per request: 10.78x;Actual usage is 15.22 GiB for consumed memory (weights + non-torch), 1.15 GiB for peak activation, and 0.1 GiB for CUDAGraph;
+  kstage: cache: 115 layer-steps, 2.29 misses and 2.29 copies a layer-step (263 / 263); ahead fills used 0, evicted unused 0, misses of experts the fill evicted 0
+  kstage: cache: 23 layers, 765 experts cold (33.3 a layer), 15.38 GiB host pages, 11.48 GiB device, policy global, profile /prof/p7-all.json (all); slots all: pinned/slots per layer ['0/125', '0/123', '0/117', '0/92', '0/86', '0/86', '0/91', '0/88', '0/82', '0/103', '0/79', '0/91', '0/96', '0/100', '0/92', '0/92', '0/87', '0/81', '0/89', '0/96', '0/93', '0/89', '0/101']; evict lfu6; frozen from never tokens; DMA from 64 tokens: 49 staging rows, 1 buffers, 0.27 GiB; ahead below 64 tokens, top 3, fused to 16, 4 tensors on the copy engine
+  kstage: installed in 2.5s; device memory free 8.35 GiB
+  kstage: registered, mode cache
+  host RAM used: +20339 MiB, 38402 MiB available
+  trace: exit 0
+  c=1: profiled 0.6 s, start+stop took 8.1 s, streams still running at stop: 1
+  c=1: 1 streams, median decode 83.1 tok/s
+  c=4: profiled 0.6 s, start+stop took 5.8 s, streams still running at stop: 4
+  c=4: 4 streams, median decode 72.0 tok/s
+  c=16: profiled 0.6 s, start+stop took 3.4 s, streams still running at stop: 16
+  c=16: 16 streams, median decode 47.5 tok/s
+  trace file: dp0_pp0_tp0_dcp0_ep0_rank0.1791399575906470701.pt.trace.json.gz
+  trace file: dp0_pp0_tp0_dcp0_ep0_rank0.1791399590986349596.pt.trace.json.gz
+  trace file: dp0_pp0_tp0_dcp0_ep0_rank0.1791399607853197479.pt.trace.json.gz
+  trace file: profiler_out_0.txt
+== done 19:00:30Z
+profile: performance
+exit 0
