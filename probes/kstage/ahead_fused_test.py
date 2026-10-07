@@ -5,12 +5,14 @@ unfused path on twin K6 caches (one layer each, made-up profile counts), Lightni
   state   the unfused path fed the kernel's own top K (torch.topk of its scores) must leave the
           same where/owner/stamp/clock/freq/pf/need/cps/cpd, stats, plan, done flag and small
           rows, step after step, with a real K6 step (AH 2) on the same ids after each ahead
-          assign; once eager, once with the kernel replayed from a CUDA graph
+          assign; eager, replayed from a CUDA graph, and from one that forks it onto a side
+          stream and joins it (KSTAGE_AHEAD_SIDE, as _Ahead.plan/join). LFU runs again for
+          each --stale (KSTAGE_AHEAD_STALE, uses' worth): every expert a fill evicts was below it
   time    us a layer in a CUDA graph of --layers layers (distinct gates and caches), unfused
           vs fused for each --beb and --hc; --flush MiB written between layers keeps the gates out of
           L2, as decode's expert reads do (its own time is measured and taken off)
 usage (vLLM image): python3 /k/ahead_fused_test.py [--M 1,4,16,48] [--steps 300] [--evict lru,lfu]
-                    [--slots all,16] [--layers 23] [--beb 16] [--hc 384] [--flush 128]"""
+                    [--slots all,16] [--stale 0,2] [--layers 23] [--beb 16] [--hc 384] [--flush 128]"""
 import argparse
 import math
 import sys
@@ -25,6 +27,7 @@ ap.add_argument("--M", default="1,4,16,48")
 ap.add_argument("--steps", type=int, default=300)
 ap.add_argument("--evict", default="lru,lfu")
 ap.add_argument("--slots", default="all,16")
+ap.add_argument("--stale", default="0,2")
 ap.add_argument("--layers", type=int, default=23)
 ap.add_argument("--beb", default="16")
 ap.add_argument("--hc", default="384")
@@ -39,13 +42,13 @@ g = torch.Generator(device="cuda").manual_seed(0)
 print(f"{torch.cuda.get_device_name()}: E {E}, H {H}, top {K}, {D} device rows", flush=True)
 
 
-def cache(seed, slots, evict):
+def cache(seed, slots, evict, stale=0.0):
     """A K6 layer from made-up counts, with small rows (int32 x 8) that name the expert they hold."""
     cnt = torch.randint(0, 10**6, (E,), generator=torch.Generator().manual_seed(seed)).tolist()
     S = D if slots == "all" else min(int(slots), D)
     lay = ks._cache_layout(cnt, D, S)
     c = ks._Cache(lay, None, evict=evict)
-    c.ah = 2
+    c.ah, c.stale = 2, round(stale * 2**20)
     src = torch.tensor(lay["src"], dtype=torch.int32, device="cuda")
     c.rows = [ks._rows(src[:, None].expand(len(src), 8).contiguous())]
     return c
@@ -84,26 +87,38 @@ def diff(A, B, pa, pb):
     return None
 
 
-def check(slots, evict, M, graph):
-    A, B = cache(1, slots, evict), cache(1, slots, evict)
+def check(slots, evict, M, graph, stale):
+    A, B = cache(1, slots, evict, stale), cache(1, slots, evict, stale)
     w, b = gate(1)
     pa, pb = bufs(A), bufs(B)
     sc = torch.empty(ks.fused_scratch(64, E, H), dtype=torch.float32, device="cuda")
     cnt = torch.zeros(1, dtype=torch.int32, device="cuda")
     xs = torch.zeros(M, H, dtype=torch.bfloat16, device="cuda")
     fused = lambda: ks.fused_plan(B, xs, w, b, sc, cnt, pb[0], pb[1], pb[2], B.rows)
-    if graph:
-        W = cache(1, slots, evict)  # compile on a throwaway twin; capture runs nothing
+    if graph != "eager":
+        W = cache(1, slots, evict, stale)  # compile on a throwaway twin; capture runs nothing
         pw = bufs(W)
         ks.fused_plan(W, xs, w, b, sc, cnt, pw[0], pw[1], pw[2], W.rows)
         torch.cuda.synchronize()
         gr, st = torch.cuda.CUDAGraph(), torch.cuda.Stream()
         with torch.cuda.graph(gr, stream=st):
-            fused()
+            if graph == "side":
+                sd = torch.cuda.Stream()
+                sd.wait_stream(st)
+                with torch.cuda.stream(sd):
+                    fused()
+                st.wait_stream(sd)
+            else:
+                fused()
     err, flips, bad = 0.0, 0, None
     for s in range(a.steps):
         xs.copy_(torch.randn(M, H, device="cuda", generator=g).to(torch.bfloat16))
-        gr.replay() if graph else fused()
+        ob, fb = B.owner.clone(), B.freq.clone()
+        gr.replay() if graph != "eager" else fused()
+        out = (B.owner != ob) & (ob >= 0)  # the experts this fill evicted
+        if B.stale and (fb[ob[out].long()] >= B.stale).any():
+            bad = f"evicted at or over the stale count at step {s}"
+            break
         ref = (xs.float() @ w.t()).sigmoid() + b
         got = sc[:M * E].view(M, E)
         err = max(err, (got - ref).abs().max().item())
@@ -122,7 +137,8 @@ def check(slots, evict, M, graph):
             bad = f"real step out at step {s}"
             break
     fills = int(pb[2][2])
-    print(f"  {evict} slots {slots:>3} M {M:2d} {'graph' if graph else 'eager'}: score err {err:.1e}, "
+    print(f"  {evict}{f' stale {stale:g}' if stale else ''} slots {slots:>3} M {M:2d} "
+          f"{graph}: score err {err:.1e}, "
           f"top-{K} sets off torch's {flips}/{a.steps * M} tokens, {fills} fills, "
           f"{'SAME' if not bad else 'DIFF ' + bad}", flush=True)
     return not bad
@@ -172,9 +188,10 @@ ok = True
 print("state (twin caches, the unfused path fed the kernel's top K):", flush=True)
 for evict in a.evict.split(","):
     for slots in a.slots.split(","):
-        for M in ints(a.M):
-            for graph in (False, True):
-                ok &= check(slots, evict, M, graph)
+        for stale in ([float(v) for v in a.stale.split(",")] if evict == "lfu" else [0.0]):
+            for M in ints(a.M):
+                for graph in ("eager", "graph", "side"):
+                    ok &= check(slots, evict, M, graph, stale)
 print(f"time (CUDA graph of {a.layers} layers, {a.flush} MiB flush between, mean of {a.reps} replays):", flush=True)
 for M in ints(a.M):
     for beb in ints(a.beb):

@@ -254,7 +254,8 @@ def gather(src, dst, order, n_ids=None):
 @triton.jit
 def _k6_assign(touched, where_ptr, home_ptr, owner_ptr, stamp_ptr, clock_ptr, freq_ptr, need_ptr, miss_ptr,
                cps_ptr, cpd_ptr, stats_ptr, S, slot0, pf_ptr, E: tl.constexpr, BE: tl.constexpr,
-               BS: tl.constexpr, STATS: tl.constexpr, LFU: tl.constexpr, SHIFT: tl.constexpr, AH: tl.constexpr):
+               BS: tl.constexpr, STATS: tl.constexpr, LFU: tl.constexpr, SHIFT: tl.constexpr, AH: tl.constexpr,
+               TH: tl.constexpr):
     """_cache_kernel's step from the experts the batch routes to (touched: [BE], 1 = routed).
     Returns the copies it listed: j < na (ok), source rows, destination rows."""
     e = tl.arange(0, BE)
@@ -283,11 +284,13 @@ def _k6_assign(touched, where_ptr, home_ptr, owner_ptr, stamp_ptr, clock_ptr, fr
     st = tl.load(stamp_ptr + j, mask=jm, other=0)
     used = jm & (own >= 0) & (tl.load(need_ptr + tl.maximum(own, 0), mask=jm & (own >= 0), other=0) > 0)
     cand = jm & ~used
-    ncand = tl.sum(cand.to(tl.int32), axis=0)
     if LFU:  # counts stay below 2**(20 + SHIFT): int32 for SHIFT <= 10
         sc = tl.load(freq_ptr + tl.maximum(own, 0), mask=jm, other=0).to(tl.int64)
     else:
         sc = st.to(tl.int64) + 2147483648
+    if AH == 1 and TH > 0:  # KSTAGE_AHEAD_STALE: an ahead fill evicts only experts gone cold
+        cand = cand & ((own < 0) | (sc < TH))
+    ncand = tl.sum(cand.to(tl.int32), axis=0)
     key = (sc * BE + tl.maximum(own, 0)) * BS + j
     key = tl.where(cand, key, 0x3FFFFFFFFFFFFFFF)
     slot = (tl.sort(key) % BS).to(tl.int32)  # victims, least recently used (or used) first
@@ -334,7 +337,7 @@ def _k6_assign(touched, where_ptr, home_ptr, owner_ptr, stamp_ptr, clock_ptr, fr
 def _cache_kernel(ids_ptr, n, out_ptr, where_ptr, home_ptr, owner_ptr, stamp_ptr, clock_ptr, freq_ptr, need_ptr,
                   miss_ptr, cps_ptr, cpd_ptr, stats_ptr, S, slot0, pf_ptr,
                   E: tl.constexpr, BE: tl.constexpr, BS: tl.constexpr, CH: tl.constexpr, STATS: tl.constexpr,
-                  LFU: tl.constexpr, SHIFT: tl.constexpr, AH: tl.constexpr):
+                  LFU: tl.constexpr, SHIFT: tl.constexpr, AH: tl.constexpr, TH: tl.constexpr):
     """K6, one program per layer per step. Slots whose expert the batch routes to are stamped
     with the clock; each miss (ascending id) takes the slot of the least recently used expert
     the batch does not route to (ties: lower expert id, as expert_cache_sim.py) while such
@@ -346,7 +349,9 @@ def _cache_kernel(ids_ptr, n, out_ptr, where_ptr, home_ptr, owner_ptr, stamp_ptr
     expert: 1 = filled ahead and not yet routed to, 2 = evicted by the ahead assign just before
     this step. A real step counts useful (routed to a pf 1 expert: a miss the fill avoided) and
     polluted (missed a pf 2 one), then clears both; either kind counts wasted (evicted a pf 1
-    expert). An ahead assign leaves the LFU counts alone: a prediction is not a use."""
+    expert). An ahead assign leaves the LFU counts alone: a prediction is not a use.
+    TH (KSTAGE_AHEAD_STALE, LFU, ahead assigns only): its victims are empty slots and experts
+    whose count is below TH; the misses past them (ascending id) are left to the real step."""
     e = tl.arange(0, BE)
     touched = tl.zeros([BE], dtype=tl.int32)
     for s in range(0, n, CH):
@@ -354,7 +359,7 @@ def _cache_kernel(ids_ptr, n, out_ptr, where_ptr, home_ptr, owner_ptr, stamp_ptr
         v = tl.load(ids_ptr + o, mask=o < n, other=-1).to(tl.int32)
         touched = tl.maximum(touched, tl.max((v[:, None] == e[None, :]).to(tl.int32), axis=0))
     _k6_assign(touched, where_ptr, home_ptr, owner_ptr, stamp_ptr, clock_ptr, freq_ptr, need_ptr, miss_ptr,
-               cps_ptr, cpd_ptr, stats_ptr, S, slot0, pf_ptr, E, BE, BS, STATS, LFU, SHIFT, AH)
+               cps_ptr, cpd_ptr, stats_ptr, S, slot0, pf_ptr, E, BE, BS, STATS, LFU, SHIFT, AH, TH)
     tl.debug_barrier()
     for s in range(0, n, CH):
         o = s + tl.arange(0, CH)
@@ -435,6 +440,7 @@ class _Cache:
         self.cpd = torch.zeros(self.BS, dtype=torch.int32, device=device)
         self.stats = stats  # 3 int64 the GPU writes and the CPU reads (host-mapped; 6 with ahead), or None
         self.pf, self.ah = torch.zeros(self.BE, dtype=torch.int32, device=device), 0  # B5 (_cache_kernel)
+        self.stale = 0  # KSTAGE_AHEAD_STALE's count threshold (_cache_kernel's TH)
         self.rows = []
 
     def _assign(self, ids, S, stats, ah=0):
@@ -443,7 +449,7 @@ class _Cache:
                             self.freq, self.need, self.miss, self.cps, self.cpd,
                             stats if stats is not None else self.clock, S, self.slot0, self.pf, E=self.E,
                             BE=self.BE, BS=self.BS, CH=128, STATS=stats is not None, LFU=self.lfu,
-                            SHIFT=self.shift, AH=ah, num_warps=8)
+                            SHIFT=self.shift, AH=ah, TH=self.stale if ah == 1 else 0, num_warps=8)
         return out
 
     def step(self, topk_ids, frozen=False):
@@ -491,7 +497,7 @@ def _ahead_kernel(x_ptr, sx, M, w_ptr, b_ptr, sc_ptr, cnt_ptr, plan_ptr, done_pt
                   stamp_ptr, clock_ptr, freq_ptr, need_ptr, miss_ptr, cps_ptr, cpd_ptr, stats_ptr, S, slot0, pf_ptr,
                   H: tl.constexpr, E: tl.constexpr, BE: tl.constexpr, BS: tl.constexpr, BM: tl.constexpr,
                   BEB: tl.constexpr, BH: tl.constexpr, HC: tl.constexpr, K: tl.constexpr, STATS: tl.constexpr,
-                  LFU: tl.constexpr, SHIFT: tl.constexpr, DRY: tl.constexpr):
+                  LFU: tl.constexpr, SHIFT: tl.constexpr, DRY: tl.constexpr, TH: tl.constexpr):
     """KSTAGE_AHEAD_FUSE: _Ahead.plan's eight launches (cast, gate gemv, sigmoid, bias, top-k,
     _cache_kernel AH 1, _plan_kernel) in one. Program (g, k) takes experts [g BEB, (g + 1) BEB)
     and hidden columns [k HC, (k + 1) HC) of x w.T for the M tokens of x, in fp32, into its own
@@ -536,7 +542,7 @@ def _ahead_kernel(x_ptr, sx, M, w_ptr, b_ptr, sc_ptr, cnt_ptr, plan_ptr, done_pt
             touched = touched * 0
         ok, src, dst = _k6_assign(touched, where_ptr, home_ptr, owner_ptr, stamp_ptr, clock_ptr, freq_ptr,
                                   need_ptr, miss_ptr, cps_ptr, cpd_ptr, stats_ptr, S, slot0, pf_ptr, E, BE, BS,
-                                  STATS, LFU, SHIFT, 1)
+                                  STATS, LFU, SHIFT, 1, TH)
         j = tl.arange(0, BS)
         n = tl.sum(ok.to(tl.int32), axis=0)
         tl.store(plan_ptr + 1 + 2 * j, src.to(tl.int64), mask=ok)
@@ -558,7 +564,7 @@ def fused_plan(c, x, w, bias, sc, cnt, plan, done, stats, rows):
         x, x.stride(0), M, w, bias, sc, cnt, plan, done, c.where, c.home, c.owner, c.stamp, c.clock, c.freq,
         c.need, c.miss, c.cps, c.cpd, stats if stats is not None else c.clock, c.S, c.slot0, c.pf, H=H, E=c.E,
         BE=c.BE, BS=c.BS, BM=max(16, triton.next_power_of_2(M)), BEB=AHEAD_BEB, BH=AHEAD_BH,
-        HC=AHEAD_HC, K=AHEAD_K, STATS=stats is not None, LFU=c.lfu, SHIFT=c.shift, DRY=AHEAD_DRY,
+        HC=AHEAD_HC, K=AHEAD_K, STATS=stats is not None, LFU=c.lfu, SHIFT=c.shift, DRY=AHEAD_DRY, TH=c.stale,
         num_warps=AHEAD_WARPS)
     c._copy(rows, min(c.S, M * AHEAD_K, c.E))
 
@@ -591,7 +597,10 @@ class _Ahead:
     layers between run. Layer p+1 waits for those copies (cuStreamWaitValue32 on a flag the
     helper writes), then takes its own K6 step, which copies what the prediction missed.
     Plan and flags are memory, not graph edges, so this works inside CUDA graphs and across
-    vLLM's piecewise graph boundaries. The helper thread spins on its flags (one CPU core)."""
+    vLLM's piecewise graph boundaries. The helper thread spins on its flags (one CPU core).
+    KSTAGE_AHEAD_SIDE=1 runs the predictor and plan on a side stream beside layer p's expert
+    compute (joined before the MoE call returns); KSTAGE_AHEAD_STALE=U lets a fill evict only
+    empty slots and experts whose LFU count is below U uses' worth."""
 
     def start(self, order, model, period):
         """order: (idx, name, cache, big rows, small rows) for every MoE layer, in forward order."""
@@ -599,6 +608,7 @@ class _Ahead:
         faulthandler.register(signal.SIGUSR1, all_threads=True)  # CE_WATCH: every thread's stack
         mods = dict(model.named_modules())
         self.L = L = len(order)
+        self.side = torch.cuda.Stream() if AHEAD_SIDE else None
         self.caches, self.small = [o[2] for o in order], [o[4] for o in order]
         norms, self.w, self.bias = [], [None], [None]
         for p, (idx, name, *_) in enumerate(order):
@@ -654,6 +664,7 @@ class _Ahead:
             self.cnt = torch.zeros(L, dtype=torch.int32, device="cuda")
         for c in self.caches:
             c.ah = 0 if "ah" in AHEAD_SKIP else 2
+            c.stale = round(AHEAD_STALE * 2**20)
         if period:
             _report(self.hstats, period, "ahead")
             if "helper" not in AHEAD_SKIP:
@@ -704,10 +715,24 @@ class _Ahead:
                 _tick_kernel[(1,)](self.t0[p:], self.td[p], self.plan_d[p], END=True)
 
     def plan(self, p, x):
-        """After layer p's own K6 step (its copies come first): layer p + 1's fill from x."""
-        q = p + 1
-        if q == self.L:
+        """After layer p's own K6 step (its copies come first): layer p + 1's fill from x. With
+        KSTAGE_AHEAD_SIDE, on a side stream beside layer p's expert compute until join(); the
+        expert kernels only read x (vLLM's modular kernel allocates its own output)."""
+        if p + 1 == self.L:
             return
+        if self.side is None:
+            return self._plan(p, x)
+        self.side.wait_stream(torch.cuda.current_stream())
+        with torch.cuda.stream(self.side):
+            self._plan(p, x)
+
+    def join(self):
+        """After layer p's expert compute: the side stream rejoins (a graph's forks join in it)."""
+        if self.side is not None:
+            torch.cuda.current_stream().wait_stream(self.side)
+
+    def _plan(self, p, x):
+        q = p + 1
         c = self.caches[q]
         st = self.dstats[q] if self.dstats is not None else None
         if "pred" in AHEAD_SKIP:
@@ -991,7 +1016,10 @@ def _wrap(runner, idx, E, big=(), pos=None, mixed=(), cache=None, stage=None, ah
             ids = cache.step(topk_ids, bool(FREEZE_M) and M >= FREEZE_M)
             if fill:
                 ahead[0].plan(ahead[1], x)
-            return fwd(x, topk_weights, ids, *a, **k)
+            out = fwd(x, topk_weights, ids, *a, **k)
+            if fill:
+                ahead[0].join()
+            return out
         ids = topk_ids if pos is None else pos[topk_ids.long()].to(topk_ids.dtype)
         if big:  # K2: experts live in host memory, staging is what Marlin reads
             if DMA_M and M >= DMA_M:
@@ -1112,6 +1140,11 @@ AHEAD_K = int(os.environ.get("KSTAGE_AHEAD_K", "6"))  # ids predicted per token
 AHEAD_FUSE = os.environ.get("KSTAGE_AHEAD_FUSE", "0") == "1"  # the predictor in one launch (_ahead_kernel)
 AHEAD_DRY = os.environ.get("KSTAGE_AHEAD_DRY", "0") == "1"  # predict, plan no copies: ahead's fixed cost
 AHEAD_TICK = os.environ.get("KSTAGE_AHEAD_TICK", "0") == "1"  # time the flag waits (_tick_kernel)
+AHEAD_SIDE = os.environ.get("KSTAGE_AHEAD_SIDE", "0") == "1"  # p30: the predictor beside layer p's experts
+# p30: an ahead fill evicts only experts whose LFU count is below this many uses' worth (a use
+# adds 2**20; counts decay by count >> KSTAGE_SHIFT a step). 0 = any victim K6 would take.
+AHEAD_STALE = float(os.environ.get("KSTAGE_AHEAD_STALE", "0"))
+assert not AHEAD_STALE or EVICT == "lfu", "KSTAGE_AHEAD_STALE reads LFU counts: KSTAGE_EVICT=lfu"
 # p26: what DRY's fixed cost is made of. Each part named is left out: pred (the predictor; a fill
 # sets the flag if a wait reads it), req (the request flag's memop), wait (the flag wait and its
 # reset), ah (K6's real step as without ahead), helper (ce_helper never starts: no context of its own)
@@ -1270,6 +1303,7 @@ def _install_cache(layers, model=None):
         + (f"; ahead {f'from {AHEAD_MIN} ' if AHEAD_MIN > 1 else ''}below {AHEAD_M} tokens, top {AHEAD_K}"
            f"{f', fused to {AHEAD_FUSE_M}' if AHEAD_FUSE else ''}"
            f"{', DRY (no copies)' if AHEAD_DRY else ''}{', waits timed' if AHEAD_TICK else ''}"
+           f"{', side stream' if AHEAD_SIDE else ''}{f', stale below {AHEAD_STALE:g}' if AHEAD_STALE else ''}"
            f"{', without ' + '/'.join(sorted(AHEAD_SKIP)) if AHEAD_SKIP else ''}, "
            f"{ahead.ntens} tensors on the copy engine" if ahead else ""))
 

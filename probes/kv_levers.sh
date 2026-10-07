@@ -5,7 +5,7 @@
 # flags in the table below, runs v1, v2, alert and trap3 thinking-on, and keeps its log.
 # Outputs go to results/kv-levers/; kv_levers_agree.py compares them with G6q's three runs.
 # usage: kv_levers.sh PHASE...   (or "round4" / "round5" for the doc's rows 2-9 / 10-14,
-#        "round6" / "round8" / "round7" / "round9" / "k6" / "p13" / "p14" / "p20" / "p21" / "p22" / "p23" / "p24" / "p25" / "p26" / "p27" / "p28" / "p29" for the experts-in-RAM program's passes)
+#        "round6" / "round8" / "round7" / "round9" / "k6" / "p13" / "p14" / "p20" / "p21" / "p22" / "p23" / "p24" / "p25" / "p26" / "p27" / "p28" / "p29" / "p30" for the experts-in-RAM program's passes)
 # Env per phase: MAXLEN / SEQS (default 16384 / 16); WORK="MODE..." runs probes/offload_bench.py
 # modes (decode prefill agent needle experts) with BARGS instead of the eval, to bench-TAG.json.
 # KS="KSTAGE=... VAR=..." loads the kstage plugin (probes/kstage) with those variables set;
@@ -368,7 +368,11 @@ run() {  # the doc's lever table, row by row
     # K=3 (the best at 16 streams in p26/p27): how much of its step is still fill waits?
     # p29: K=3 from 8 tokens (B4) on the loads it is for, 8 and 16 agents to 127k (-a8l, -a16l;
     # -kvoff16 adds prefix KV in RAM), against live + LFU in the same round (p22: 418 / 817 s).
-    p20-*|p21-*|p24-*|p25-*|p26-*|p27-*|p28-*|p29-*)
+    # p30: p28 found the fused predictor on the expert branch's path (16-22 us a layer in the
+    # server); -side = KSTAGE_AHEAD_SIDE, on a side stream beside layer p's experts. -staleN =
+    # KSTAGE_AHEAD_STALE=N: a fill evicts only experts under N uses' worth of LFU count (K=3's
+    # evictions cause 0.74 misses a layer-step). -eval: answers, vs p15-ks-dma64-eval.
+    p20-*|p21-*|p24-*|p25-*|p26-*|p27-*|p28-*|p29-*|p30-*)
       local c=1,4,16
       case $1 in *-c16*) c=16 ;; *-c1*) c=1 ;; *-c4*) c=4 ;; *-c8*) c=8 ;; esac
       local k="${KC6/KSTAGE_STATS=30/KSTAGE_STATS=1} KSTAGE_SLOTS=all KSTAGE_DMA_M=64 KSTAGE_DMA_BUF=1"
@@ -381,6 +385,8 @@ run() {  # the doc's lever table, row by row
       case $1 in *-tick*) k="$k KSTAGE_AHEAD_TICK=1" ;; esac
       case $1 in *-k[0-9]-*) local kk=${1#*-k}; k="$k KSTAGE_AHEAD_K=${kk%%-*}" ;; esac
       case $1 in *-min[0-9]*) local mm=${1#*-min}; k="$k KSTAGE_AHEAD_MIN=${mm%%-*}" ;; esac
+      case $1 in *-side*) k="$k KSTAGE_AHEAD_SIDE=1" ;; esac
+      case $1 in *-stale[0-9]*) local ss=${1#*-stale}; k="$k KSTAGE_AHEAD_STALE=${ss%%-*}" ;; esac
       local x s=
       for x in pred req wait ah helper; do case $1 in *-no$x-*) s="$s${s:+,}$x" ;; esac; done
       [ -z "$s" ] || k="$k KSTAGE_AHEAD_SKIP=$s"
@@ -390,6 +396,7 @@ run() {  # the doc's lever table, row by row
       case $1 in
         *-trace) KS="${k/KSTAGE_STATS=1/KSTAGE_STATS=30}" MAXLEN=131072 TRACE=1 phase "$1" "${G92[@]}" ;;
         *-a8l|*-a16l) KS="$k" MAXLEN=131072 WORK=agent BARGS="$w" phase "$1" "${G92[@]}" "${o[@]}" ;;
+        *-eval) KS="$k" phase "$1" "${G92[@]}" ;;
         *) KS="$k" MAXLEN=131072 WORK=decode BARGS="--conc $c" phase "$1" "${G92[@]}" ;;
       esac ;;
     # Rows B/K: p20's c=16 winner (live copy + LFU, 419 tok/s vs 343) on the long-context agent
@@ -447,6 +454,13 @@ for p in "$@"; do
          for q in live-lfu $a; do run p29-$q-kvoff16-a16l; done
          for r in 1 2; do for q in live-lfu $a; do run p29-$q-c1-r$r; done; done
          run p29-live-lfu-ahead-fuse-k3-c8 ;;
+    p30) a=live-lfu-ahead-fuse-k3-min8
+         for r in 1 2; do
+           for q in live-lfu $a $a-side $a-stale2 $a-stale8 $a-stale32 $a-side-stale8; do run p30-$q-c16-r$r; done
+         done
+         for q in $a $a-side; do run p30-$q-c8; done
+         run p30-$a-side-stale8-eval
+         run p30-$a-side-a8l ;;
     p27) a=live-lfu-ahead-fuse
          for r in 1 2; do
            for q in live-lfu $a-k1 $a-k2 $a-k3; do run p27-$q-c16-r$r; done
