@@ -583,8 +583,8 @@ def _tick_kernel(t0_ptr, st_ptr, plan_ptr, END: tl.constexpr):
 
 
 class _Ahead:
-    """KSTAGE_AHEAD=1, steps of fewer than KSTAGE_AHEAD_M tokens (decode). At MoE layer p the
-    next MoE layer's gate, scaled by the two layers' norm weights (_install_predict's "d1
+    """KSTAGE_AHEAD=1, steps of fewer than KSTAGE_AHEAD_M tokens and at least KSTAGE_AHEAD_MIN (decode).
+    At MoE layer p the next MoE layer's gate, scaled by the two layers' norm weights (_install_predict's "d1
     scaled"), is applied to layer p's input, and K6 assigns layer p+1's slots to the top
     KSTAGE_AHEAD_K predicted ids as if layer p+1 had routed them. The small rows are copied
     here; the big ones (host pages) by ce_helper on the copy engine, while layer p and the
@@ -613,12 +613,13 @@ class _Ahead:
         self.ntens = nt.pop()
         maxk = max(c.BS for c in self.caches)
         so = "/tmp/ce_helper.so"
-        subprocess.run(["gcc", "-O2", "-shared", "-fPIC", "-I/usr/local/cuda/include",
-                        f"{os.path.dirname(os.path.abspath(__file__))}/ce_helper.c", "-o", so,
-                        "-L/usr/local/cuda/lib64/stubs", "-lcuda", "-lpthread"], check=True)
-        lib = ctypes.CDLL(so)
-        lib.ce_start.restype = ctypes.c_void_p
-        lib.ce_start.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 3 + [ctypes.c_void_p] * 6
+        if "helper" not in AHEAD_SKIP:
+            subprocess.run(["gcc", "-O2", "-shared", "-fPIC", "-I/usr/local/cuda/include",
+                            f"{os.path.dirname(os.path.abspath(__file__))}/ce_helper.c", "-o", so,
+                            "-L/usr/local/cuda/lib64/stubs", "-lcuda", "-lpthread"], check=True)
+            lib = ctypes.CDLL(so)
+            lib.ce_start.restype = ctypes.c_void_p
+            lib.ce_start.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 3 + [ctypes.c_void_p] * 6
         self.cu = ctypes.CDLL("libcuda.so.1")
         for f in ("cuStreamWriteValue32_v2", "cuStreamWaitValue32_v2"):
             getattr(self.cu, f).argtypes = [ctypes.c_void_p, ctypes.c_uint64, ctypes.c_uint32, ctypes.c_uint]
@@ -641,20 +642,22 @@ class _Ahead:
         os.environ.setdefault("CE_OWNCTX", "1")  # on vLLM's context the helper deadlocks (ce_helper.c)
         os.environ.setdefault("CE_WATCH", "30")  # a helper stuck 30 s in one CUDA call ends the process
         torch.cuda.synchronize()
-        self.ce = lib.ce_start(ctx, L, self.ntens, maxk, ctypes.c_void_p(self.plan_h.data_ptr()),
-                               ctypes.c_void_p(self.req.data_ptr()), ctypes.c_void_p(self.done.data_ptr()),
-                               B(*base), B(*base), B(*rb))
-        self.lib = lib
+        if "helper" not in AHEAD_SKIP:
+            self.ce = lib.ce_start(ctx, L, self.ntens, maxk, ctypes.c_void_p(self.plan_h.data_ptr()),
+                                   ctypes.c_void_p(self.req.data_ptr()), ctypes.c_void_p(self.done.data_ptr()),
+                                   B(*base), B(*base), B(*rb))
+            self.lib = lib
         self.hstats, self.dstats = _stats_buffer(L, 6) if period else (None, None)
         if AHEAD_FUSE:  # _ahead_kernel's scores (layers run one at a time) and per-layer counts
             n = fused_scratch(AHEAD_M, max(c.E for c in self.caches), max(w.shape[1] for w in self.w if w is not None))
             self.sc = torch.empty(n, dtype=torch.float32, device="cuda")
             self.cnt = torch.zeros(L, dtype=torch.int32, device="cuda")
         for c in self.caches:
-            c.ah = 2
+            c.ah = 0 if "ah" in AHEAD_SKIP else 2
         if period:
             _report(self.hstats, period, "ahead")
-            threading.Thread(target=self._counts, args=(period,), daemon=True, name="kstage-ce").start()
+            if "helper" not in AHEAD_SKIP:
+                threading.Thread(target=self._counts, args=(period,), daemon=True, name="kstage-ce").start()
         if AHEAD_TICK:
             self.t0 = torch.zeros(L, dtype=torch.int64, device="cuda")
             self.th, self.td = _stats_buffer(L, 6)
@@ -691,7 +694,7 @@ class _Ahead:
 
     def wait(self, p):
         """Before layer p's own K6 step: the copies planned at layer p - 1 are done."""
-        if p:
+        if p and "wait" not in AHEAD_SKIP:
             a = self.done.data_ptr() + 4 * p
             if AHEAD_TICK:
                 _tick_kernel[(1,)](self.t0[p:], self.td[p], self.plan_d[p], END=False)
@@ -707,7 +710,10 @@ class _Ahead:
             return
         c = self.caches[q]
         st = self.dstats[q] if self.dstats is not None else None
-        if AHEAD_FUSE and x.shape[0] <= AHEAD_FUSE_M:
+        if "pred" in AHEAD_SKIP:
+            if "wait" not in AHEAD_SKIP:
+                self.done[q].fill_(1)
+        elif AHEAD_FUSE and x.shape[0] <= AHEAD_FUSE_M:
             fused_plan(c, x, self.w[q], self.bias[q], self.sc, self.cnt[q:], self.plan_d[q], self.done[q:], st,
                        self.small[q])
         else:
@@ -719,7 +725,8 @@ class _Ahead:
             else:
                 c.ahead(ids, st, self.small[q])
                 _plan_kernel[(1,)](c.cps, c.cpd, self.plan_d[q], self.done[q:], BS=c.BS)
-        self._memop("cuStreamWriteValue32_v2", self.req.data_ptr() + 4 * q, 1)
+        if "req" not in AHEAD_SKIP:
+            self._memop("cuStreamWriteValue32_v2", self.req.data_ptr() + 4 * q, 1)
 
 
 class _BigStage:
@@ -978,7 +985,7 @@ def _wrap(runner, idx, E, big=(), pos=None, mixed=(), cache=None, stage=None, ah
         if cache is not None:  # K6: slots filled, ids remapped to rows
             # _Ahead: one forward has one M, so every layer agrees. Only in graphs, where decode runs;
             # eager steps of this size are warm-up and profiling.
-            fill = ahead is not None and M < AHEAD_M and torch.cuda.is_current_stream_capturing()
+            fill = ahead is not None and AHEAD_MIN <= M < AHEAD_M and torch.cuda.is_current_stream_capturing()
             if fill:
                 ahead[0].wait(ahead[1])
             ids = cache.step(topk_ids, bool(FREEZE_M) and M >= FREEZE_M)
@@ -1100,10 +1107,19 @@ EVICT = os.environ.get("KSTAGE_EVICT", "lru")
 SHIFT = int(os.environ.get("KSTAGE_SHIFT", "6"))
 AHEAD = os.environ.get("KSTAGE_AHEAD", "0") == "1"  # _Ahead: fill the next layer's slots on the copy engine
 AHEAD_M = int(os.environ.get("KSTAGE_AHEAD_M", "64"))  # steps of fewer tokens fill ahead (decode)
+AHEAD_MIN = int(os.environ.get("KSTAGE_AHEAD_MIN", "1"))  # B4: and of at least this many (a graph's M is fixed)
 AHEAD_K = int(os.environ.get("KSTAGE_AHEAD_K", "6"))  # ids predicted per token
 AHEAD_FUSE = os.environ.get("KSTAGE_AHEAD_FUSE", "0") == "1"  # the predictor in one launch (_ahead_kernel)
 AHEAD_DRY = os.environ.get("KSTAGE_AHEAD_DRY", "0") == "1"  # predict, plan no copies: ahead's fixed cost
 AHEAD_TICK = os.environ.get("KSTAGE_AHEAD_TICK", "0") == "1"  # time the flag waits (_tick_kernel)
+# p26: what DRY's fixed cost is made of. Each part named is left out: pred (the predictor; a fill
+# sets the flag if a wait reads it), req (the request flag's memop), wait (the flag wait and its
+# reset), ah (K6's real step as without ahead), helper (ce_helper never starts: no context of its own)
+AHEAD_SKIP = set(filter(None, os.environ.get("KSTAGE_AHEAD_SKIP", "").split(",")))
+assert AHEAD_SKIP <= {"pred", "req", "wait", "ah", "helper"}, f"KSTAGE_AHEAD_SKIP: {AHEAD_SKIP}"
+assert not AHEAD_SKIP or AHEAD_DRY, "KSTAGE_AHEAD_SKIP leaves out parts copies need: KSTAGE_AHEAD_DRY=1 only"
+assert "ah" not in AHEAD_SKIP or "pred" in AHEAD_SKIP, "the predictor's assign expects ah 2"
+assert "helper" not in AHEAD_SKIP or "req" in AHEAD_SKIP, "requests need the helper"
 AHEAD_BEB = int(os.environ.get("KSTAGE_AHEAD_BEB", "16"))  # _ahead_kernel: experts a program scores
 AHEAD_BH = int(os.environ.get("KSTAGE_AHEAD_BH", "128"))  # _ahead_kernel: hidden columns a load
 AHEAD_HC = int(os.environ.get("KSTAGE_AHEAD_HC", "384"))  # _ahead_kernel: hidden columns a program (a BH multiple)
@@ -1251,8 +1267,10 @@ def _install_cache(layers, model=None):
         f"slots {SLOTS}: pinned/slots per layer {[f'{h}/{s}' for _, h, s in shape]}; "
         f"evict {EVICT}{SHIFT if EVICT == 'lfu' else ''}; frozen from {FREEZE_M or 'never'} tokens"
         + (f"; DMA from {DMA_M} tokens: {X} staging rows, {nbuf} buffers, {bank_bytes / 2**30:.2f} GiB" if X else "")
-        + (f"; ahead below {AHEAD_M} tokens, top {AHEAD_K}{f', fused to {AHEAD_FUSE_M}' if AHEAD_FUSE else ''}"
-           f"{', DRY (no copies)' if AHEAD_DRY else ''}{', waits timed' if AHEAD_TICK else ''}, "
+        + (f"; ahead {f'from {AHEAD_MIN} ' if AHEAD_MIN > 1 else ''}below {AHEAD_M} tokens, top {AHEAD_K}"
+           f"{f', fused to {AHEAD_FUSE_M}' if AHEAD_FUSE else ''}"
+           f"{', DRY (no copies)' if AHEAD_DRY else ''}{', waits timed' if AHEAD_TICK else ''}"
+           f"{', without ' + '/'.join(sorted(AHEAD_SKIP)) if AHEAD_SKIP else ''}, "
            f"{ahead.ntens} tensors on the copy engine" if ahead else ""))
 
 

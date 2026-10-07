@@ -5,7 +5,7 @@
 # flags in the table below, runs v1, v2, alert and trap3 thinking-on, and keeps its log.
 # Outputs go to results/kv-levers/; kv_levers_agree.py compares them with G6q's three runs.
 # usage: kv_levers.sh PHASE...   (or "round4" / "round5" for the doc's rows 2-9 / 10-14,
-#        "round6" / "round8" / "round7" / "round9" / "k6" / "p13" / "p14" / "p20" / "p21" / "p22" / "p23" / "p24" / "p25" for the experts-in-RAM program's passes)
+#        "round6" / "round8" / "round7" / "round9" / "k6" / "p13" / "p14" / "p20" / "p21" / "p22" / "p23" / "p24" / "p25" / "p26" / "p27" for the experts-in-RAM program's passes)
 # Env per phase: MAXLEN / SEQS (default 16384 / 16); WORK="MODE..." runs probes/offload_bench.py
 # modes (decode prefill agent needle experts) with BARGS instead of the eval, to bench-TAG.json.
 # KS="KSTAGE=... VAR=..." loads the kstage plugin (probes/kstage) with those variables set;
@@ -358,9 +358,14 @@ run() {  # the doc's lever table, row by row
     # p25 (B6): where ahead's ~29 us a layer goes at one stream, fused or not (p24): dry =
     # KSTAGE_AHEAD_DRY, the predictor and flags with no copies; tick = KSTAGE_AHEAD_TICK, the flag
     # waits timed on the GPU ("ahead waits:" in serve-TAG.log).
-    p20-*|p21-*|p24-*|p25-*)
+    # p26: at one stream, dry with parts left out (-noX: KSTAGE_AHEAD_SKIP, X of pred, req, wait,
+    # ah, helper) places the ~18 us a layer p25 left unplaced; at 16 streams, fewer ids predicted a
+    # token (-kN: KSTAGE_AHEAD_K=N, 6 by default) cuts the fills, 43% of them evicted unused.
+    # p27: p26's K=2 won at 16 streams in one draw; -rN repeats it. -minN = KSTAGE_AHEAD_MIN
+    # (B4): graphs of fewer tokens skip ahead, so one stream pays none of its fixed cost.
+    p20-*|p21-*|p24-*|p25-*|p26-*|p27-*)
       local c=1,4,16
-      case $1 in *-c16*) c=16 ;; *-c1*) c=1 ;; *-c4*) c=4 ;; esac
+      case $1 in *-c16*) c=16 ;; *-c1*) c=1 ;; *-c4*) c=4 ;; *-c8*) c=8 ;; esac
       local k="${KC6/KSTAGE_STATS=30/KSTAGE_STATS=1} KSTAGE_SLOTS=all KSTAGE_DMA_M=64 KSTAGE_DMA_BUF=1"
       case $1 in *-few*) k="$k KSTAGE_COPY=82" ;; esac
       case $1 in *-live*) k="$k KSTAGE_COPY_LIVE=82" ;; esac
@@ -369,6 +374,11 @@ run() {  # the doc's lever table, row by row
       case $1 in *-fuse*) k="$k KSTAGE_AHEAD_FUSE=1" ;; esac
       case $1 in *-dry*) k="$k KSTAGE_AHEAD_DRY=1" ;; esac
       case $1 in *-tick*) k="$k KSTAGE_AHEAD_TICK=1" ;; esac
+      case $1 in *-k[0-9]-*) local kk=${1#*-k}; k="$k KSTAGE_AHEAD_K=${kk%%-*}" ;; esac
+      case $1 in *-min[0-9]*) local mm=${1#*-min}; k="$k KSTAGE_AHEAD_MIN=${mm%%-*}" ;; esac
+      local x s=
+      for x in pred req wait ah helper; do case $1 in *-no$x-*) s="$s${s:+,}$x" ;; esac; done
+      [ -z "$s" ] || k="$k KSTAGE_AHEAD_SKIP=$s"
       case $1 in
         *-trace) KS="${k/KSTAGE_STATS=1/KSTAGE_STATS=30}" MAXLEN=131072 TRACE=1 phase "$1" "${G92[@]}" ;;
         *) KS="$k" MAXLEN=131072 WORK=decode BARGS="--conc $c" phase "$1" "${G92[@]}" ;;
@@ -422,6 +432,20 @@ for p in "$@"; do
     p22) for q in live-lfu-a8l live-a8l live-lfu-kvoff16-a16l; do run p22-$q; done ;;
     p23) for g in 3 2.5; do run p23-cg$g-lfu-a8l; done ;;
     p24) for c in 1 4 16; do for q in live-lfu-ahead-fuse live-lfu live-lfu-ahead; do run p24-$q-c$c; done; done ;;
+    p27) a=live-lfu-ahead-fuse
+         for r in 1 2; do
+           for q in live-lfu $a-k1 $a-k2 $a-k3; do run p27-$q-c16-r$r; done
+           for c in 4 8; do for q in live-lfu $a-k2; do run p27-$q-c$c-r$r; done; done
+         done
+         for q in live-lfu $a-k2-min8; do run p27-$q-c1; done ;;
+    p26) d=live-lfu-ahead-fuse-dry
+         for q in live-lfu $d $d-noreq $d-noreq-nowait $d-nopred $d-nopred-noreq-nowait \
+                  $d-nopred-noreq-nowait-nohelper $d-nopred-noreq-nowait-noah-nohelper; do
+           run p26-$q-c1
+         done
+         for q in live-lfu live-lfu-ahead-fuse-k2 live-lfu-ahead-fuse-k3 live-lfu-ahead-fuse-k4 live-lfu-ahead-fuse; do
+           run p26-$q-c16
+         done ;;
     p25) for c in 1 4 16; do
            for q in live-lfu live-lfu-ahead-fuse-dry live-lfu-ahead-fuse-tick live-lfu-ahead-fuse; do
              run p25-$q-c$c
