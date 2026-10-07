@@ -717,14 +717,17 @@ class _Ahead:
     def plan(self, p, x):
         """After layer p's own K6 step (its copies come first): layer p + 1's fill from x. With
         KSTAGE_AHEAD_SIDE, on a side stream beside layer p's expert compute until join(); the
-        expert kernels only read x (vLLM's modular kernel allocates its own output)."""
+        expert kernels only read x (vLLM's modular kernel allocates its own output). True when it
+        forked, so join() has a fork to rejoin (in a graph, a join without one breaks the capture)."""
         if p + 1 == self.L:
-            return
+            return False
         if self.side is None:
-            return self._plan(p, x)
+            self._plan(p, x)
+            return False
         self.side.wait_stream(torch.cuda.current_stream())
         with torch.cuda.stream(self.side):
             self._plan(p, x)
+        return True
 
     def join(self):
         """After layer p's expert compute: the side stream rejoins (a graph's forks join in it)."""
@@ -1014,10 +1017,9 @@ def _wrap(runner, idx, E, big=(), pos=None, mixed=(), cache=None, stage=None, ah
             if fill:
                 ahead[0].wait(ahead[1])
             ids = cache.step(topk_ids, bool(FREEZE_M) and M >= FREEZE_M)
-            if fill:
-                ahead[0].plan(ahead[1], x)
+            forked = fill and ahead[0].plan(ahead[1], x)
             out = fwd(x, topk_weights, ids, *a, **k)
-            if fill:
+            if forked:
                 ahead[0].join()
             return out
         ids = topk_ids if pos is None else pos[topk_ids.long()].to(topk_ids.dtype)
