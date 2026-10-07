@@ -5,7 +5,7 @@
 # flags in the table below, runs v1, v2, alert and trap3 thinking-on, and keeps its log.
 # Outputs go to results/kv-levers/; kv_levers_agree.py compares them with G6q's three runs.
 # usage: kv_levers.sh PHASE...   (or "round4" / "round5" for the doc's rows 2-9 / 10-14,
-#        "round6" / "round8" / "round7" / "round9" / "k6" / "p13" / "p14" / "p20" / "p21" / "p22" for the experts-in-RAM program's passes)
+#        "round6" / "round8" / "round7" / "round9" / "k6" / "p13" / "p14" / "p20" / "p21" / "p22" / "p23" for the experts-in-RAM program's passes)
 # Env per phase: MAXLEN / SEQS (default 16384 / 16); WORK="MODE..." runs probes/offload_bench.py
 # modes (decode prefill agent needle experts) with BARGS instead of the eval, to bench-TAG.json.
 # KS="KSTAGE=... VAR=..." loads the kstage plugin (probes/kstage) with those variables set;
@@ -368,8 +368,11 @@ run() {  # the doc's lever table, row by row
     # Rows B/K: p20's c=16 winner (live copy + LFU, 419 tok/s vs 343) on the long-context agent
     # loads. 8 x 127k vs p18-ks-dma64-b1-a8l (grid copy, LRU: 458 s) and prefix KV in RAM alone
     # (374 s); 16 x 127k with prefix KV in RAM vs p16 (COPY=82, LRU: 850 s) and that alone (744 s).
-    p22-*)
+    # p23: the same with -cgN, N GiB of experts in RAM instead of 4. 8 x 127k runs 3.74 GiB of
+    # KV against K6's 5.44, so ~1.5 GiB more experts could stay on the card.
+    p22-*|p23-*)
       local o=() w=$AGENT8L k="$KC6 KSTAGE_SLOTS=all KSTAGE_DMA_M=64 KSTAGE_DMA_BUF=1 KSTAGE_COPY_LIVE=82"
+      case $1 in *-cg*) local g=${1#*-cg}; k="${k/KSTAGE_COLD_GB=4/KSTAGE_COLD_GB=${g%%-*}}" ;; esac
       case $1 in *-lfu*) k="$k KSTAGE_EVICT=lfu" ;; esac
       case $1 in *kvoff16*) o=(--kv-offloading-size 16 --kv-offloading-backend native) ;; esac
       case $1 in *-a16l) w=$AGENT16L ;; esac
@@ -409,6 +412,7 @@ for p in "$@"; do
          run p20-live-trace ;;
     p21) for c in 1 4 16; do for q in live-ahead live-lfu-ahead; do run p21-$q-c$c; done; done ;;
     p22) for q in live-lfu-a8l live-a8l live-lfu-kvoff16-a16l; do run p22-$q; done ;;
+    p23) for g in 3 2.5; do run p23-cg$g-lfu-a8l; done ;;
     p18) for q in p18-ks-dma64-b1-ahead p18-ks-dma64-b1-ahead-eval p18-ks-dma64-b1-ahead-k10 \
                   p18-ks-dma64-b1-a8l p18-ks-dma64-b1-ahead-a8l; do run $q; done ;;
     *) run "$p" ;;
