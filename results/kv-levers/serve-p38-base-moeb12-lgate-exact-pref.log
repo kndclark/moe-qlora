@@ -1,0 +1,283 @@
+kstage: moe-nolora: experts kernel chosen as if LoRA were off
+WARNING 10-08 08:50:23 [argparse_utils.py:276] With `vllm serve`, you should provide the model as a positional argument or in a config file instead of via the `--model` option. The `--model` option will be removed in a future version.
+WARNING 10-08 08:50:23 [argparse_utils.py:441] Found duplicate keys --gpu-memory-utilization
+(APIServer pid=1) INFO 10-08 08:50:23 [api_utils.py:347] 
+(APIServer pid=1) INFO 10-08 08:50:23 [api_utils.py:347]        █     █     █▄   ▄█
+(APIServer pid=1) INFO 10-08 08:50:23 [api_utils.py:347]  ▄▄ ▄█ █     █     █ ▀▄▀ █  version 0.29.0
+(APIServer pid=1) INFO 10-08 08:50:23 [api_utils.py:347]   █▄█▀ █     █     █     █  model   nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4
+(APIServer pid=1) INFO 10-08 08:50:23 [api_utils.py:347]    ▀▀  ▀▀▀▀▀ ▀▀▀▀▀ ▀     ▀
+(APIServer pid=1) INFO 10-08 08:50:23 [api_utils.py:347] 
+(APIServer pid=1) INFO 10-08 08:50:23 [api_utils.py:286] non-default args: {'model_tag': 'nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4', 'lora_modules': [LoRAModulePath(name='g6q', path='/adapter', base_model_name=None, is_3d_lora_weight=False)], 'enable_prompt_tokens_details': True, 'model': 'nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4', 'revision': 'bee7596271d1495f6992ae224aefde4410e816b8', 'max_model_len': 131072, 'served_model_name': ['lightning-nvfp4'], 'kv_cache_dtype': 'fp8', 'mamba_cache_mode': 'align', 'enable_lora': True, 'lora_target_modules': ['q_proj', 'k_proj', 'v_proj', 'o_proj', 'in_proj', 'up_proj', 'down_proj'], 'max_num_seqs': 16, 'moe_backend': 'flashinfer_b12x'}
+(APIServer pid=1) INFO 10-08 08:50:23 [arg_utils.py:866] HF_HUB_OFFLINE is True, replace model_id [nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4] to model_path [/hf/hub/models--nvidia--NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4/snapshots/bee7596271d1495f6992ae224aefde4410e816b8]
+(APIServer pid=1) INFO 10-08 08:50:29 [model.py:684] Resolved architecture: NemotronHForCausalLM
+(APIServer pid=1) INFO 10-08 08:50:29 [model.py:2021] Using max model len 131072
+(APIServer pid=1) INFO 10-08 08:50:30 [cache.py:335] Using fp8 data type to store kv cache. It reduces the GPU memory footprint and boosts the performance. Meanwhile, it may cause accuracy drop without a proper scaling factor
+(APIServer pid=1) INFO 10-08 08:50:30 [config.py:676] Updating mamba_ssm_cache_dtype to 'float32' for NemotronH model
+(APIServer pid=1) WARNING 10-08 08:50:30 [modelopt.py:379] Detected ModelOpt fp8 checkpoint (quant_algo=FP8). Please note that the format is experimental and could change.
+(APIServer pid=1) WARNING 10-08 08:50:30 [modelopt.py:1029] Detected ModelOpt NVFP4 checkpoint (quant_algo=NVFP4). Please note that the format is experimental and could change in future.
+(APIServer pid=1) WARNING 10-08 08:50:30 [modelopt.py:1029] Detected ModelOpt NVFP4 checkpoint (quant_algo=W4A16_NVFP4). Please note that the format is experimental and could change in future.
+(APIServer pid=1) WARNING 10-08 08:50:30 [modelopt.py:1711] Detected ModelOpt MXFP8 checkpoint. Please note that the format is experimental and could change in future.
+(APIServer pid=1) INFO 10-08 08:50:30 [kernel.py:369] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+(EngineCore pid=226) kstage: moe-nolora: experts kernel chosen as if LoRA were off
+(EngineCore pid=226) INFO 10-08 08:50:37 [core.py:123] Initializing a V1 LLM engine (v0.29.0) with config: model='/hf/hub/models--nvidia--NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4/snapshots/bee7596271d1495f6992ae224aefde4410e816b8', speculative_config=None, tokenizer='/hf/hub/models--nvidia--NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4/snapshots/bee7596271d1495f6992ae224aefde4410e816b8', skip_tokenizer_init=False, tokenizer_mode=auto, revision=bee7596271d1495f6992ae224aefde4410e816b8, tokenizer_revision=bee7596271d1495f6992ae224aefde4410e816b8, trust_remote_code=False, dtype=torch.bfloat16, max_seq_len=131072, download_dir=None, load_format=auto, tensor_parallel_size=1, pipeline_parallel_size=1, data_parallel_size=1, decode_context_parallel_size=1, dcp_comm_backend=ag_rs, disable_custom_all_reduce=False, quantization=modelopt_mixed, quantization_config=None, enforce_eager=False, enable_return_routed_experts=False, kv_cache_dtype=fp8, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser='', reasoning_parser_plugin='', enable_in_reasoning=False), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, per_request_spec_decode_metrics='none', kv_cache_metrics=False, kv_cache_metrics_sample=0.01, cudagraph_metrics=False, enable_layerwise_nvtx_tracing=False, enable_mfu_metrics=False, enable_mm_processor_stats=False, enable_logging_iteration_details=False, jit_monitor_mode='warn', jit_monitor_verbose=False), seed=0, served_model_name=lightning-nvfp4, enable_prefix_caching=True, enable_chunked_prefill=True, pooler_config=None, compilation_config={'mode': <CompilationMode.VLLM_COMPILE: 3>, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'inductor', 'custom_ops': ['none'], 'ir_enable_torch_wrap': True, 'splitting_ops': ['vllm::unified_attention_with_output', 'vllm::unified_mla_attention_with_output', 'vllm::mamba_mixer2', 'vllm::mamba_mixer', 'vllm::short_conv', 'vllm::qwen4_exp_compute_ple_ngram_ids', 'vllm::qwen4_exp_ple_short_conv', 'vllm::qwen4_exp_qsa_with_output', 'vllm::linear_attention', 'vllm::qwen_gdn_attention_core', 'vllm::qwen_gdn_attention_core_fused_norm_packed', 'vllm::gdn_attention_core_xpu', 'vllm::olmo_hybrid_gdn_full_forward', 'vllm::sparse_attn_indexer', 'vllm::rocm_aiter_sparse_attn_indexer', 'vllm::deepseek_v4_attention', 'vllm::hpc_rope_norm_forward', 'vllm::unified_kv_cache_update', 'vllm::unified_mla_kv_cache_update'], 'compile_mm_encoder': False, 'cudagraph_mm_encoder': False, 'encoder_cudagraph_token_budgets': [], 'encoder_cudagraph_max_vision_items_per_batch': 0, 'encoder_cudagraph_max_frames_per_batch': None, 'compile_sizes': [], 'compile_ranges_endpoints': [2048], 'inductor_compile_config': {'enable_auto_functionalized_v2': False, 'combo_kernels': True, 'benchmark_combo_kernel': True}, 'inductor_passes': {}, 'cudagraph_mode': <CUDAGraphMode.FULL_AND_PIECEWISE: (2, 1)>, 'cudagraph_num_of_warmups': 1, 'cudagraph_capture_sizes': [1, 2, 4, 8, 16, 24, 32], 'cudagraph_copy_inputs': False, 'cudagraph_specialize_lora': True, 'use_inductor_graph_partition': False, 'pass_config': {'fuse_norm_quant': False, 'fuse_act_quant': False, 'fuse_attn_quant': False, 'enable_sp': False, 'fuse_gemm_comms': False, 'fuse_allreduce_rms': False, 'enable_qk_norm_rope_fusion': False, 'fuse_rope_kvcache_cat_mla': False, 'fuse_act_padding': False, 'fuse_qk_norm_rope_kvcache': False}, 'max_cudagraph_capture_size': 32, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': False}, 'local_cache_dir': None, 'fast_moe_cold_start': False, 'static_all_moe_layers': []}, kernel_config=KernelConfig(ir_op_priority=IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native']), enable_flashinfer_autotune=True, enable_cutedsl_warmup=True, enable_jit_warmup=True, enable_bf16x3_router_gemm=False, moe_backend='flashinfer_b12x', linear_backend='auto')
+(EngineCore pid=226) INFO 10-08 08:50:37 [parallel_state.py:1775] world_size=1 rank=0 local_rank=0 distributed_init_method=file:///tmp/vllm_dist_c8a5707523c4471a8b9ecc461f36f8d6 backend=nccl
+(EngineCore pid=226) INFO 10-08 08:50:37 [parallel_state.py:2119] rank 0 in world size 1 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, EP rank 0, EPLB rank N/A
+(EngineCore pid=226) INFO 10-08 08:50:37 [gpu_worker.py:429] Using V2 Model Runner
+(EngineCore pid=226) INFO 10-08 08:50:38 [model_runner.py:382] Loading model from scratch...
+(EngineCore pid=226) INFO 10-08 08:50:38 [__init__.py:726] Selected FlashInferFP8ScaledMMLinearKernel for ModelOptFp8LinearMethod
+(EngineCore pid=226) INFO 10-08 08:50:38 [deep_gemm.py:186] deep_gemm not found in site-packages, trying vendored vllm.third_party.deep_gemm
+(EngineCore pid=226) INFO 10-08 08:50:38 [deep_gemm.py:213] DeepGEMM PDL enabled on vllm.third_party.deep_gemm.
+(EngineCore pid=226) INFO 10-08 08:50:38 [deep_gemm.py:131] DeepGEMM E8M0 enabled on current platform.
+(EngineCore pid=226) INFO 10-08 08:50:38 [__init__.py:1066] Using MarlinNvFp4LinearKernel for NVFP4 GEMM
+(EngineCore pid=226) INFO 10-08 08:50:38 [nvfp4.py:261] Using 'FLASHINFER_B12X' NvFp4 MoE backend out of potential backends: ['FLASHINFER_TRTLLM', 'FLASHINFER_CUTEDSL', 'FLASHINFER_CUTEDSL_BATCHED', 'FLASHINFER_CUTLASS', 'VLLM_CUTLASS', 'MARLIN', 'HUMMING', 'EMULATION'].
+(EngineCore pid=226) INFO 10-08 08:50:38 [cuda.py:492] Using FLASHINFER attention backend out of potential backends: ['FLASHINFER', 'TRITON_ATTN'].
+(EngineCore pid=226) INFO 10-08 08:50:38 [weight_utils.py:863] Filesystem type for checkpoints: EXT4. Checkpoint size: 20.08 GiB. Available RAM: 55.20 GiB.
+(EngineCore pid=226) INFO 10-08 08:50:38 [weight_utils.py:886] Auto-prefetch is disabled because the filesystem (EXT4) is not a recognized network FS (NFS/Lustre). If you want to force prefetching, start vLLM with --safetensors-load-strategy=prefetch.
+(EngineCore pid=226) Loading safetensors checkpoint shards:   0% Completed | 0/52 [00:00<?, ?it/s]
+(EngineCore pid=226) Loading safetensors checkpoint shards:   2% Completed | 1/52 [00:00<00:09,  5.57it/s]
+(EngineCore pid=226) WARNING 10-08 08:50:38 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=226) Loading safetensors checkpoint shards:   4% Completed | 2/52 [00:00<00:09,  5.27it/s]
+(EngineCore pid=226) WARNING 10-08 08:50:38 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=226) Loading safetensors checkpoint shards:   8% Completed | 4/52 [00:00<00:06,  7.19it/s]
+(EngineCore pid=226) WARNING 10-08 08:50:39 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=226) Loading safetensors checkpoint shards:  13% Completed | 7/52 [00:00<00:04, 10.01it/s]
+(EngineCore pid=226) WARNING 10-08 08:50:39 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=226) Loading safetensors checkpoint shards:  17% Completed | 9/52 [00:00<00:04, 10.28it/s]
+(EngineCore pid=226) WARNING 10-08 08:50:39 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=226) Loading safetensors checkpoint shards:  21% Completed | 11/52 [00:01<00:03, 10.56it/s]
+(EngineCore pid=226) WARNING 10-08 08:50:39 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=226) Loading safetensors checkpoint shards:  27% Completed | 14/52 [00:01<00:03, 12.29it/s]
+(EngineCore pid=226) WARNING 10-08 08:50:39 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=226) Loading safetensors checkpoint shards:  31% Completed | 16/52 [00:01<00:03, 11.93it/s]
+(EngineCore pid=226) WARNING 10-08 08:50:40 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=226) Loading safetensors checkpoint shards:  35% Completed | 18/52 [00:01<00:02, 11.70it/s]
+(EngineCore pid=226) WARNING 10-08 08:50:40 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=226) Loading safetensors checkpoint shards:  40% Completed | 21/52 [00:01<00:02, 12.93it/s]
+(EngineCore pid=226) WARNING 10-08 08:50:40 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=226) Loading safetensors checkpoint shards:  44% Completed | 23/52 [00:02<00:02, 12.32it/s]
+(EngineCore pid=226) WARNING 10-08 08:50:40 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=226) Loading safetensors checkpoint shards:  48% Completed | 25/52 [00:02<00:02, 11.62it/s]
+(EngineCore pid=226) WARNING 10-08 08:50:40 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=226) Loading safetensors checkpoint shards:  54% Completed | 28/52 [00:02<00:01, 12.91it/s]
+(EngineCore pid=226) WARNING 10-08 08:50:40 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=226) Loading safetensors checkpoint shards:  58% Completed | 30/52 [00:02<00:01, 12.35it/s]
+(EngineCore pid=226) WARNING 10-08 08:50:41 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=226) Loading safetensors checkpoint shards:  62% Completed | 32/52 [00:02<00:01, 11.93it/s]
+(EngineCore pid=226) WARNING 10-08 08:50:41 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=226) Loading safetensors checkpoint shards:  67% Completed | 35/52 [00:03<00:01, 13.11it/s]
+(EngineCore pid=226) WARNING 10-08 08:50:41 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=226) Loading safetensors checkpoint shards:  71% Completed | 37/52 [00:03<00:01, 12.40it/s]
+(EngineCore pid=226) WARNING 10-08 08:50:41 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=226) Loading safetensors checkpoint shards:  75% Completed | 39/52 [00:03<00:01, 11.96it/s]
+(EngineCore pid=226) WARNING 10-08 08:50:41 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=226) Loading safetensors checkpoint shards:  79% Completed | 41/52 [00:03<00:00, 11.60it/s]
+(EngineCore pid=226) WARNING 10-08 08:50:42 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=226) Loading safetensors checkpoint shards:  85% Completed | 44/52 [00:03<00:00, 12.66it/s]
+(EngineCore pid=226) WARNING 10-08 08:50:42 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=226) Loading safetensors checkpoint shards:  88% Completed | 46/52 [00:03<00:00, 12.14it/s]
+(EngineCore pid=226) WARNING 10-08 08:50:42 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=226) Loading safetensors checkpoint shards:  92% Completed | 48/52 [00:04<00:00, 11.83it/s]
+(EngineCore pid=226) WARNING 10-08 08:50:42 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=226) Loading safetensors checkpoint shards:  96% Completed | 50/52 [00:04<00:00, 11.48it/s]
+(EngineCore pid=226) WARNING 10-08 08:50:42 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=226) Loading safetensors checkpoint shards: 100% Completed | 52/52 [00:04<00:00,  9.71it/s]
+(EngineCore pid=226) Loading safetensors checkpoint shards: 100% Completed | 52/52 [00:04<00:00, 11.24it/s]
+(EngineCore pid=226) 
+(EngineCore pid=226) INFO 10-08 08:50:43 [default_loader.py:430] Loading weights took 4.63 seconds
+(EngineCore pid=226) WARNING 10-08 08:50:43 [marlin.py:34] Your GPU does not have native support for FP4 computation but FP4 quantization is being used. Weight-only FP4 compression will be used leveraging the Marlin kernel. This may degrade performance for compute-heavy workloads.
+(EngineCore pid=226) INFO 10-08 08:50:43 [nvfp4.py:613] Using MoEPrepareAndFinalizeNoDPEPModular
+(EngineCore pid=226) kstage: b12x-exact: block scales kept, alphas 5.66e-05..2.12e-04 / 7.66e-05..3.20e-04
+(EngineCore pid=226) kstage: b12x-fix: intermediate 1856 -> 1920
+(EngineCore pid=226) kstage: b12x-fix: intermediate 1856 -> 1920
+(EngineCore pid=226) WARNING 10-08 08:50:43 [kv_cache.py:130] Checkpoint does not provide a q scaling factor. Setting it to k_scale. This only matters for FP8 Attention backends (flash-attn or flashinfer).
+(EngineCore pid=226) WARNING 10-08 08:50:43 [kv_cache.py:185] Using uncalibrated q_scale 1.0 and/or prob_scale 1.0 with fp8 attention. This may cause accuracy issues. Please make sure q/prob scaling factors are available in the fp8 checkpoint.
+(EngineCore pid=226) kstage: b12x-fix: intermediate 1856 -> 1920
+(EngineCore pid=226) kstage: b12x-fix: intermediate 1856 -> 1920
+(EngineCore pid=226) kstage: b12x-fix: intermediate 1856 -> 1920
+(EngineCore pid=226) kstage: b12x-fix: intermediate 1856 -> 1920
+[rank0]:[W1008 08:50:43.250700401 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 331350016 bytes (free: 161218560, total: 25122701312).
+(EngineCore pid=226) kstage: b12x-fix: intermediate 1856 -> 1920
+[rank0]:[W1008 08:50:43.264692136 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 331350016 bytes (free: 98304000, total: 25122701312).
+(EngineCore pid=226) kstage: b12x-fix: intermediate 1856 -> 1920
+[rank0]:[W1008 08:50:43.275079881 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 331350016 bytes (free: 366739456, total: 25122701312).
+(EngineCore pid=226) kstage: b12x-fix: intermediate 1856 -> 1920
+[rank0]:[W1008 08:50:43.285583904 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 331350016 bytes (free: 303824896, total: 25122701312).
+(EngineCore pid=226) kstage: b12x-fix: intermediate 1856 -> 1920
+[rank0]:[W1008 08:50:43.295511316 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 331350016 bytes (free: 240910336, total: 25122701312).
+(EngineCore pid=226) kstage: b12x-fix: intermediate 1856 -> 1920
+[rank0]:[W1008 08:50:43.305826735 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 331350016 bytes (free: 177995776, total: 25122701312).
+(EngineCore pid=226) kstage: b12x-fix: intermediate 1856 -> 1920
+[rank0]:[W1008 08:50:43.315557981 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 331350016 bytes (free: 115081216, total: 25122701312).
+(EngineCore pid=226) kstage: b12x-fix: intermediate 1856 -> 1920
+[rank0]:[W1008 08:50:43.325599557 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 331350016 bytes (free: 52166656, total: 25122701312).
+[rank0]:[W1008 08:50:43.328517422 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 331350016 bytes (free: 362545152, total: 25122701312).
+(EngineCore pid=226) kstage: b12x-fix: intermediate 1856 -> 1920
+[rank0]:[W1008 08:50:43.338279688 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 331350016 bytes (free: 299630592, total: 25122701312).
+(EngineCore pid=226) kstage: b12x-fix: intermediate 1856 -> 1920
+[rank0]:[W1008 08:50:43.348048393 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 331350016 bytes (free: 236716032, total: 25122701312).
+(EngineCore pid=226) kstage: b12x-fix: intermediate 1856 -> 1920
+[rank0]:[W1008 08:50:43.360153505 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 331350016 bytes (free: 173801472, total: 25122701312).
+(EngineCore pid=226) kstage: b12x-fix: intermediate 1856 -> 1920
+[rank0]:[W1008 08:50:43.369903156 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 331350016 bytes (free: 110886912, total: 25122701312).
+(EngineCore pid=226) kstage: b12x-fix: intermediate 1856 -> 1920
+[rank0]:[W1008 08:50:43.381443393 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 331350016 bytes (free: 47972352, total: 25122701312).
+(EngineCore pid=226) kstage: b12x-fix: intermediate 1856 -> 1920
+[rank0]:[W1008 08:50:43.391981638 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 331350016 bytes (free: 316407808, total: 25122701312).
+(EngineCore pid=226) kstage: b12x-fix: intermediate 1856 -> 1920
+[rank0]:[W1008 08:50:43.402509061 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 331350016 bytes (free: 253493248, total: 25122701312).
+(EngineCore pid=226) kstage: b12x-fix: intermediate 1856 -> 1920
+[rank0]:[W1008 08:50:43.413665885 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 331350016 bytes (free: 190578688, total: 25122701312).
+(EngineCore pid=226) kstage: b12x-fix: intermediate 1856 -> 1920
+[rank0]:[W1008 08:50:43.423508122 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 331350016 bytes (free: 127664128, total: 25122701312).
+(EngineCore pid=226) kstage: b12x-fix: intermediate 1856 -> 1920
+[rank0]:[W1008 08:50:43.432100881 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 176160768 bytes (free: 106692608, total: 25122701312).
+[rank0]:[W1008 08:50:43.434535574 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 44040192 bytes (free: 75235328, total: 25122701312).
+[rank0]:[W1008 08:50:43.438930465 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 88080384 bytes (free: 108789760, total: 25122701312).
+[rank0]:[W1008 08:50:43.441829975 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 352321536 bytes (free: 98304000, total: 25122701312).
+(EngineCore pid=226) INFO 10-08 08:50:43 [utils.py:102] MoE model detected. Using fused MoE LoRA implementation.
+(EngineCore pid=226) INFO 10-08 08:50:43 [punica_selector.py:20] Using PunicaWrapperGPU.
+(EngineCore pid=226) INFO 10-08 08:50:44 [model_runner.py:404] Model loading took 18.33 GiB memory and 6.299203 seconds
+(EngineCore pid=226) INFO 10-08 08:50:44 [topk_topp_sampler.py:62] Using FlashInfer for top-p & top-k sampling.
+(EngineCore pid=226) INFO 10-08 08:50:44 [interface.py:918] Setting attention block size to 4176 tokens to ensure that attention page size is >= mamba page size.
+(EngineCore pid=226) INFO 10-08 08:50:44 [interface.py:942] Padding mamba page size by 0.19% to ensure that mamba page size and attention page size are exactly equal.
+(EngineCore pid=226) INFO 10-08 08:50:44 [utils.py:306] Using LBNHC KV cache layout.
+(EngineCore pid=226) INFO 10-08 08:50:48 [backends.py:1094] Using cache directory: /root/.cache/vllm/torch_compile_cache/c26c30f901/rank_0_0/backbone for vLLM's torch.compile
+(EngineCore pid=226) INFO 10-08 08:50:48 [backends.py:1155] Dynamo bytecode transform time: 3.97 s
+(EngineCore pid=226) /usr/local/lib/python3.12/dist-packages/torch/_inductor/compile_fx.py:321: UserWarning: TensorFloat32 tensor cores for float32 matrix multiplication available but not enabled. Consider setting `torch.set_float32_matmul_precision('high')` for better performance.
+(EngineCore pid=226)   warnings.warn(
+(EngineCore pid=226) INFO 10-08 08:50:52 [backends.py:393] Compiling a graph for compile range (1, 2048) takes 3.95 s
+(EngineCore pid=226) INFO 10-08 08:50:54 [backends.py:920] collected artifacts: 30 entries, 5 artifacts, 5608222 bytes total
+(EngineCore pid=226) INFO 10-08 08:50:54 [decorators.py:719] saved AOT compiled function to /root/.cache/vllm/torch_compile_cache/torch_aot_compile/b38777622ee1f1a15455a12cb366eb9bf7bbfa3e372a1033c9cebdf45aa790a2/rank_0_0/model
+(EngineCore pid=226) INFO 10-08 08:50:54 [monitor.py:53] torch.compile took 9.95 s in total
+(EngineCore pid=226) WARNING 10-08 08:50:54 [utils.py:279] Using default LoRA kernel configs
+(EngineCore pid=226) Skipping cuDNN in bmm_fp8 auto candidates on SM12x: override_shape unavailable (cuDNN backend < 9.23.1); policy=ALL per-shape build is unbounded at serving time.
+(EngineCore pid=226) INFO 10-08 08:50:55 [mamba_mixer2.py:597] Warming up Mamba2 SSD Triton kernels...
+(EngineCore pid=226) kstage: b12x-share: one buffer set for (128, 128, 6, 2688, 1920, 2048)
+(EngineCore pid=226) 2026-10-08 08:51:28,045 - INFO - cute_dsl_core.py:177 - flashinfer.jit: Compiling CuTe-DSL kernel b12x_moe_sm120a_cute_dsl/dynamic_e128_k2688_n1920_t6_52b276a934f12cb3
+(EngineCore pid=226) 2026-10-08 08:51:30,179 - INFO - cute_dsl_core.py:246 - flashinfer.jit: Persisted CuTe-DSL kernel to /root/.cache/flashinfer/0.6.18/120f/cached_ops/b12x_moe_sm120a_cute_dsl/dynamic_e128_k2688_n1920_t6_52b276a934f12cb3.o
+(EngineCore pid=226) INFO 10-08 08:51:30 [monitor.py:81] Initial profiling/warmup run took 36.12 s
+(EngineCore pid=226) WARNING 10-08 08:51:32 [kv_cache_utils.py:1326] Add 1 padding layers, may waste at most 4.35% KV cache memory
+(EngineCore pid=226) INFO 10-08 08:51:32 [flashinfer.py:910] FlashInfer resolved query dtypes: prefill=torch.bfloat16, decode=torch.bfloat16, decode_backend=xqa, kv_cache_dtype=torch.float8_e4m3fn, arch=sm120
+(EngineCore pid=226) INFO 10-08 08:51:32 [ssu_dispatch.py:310] Using triton Mamba SSU backend.
+(EngineCore pid=226) Capturing CUDA graphs (PIECEWISE):   0%|          | 0/14 [00:00<?, ?it/s]2026-10-08 08:51:32,643 - INFO - cute_dsl_core.py:177 - flashinfer.jit: Compiling CuTe-DSL kernel b12x_moe_sm120a_cute_dsl/static_m32_k2688_n1920_t6_r640_60efa4bfcb5f0f40
+(EngineCore pid=226) 2026-10-08 08:51:34,273 - INFO - cute_dsl_core.py:246 - flashinfer.jit: Persisted CuTe-DSL kernel to /root/.cache/flashinfer/0.6.18/120f/cached_ops/b12x_moe_sm120a_cute_dsl/static_m32_k2688_n1920_t6_r640_60efa4bfcb5f0f40.o
+(EngineCore pid=226) WARNING 10-08 08:51:35 [mamba_ssm.py:108] Using default Mamba SSU config. Performance might be sub-optimal! Config file not found at /usr/local/lib/python3.12/dist-packages/vllm/model_executor/layers/mamba/ops/configs/selective_state_update/headdim=64,dstate=128,device_name=NVIDIA_GeForce_RTX_5090_Laptop_GPU,cache_dtype=float32.json
+(EngineCore pid=226) Capturing CUDA graphs (PIECEWISE):   7%|▋         | 1/14 [00:01<00:25,  1.98s/it]Capturing CUDA graphs (PIECEWISE):  14%|█▍        | 2/14 [00:02<00:14,  1.19s/it]2026-10-08 08:51:35,246 - INFO - cute_dsl_core.py:177 - flashinfer.jit: Compiling CuTe-DSL kernel b12x_moe_sm120a_cute_dsl/static_m24_k2688_n1920_t6_r640_857bfe36d4129edf
+(EngineCore pid=226) 2026-10-08 08:51:36,716 - INFO - cute_dsl_core.py:246 - flashinfer.jit: Persisted CuTe-DSL kernel to /root/.cache/flashinfer/0.6.18/120f/cached_ops/b12x_moe_sm120a_cute_dsl/static_m24_k2688_n1920_t6_r640_857bfe36d4129edf.o
+(EngineCore pid=226) Capturing CUDA graphs (PIECEWISE):  21%|██▏       | 3/14 [00:08<00:35,  3.20s/it]Capturing CUDA graphs (PIECEWISE):  29%|██▊       | 4/14 [00:09<00:24,  2.44s/it]2026-10-08 08:51:41,985 - INFO - cute_dsl_core.py:177 - flashinfer.jit: Compiling CuTe-DSL kernel b12x_moe_sm120a_cute_dsl/static_m16_k2688_n1920_t6_r640_47493f947af62c0f
+(EngineCore pid=226) 2026-10-08 08:51:42,938 - INFO - cute_dsl_core.py:246 - flashinfer.jit: Persisted CuTe-DSL kernel to /root/.cache/flashinfer/0.6.18/120f/cached_ops/b12x_moe_sm120a_cute_dsl/static_m16_k2688_n1920_t6_r640_47493f947af62c0f.o
+(EngineCore pid=226) Capturing CUDA graphs (PIECEWISE):  36%|███▌      | 5/14 [00:10<00:17,  1.96s/it]2026-10-08 08:51:43,093 - INFO - cute_dsl_core.py:177 - flashinfer.jit: Compiling CuTe-DSL kernel b12x_moe_sm120a_cute_dsl/static_m8_k2688_n1920_t6_r640_2c5d73946674088b
+(EngineCore pid=226) 2026-10-08 08:51:44,020 - INFO - cute_dsl_core.py:246 - flashinfer.jit: Persisted CuTe-DSL kernel to /root/.cache/flashinfer/0.6.18/120f/cached_ops/b12x_moe_sm120a_cute_dsl/static_m8_k2688_n1920_t6_r640_2c5d73946674088b.o
+(EngineCore pid=226) Capturing CUDA graphs (PIECEWISE):  50%|█████     | 7/14 [00:11<00:08,  1.24s/it]2026-10-08 08:51:44,243 - INFO - cute_dsl_core.py:177 - flashinfer.jit: Compiling CuTe-DSL kernel b12x_moe_sm120a_cute_dsl/micro_m4_k2688_n1920_t6_r640_0d4a8ee3ff97980b
+(EngineCore pid=226) 2026-10-08 08:51:45,231 - INFO - cute_dsl_core.py:246 - flashinfer.jit: Persisted CuTe-DSL kernel to /root/.cache/flashinfer/0.6.18/120f/cached_ops/b12x_moe_sm120a_cute_dsl/micro_m4_k2688_n1920_t6_r640_0d4a8ee3ff97980b.o
+(EngineCore pid=226) Capturing CUDA graphs (PIECEWISE):  64%|██████▍   | 9/14 [00:12<00:04,  1.03it/s]2026-10-08 08:51:45,443 - INFO - cute_dsl_core.py:177 - flashinfer.jit: Compiling CuTe-DSL kernel b12x_moe_sm120a_cute_dsl/micro_m2_k2688_n1920_t6_r640_b1c832c88370cd62
+(EngineCore pid=226) 2026-10-08 08:51:46,348 - INFO - cute_dsl_core.py:246 - flashinfer.jit: Persisted CuTe-DSL kernel to /root/.cache/flashinfer/0.6.18/120f/cached_ops/b12x_moe_sm120a_cute_dsl/micro_m2_k2688_n1920_t6_r640_b1c832c88370cd62.o
+(EngineCore pid=226) Capturing CUDA graphs (PIECEWISE):  79%|███████▊  | 11/14 [00:13<00:02,  1.22it/s]2026-10-08 08:51:46,914 - INFO - cute_dsl_core.py:177 - flashinfer.jit: Compiling CuTe-DSL kernel b12x_moe_sm120a_cute_dsl/micro_m1_k2688_n1920_t6_r640_a65202f45e87e36e
+(EngineCore pid=226) 2026-10-08 08:51:47,752 - INFO - cute_dsl_core.py:246 - flashinfer.jit: Persisted CuTe-DSL kernel to /root/.cache/flashinfer/0.6.18/120f/cached_ops/b12x_moe_sm120a_cute_dsl/micro_m1_k2688_n1920_t6_r640_a65202f45e87e36e.o
+(EngineCore pid=226) Capturing CUDA graphs (PIECEWISE):  93%|█████████▎| 13/14 [00:15<00:00,  1.28it/s]Capturing CUDA graphs (PIECEWISE): 100%|██████████| 14/14 [00:16<00:00,  1.17it/s]Capturing CUDA graphs (PIECEWISE): 100%|██████████| 14/14 [00:16<00:00,  1.18s/it]
+(EngineCore pid=226) Capturing CUDA graphs (FULL):   0%|          | 0/2 [00:00<?, ?it/s]Capturing CUDA graphs (FULL): 100%|██████████| 2/2 [00:00<00:00, 14.85it/s]Capturing CUDA graphs (FULL): 100%|██████████| 2/2 [00:00<00:00, 14.84it/s]
+(EngineCore pid=226) INFO 10-08 08:51:49 [model_runner.py:960] Graph capturing finished in 17 secs, took 0.59 GiB
+(EngineCore pid=226) INFO 10-08 08:51:49 [gpu_worker.py:625] Available KV cache memory: 1.27 GiB
+(EngineCore pid=226) INFO 10-08 08:51:49 [gpu_worker.py:640] CUDA graph memory profiling is enabled (default since v0.21.0). The current --gpu-memory-utilization=0.9200 is equivalent to --gpu-memory-utilization=0.8924 without CUDA graph memory profiling. To maintain the same effective KV cache size as before, increase --gpu-memory-utilization to 0.9476. To disable, set VLLM_MEMORY_PROFILER_ESTIMATE_CUDAGRAPHS=0.
+(EngineCore pid=226) WARNING 10-08 08:51:49 [kv_cache_utils.py:1326] Add 1 padding layers, may waste at most 4.35% KV cache memory
+(EngineCore pid=226) INFO 10-08 08:51:49 [kv_cache_utils.py:2032] GPU KV cache size: 347,340 tokens, Maximum concurrency for 131,072 tokens per request: 2.65x
+(EngineCore pid=226) INFO 10-08 08:51:49 [kernel_warmup.py:124] JIT kernel warmup starting.
+(EngineCore pid=226) INFO 10-08 08:51:49 [kernel_warmup.py:134] JIT kernel warmup finished in 0.00s.
+(EngineCore pid=226) INFO 10-08 08:51:49 [kernel_warmup.py:309] Using FlashInfer autotune cache file: /root/.cache/vllm/flashinfer_autotune_cache/0.6.18/120f/b2fc8cf44626627a6a132d13af0f67907f7f2d095d581b7baf38a358d26e4f6c/autotune_configs.json
+(EngineCore pid=226) INFO 10-08 08:51:49 [kernel_warmup.py:266] Running FlashInfer autotune with 2048 tokens.
+(EngineCore pid=226) 2026-10-08 08:51:49,773 - INFO - autotuner.py:972 - flashinfer.jit: [Autotuner]: Autotuning process starts ...
+(EngineCore pid=226) [AutoTuner]: Tuning fp8_gemm:   0%|          | 0/16 [00:00<?, ?profile/s][AutoTuner]: Tuning fp8_gemm:  12%|█▎        | 2/16 [00:00<00:00, 16.94profile/s][AutoTuner]: Tuning fp8_gemm:  25%|██▌       | 4/16 [00:00<00:00, 18.30profile/s][AutoTuner]: Tuning fp8_gemm:  38%|███▊      | 6/16 [00:00<00:00, 18.84profile/s][AutoTuner]: Tuning fp8_gemm:  50%|█████     | 8/16 [00:00<00:00, 18.97profile/s][AutoTuner]: Tuning fp8_gemm:  62%|██████▎   | 10/16 [00:00<00:00, 18.02profile/s][AutoTuner]: Tuning fp8_gemm:  75%|███████▌  | 12/16 [00:00<00:00, 16.46profile/s][AutoTuner]: Tuning fp8_gemm:  88%|████████▊ | 14/16 [00:00<00:00, 14.88profile/s][AutoTuner]: Tuning fp8_gemm: 100%|██████████| 16/16 [00:01<00:00, 13.17profile/s][AutoTuner]: Tuning fp8_gemm: 100%|██████████| 16/16 [00:01<00:00, 15.37profile/s]
+(EngineCore pid=226) [AutoTuner]: Tuning fp8_gemm:   0%|          | 0/16 [00:00<?, ?profile/s][AutoTuner]: Tuning fp8_gemm:  12%|█▎        | 2/16 [00:00<00:00, 19.71profile/s][AutoTuner]: Tuning fp8_gemm:  25%|██▌       | 4/16 [00:00<00:00, 19.72profile/s][AutoTuner]: Tuning fp8_gemm:  38%|███▊      | 6/16 [00:00<00:00, 19.73profile/s][AutoTuner]: Tuning fp8_gemm:  50%|█████     | 8/16 [00:00<00:00, 19.67profile/s][AutoTuner]: Tuning fp8_gemm:  62%|██████▎   | 10/16 [00:00<00:00, 19.16profile/s][AutoTuner]: Tuning fp8_gemm:  75%|███████▌  | 12/16 [00:00<00:00, 18.09profile/s][AutoTuner]: Tuning fp8_gemm:  88%|████████▊ | 14/16 [00:00<00:00, 16.80profile/s][AutoTuner]: Tuning fp8_gemm: 100%|██████████| 16/16 [00:00<00:00, 15.52profile/s][AutoTuner]: Tuning fp8_gemm: 100%|██████████| 16/16 [00:00<00:00, 17.31profile/s]
+(EngineCore pid=226) 2026-10-08 08:51:51,830 - INFO - autotuner.py:995 - flashinfer.jit: [Autotuner]: Autotuning process ends
+(EngineCore pid=226) 2026-10-08 08:51:51,846 - INFO - autotuner.py:2652 - flashinfer.jit: [Autotuner]: Saved 32 configs to /root/.cache/vllm/flashinfer_autotune_cache/0.6.18/120f/b2fc8cf44626627a6a132d13af0f67907f7f2d095d581b7baf38a358d26e4f6c/autotune_configs.json (32 new, 0 from previous config)
+(EngineCore pid=226) Capturing CUDA graphs (PIECEWISE):   0%|          | 0/14 [00:00<?, ?it/s]Capturing CUDA graphs (PIECEWISE):  14%|█▍        | 2/14 [00:00<00:01,  9.88it/s]Capturing CUDA graphs (PIECEWISE):  29%|██▊       | 4/14 [00:00<00:01,  9.86it/s]Capturing CUDA graphs (PIECEWISE):  43%|████▎     | 6/14 [00:00<00:00, 11.55it/s]Capturing CUDA graphs (PIECEWISE):  57%|█████▋    | 8/14 [00:00<00:00, 12.57it/s]Capturing CUDA graphs (PIECEWISE):  71%|███████▏  | 10/14 [00:00<00:00, 13.14it/s]Capturing CUDA graphs (PIECEWISE):  86%|████████▌ | 12/14 [00:00<00:00, 13.50it/s]Capturing CUDA graphs (PIECEWISE): 100%|██████████| 14/14 [00:01<00:00, 13.72it/s]Capturing CUDA graphs (PIECEWISE): 100%|██████████| 14/14 [00:01<00:00, 12.70it/s]
+(EngineCore pid=226) Capturing CUDA graphs (FULL):   0%|          | 0/10 [00:00<?, ?it/s]Capturing CUDA graphs (FULL):  20%|██        | 2/10 [00:00<00:00, 15.61it/s]Capturing CUDA graphs (FULL):  40%|████      | 4/10 [00:00<00:00, 15.62it/s]Capturing CUDA graphs (FULL):  60%|██████    | 6/10 [00:00<00:00, 15.53it/s]Capturing CUDA graphs (FULL):  80%|████████  | 8/10 [00:00<00:00, 15.39it/s]Capturing CUDA graphs (FULL): 100%|██████████| 10/10 [00:00<00:00, 15.40it/s]Capturing CUDA graphs (FULL): 100%|██████████| 10/10 [00:00<00:00, 15.45it/s]
+(EngineCore pid=226) INFO 10-08 08:51:53 [model_runner.py:960] Graph capturing finished in 2 secs, took 0.07 GiB
+(EngineCore pid=226) INFO 10-08 08:51:53 [gpu_worker.py:797] CUDA graph pool memory: 0.07 GiB (actual), 0.65 GiB (estimated), difference: 0.57 GiB (793.2%).
+(EngineCore pid=226) INFO 10-08 08:51:53 [gpu_worker.py:860] Free memory on device (22.87/23.4 GiB) on startup. Desired GPU memory utilization is (0.92, 21.53 GiB). Actual usage is 19.15 GiB for consumed memory (weights + non-torch), 1.1 GiB for peak activation, and 0.07 GiB for CUDAGraph memory. Replace gpu_memory_utilization config with `--kv-cache-memory=1132512728` (1.05 GiB) to fit into requested memory, or `--kv-cache-memory=2574918144` (2.4 GiB) to fully utilize gpu memory. Current kv cache memory in use is 1.27 GiB.
+(EngineCore pid=226) INFO 10-08 08:51:56 [jit_monitor.py:85] Kernel JIT monitor activated; monitored JIT compilations during inference will use mode=warn.
+(EngineCore pid=226) INFO 10-08 08:51:56 [torch_utils.py:277] Reducing Torch threads from 24 to 1 for serving. Set OMP_NUM_THREADS in the external environment to override.
+(EngineCore pid=226) INFO 10-08 08:51:56 [core.py:361] init engine (profile, create kv cache, warmup model) took 72.59 s (compilation: 9.95 s)
+(EngineCore pid=226) INFO 10-08 08:51:57 [kernel.py:369] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+(APIServer pid=1) INFO 10-08 08:51:57 [entry.py:135] Supported tasks: ['generate']
+(APIServer pid=1) INFO 10-08 08:51:57 [serving.py:216] Loaded new LoRA adapter: name 'g6q', path '/adapter'
+(APIServer pid=1) INFO 10-08 08:51:58 [hf.py:547] Detected the chat template content format to be 'string'. You can set `--chat-template-content-format` to override this.
+(APIServer pid=1) WARNING 10-08 08:51:58 [model.py:1759] Default vLLM sampling parameters have been overridden by the model's `generation_config.json`: `{'temperature': 1.0, 'top_p': 0.95}`. If this is not intended, please relaunch vLLM instance with `--generation-config vllm`.
+(APIServer pid=1) INFO 10-08 08:51:58 [entry.py:139] Starting vLLM server on http://0.0.0.0:8000
+(APIServer pid=1) INFO 10-08 08:51:58 [launcher.py:61] Available routes are:
+(APIServer pid=1) INFO 10-08 08:51:58 [launcher.py:70] Route: /openapi.json, Methods: HEAD, GET
+(APIServer pid=1) INFO 10-08 08:51:58 [launcher.py:70] Route: /docs, Methods: HEAD, GET
+(APIServer pid=1) INFO 10-08 08:51:58 [launcher.py:70] Route: /docs/oauth2-redirect, Methods: HEAD, GET
+(APIServer pid=1) INFO 10-08 08:51:58 [launcher.py:70] Route: /redoc, Methods: HEAD, GET
+(APIServer pid=1) INFO 10-08 08:51:58 [launcher.py:70] Route: /load, Methods: GET
+(APIServer pid=1) INFO 10-08 08:51:58 [launcher.py:70] Route: /version, Methods: GET
+(APIServer pid=1) INFO 10-08 08:51:58 [launcher.py:70] Route: /health, Methods: GET
+(APIServer pid=1) INFO 10-08 08:51:58 [launcher.py:70] Route: /metrics, Methods: GET
+(APIServer pid=1) INFO 10-08 08:51:58 [launcher.py:70] Route: /tokenize, Methods: POST
+(APIServer pid=1) INFO 10-08 08:51:58 [launcher.py:70] Route: /detokenize, Methods: POST
+(APIServer pid=1) INFO 10-08 08:51:58 [launcher.py:70] Route: /v1/models, Methods: GET
+(APIServer pid=1) INFO 10-08 08:51:58 [launcher.py:70] Route: /ping, Methods: GET
+(APIServer pid=1) INFO 10-08 08:51:58 [launcher.py:70] Route: /ping, Methods: POST
+(APIServer pid=1) INFO 10-08 08:51:58 [launcher.py:70] Route: /invocations, Methods: POST
+(APIServer pid=1) INFO 10-08 08:51:58 [launcher.py:70] Route: /v1/chat/completions, Methods: POST
+(APIServer pid=1) INFO 10-08 08:51:58 [launcher.py:70] Route: /v1/chat/completions/batch, Methods: POST
+(APIServer pid=1) INFO 10-08 08:51:58 [launcher.py:70] Route: /v1/responses, Methods: POST
+(APIServer pid=1) INFO 10-08 08:51:58 [launcher.py:70] Route: /v1/responses/{response_id}, Methods: GET
+(APIServer pid=1) INFO 10-08 08:51:58 [launcher.py:70] Route: /v1/responses/{response_id}/cancel, Methods: POST
+(APIServer pid=1) INFO 10-08 08:51:58 [launcher.py:70] Route: /v1/completions, Methods: POST
+(APIServer pid=1) INFO 10-08 08:51:58 [launcher.py:70] Route: /v1/messages, Methods: POST
+(APIServer pid=1) INFO 10-08 08:51:58 [launcher.py:70] Route: /v1/messages/count_tokens, Methods: POST
+(APIServer pid=1) INFO 10-08 08:51:58 [launcher.py:70] Route: /generative_scoring, Methods: POST
+(APIServer pid=1) INFO 10-08 08:51:58 [launcher.py:70] Route: /scale_elastic_ep, Methods: POST
+(APIServer pid=1) INFO 10-08 08:51:58 [launcher.py:70] Route: /is_scaling_elastic_ep, Methods: POST
+(APIServer pid=1) INFO 10-08 08:51:58 [launcher.py:70] Route: /v1/chat/completions/render, Methods: POST
+(APIServer pid=1) INFO 10-08 08:51:58 [launcher.py:70] Route: /v1/messages/render, Methods: POST
+(APIServer pid=1) INFO 10-08 08:51:58 [launcher.py:70] Route: /v1/completions/render, Methods: POST
+(APIServer pid=1) INFO 10-08 08:51:58 [launcher.py:70] Route: /v1/chat/completions/derender, Methods: POST
+(APIServer pid=1) INFO 10-08 08:51:58 [launcher.py:70] Route: /v1/completions/derender, Methods: POST
+(APIServer pid=1) INFO 10-08 08:51:58 [launcher.py:70] Route: /inference/v1/generate, Methods: POST
+(APIServer pid=1) INFO:     Started server process [1]
+(APIServer pid=1) INFO:     Waiting for application startup.
+(APIServer pid=1) INFO:     Application startup complete.
+(APIServer pid=1) INFO:     172.17.0.1:55876 - "GET /health HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:55886 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:55900 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:55916 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:55932 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:55936 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:55940 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:55952 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:55968 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:55982 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:55986 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) WARNING 10-08 08:52:05 [input_processor.py:196] vLLM has deprecated support for supporting different tokenizers for different LoRAs. By default, vLLM uses base model's tokenizer. If you are using a LoRA with its own tokenizer, consider specifying `--tokenizer [lora_path]` to use the LoRA tokenizer.
+(APIServer pid=1) INFO:     172.17.0.1:55998 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:56012 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:56016 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:56032 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:56046 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:56056 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:56068 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:56074 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:56084 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:56092 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:56122 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:56106 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:56130 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:56140 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:56154 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:56170 - "POST /v1/completions HTTP/1.1" 200 OK
+(EngineCore pid=226) WARNING 10-08 08:52:07 [jit_monitor.py:141] Triton kernel JIT compilation during inference: _causal_conv1d_fwd_kernel. This causes a latency spike; consider extending warmup to cover this shape/config.
+(EngineCore pid=226) WARNING 10-08 08:52:08 [jit_monitor.py:141] Triton kernel JIT compilation during inference: _lora_shrink_kernel. This causes a latency spike; consider extending warmup to cover this shape/config.
+(APIServer pid=1) INFO 10-08 08:52:09 [loggers.py:310] Engine 000: Avg prompt throughput: 1487.8 tokens/s, Avg generation throughput: 65.0 tokens/s, Running: 16 reqs, Waiting: 0 reqs, GPU KV cache usage: 76.2%, Prefix cache hit rate: 0.0%
+(APIServer pid=1) INFO:     172.17.0.1:44106 - "POST /v1/completions HTTP/1.1" 200 OK
+(EngineCore pid=226) 2026-10-08 08:52:14,033 - INFO - cute_dsl_core.py:177 - flashinfer.jit: Compiling CuTe-DSL kernel b12x_moe_sm120a_cute_dsl/static_m80_k2688_n1920_t6_r640_8b149d4fded1a845
+(EngineCore pid=226) WARNING 10-08 08:52:14 [jit_monitor.py:141] CuTeDSL JIT compilation during inference: MoEStaticKernel. This causes a latency spike; consider extending warmup to cover this shape/config.
+(EngineCore pid=226) 2026-10-08 08:52:15,494 - INFO - cute_dsl_core.py:246 - flashinfer.jit: Persisted CuTe-DSL kernel to /root/.cache/flashinfer/0.6.18/120f/cached_ops/b12x_moe_sm120a_cute_dsl/static_m80_k2688_n1920_t6_r640_8b149d4fded1a845.o
+(APIServer pid=1) INFO:     172.17.0.1:44118 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:44122 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:44124 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:44136 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 08:52:19 [loggers.py:310] Engine 000: Avg prompt throughput: 4850.5 tokens/s, Avg generation throughput: 359.8 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 33.6%
+(APIServer pid=1) INFO 10-08 08:52:29 [loggers.py:310] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 27.6%, Prefix cache hit rate: 16.9%
+(APIServer pid=1) INFO:     172.17.0.1:55800 - "POST /v1/completions HTTP/1.1" 200 OK

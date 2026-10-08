@@ -1,0 +1,28 @@
+=== chain 2026-10-08T04:14:36Z: p34 - host-KV stall at 8k: diag, then unjam
+== phase p34-base-kvoff8-b8k-ujdiag-a8l 04:14:36Z maxlen 131072 work: agent ks:  KSTAGE_UNJAM=diag
+  free in 2 MiB+ blocks: 13.7 GiB
+ready in 111s; Model loading took 17.88 GiB;Available KV cache memory: 0.88 GiB;GPU KV cache size: 239,206 tokens;
+  mem: Maximum concurrency for 131,072 tokens per request: 1.82x;Actual usage is 19.33 GiB for consumed memory (weights + non-torch), 1.32 GiB for peak activation, and 0.09 GiB for CUDAGraph;
+  host RAM used: +12699 MiB, 45975 MiB available
+Terminated                 python3 "$here/probes/offload_bench.py" --base $B --model g6q --out "$J/bench-$tag.json" $WORK ${BARGS:-} > "$J/bench-$tag.log" 2>&1
+  bench: exit 143, 789s
+  max running/waiting: Running: 7 reqs, Waiting: 1 reqs
+== phase p34-base-kvoff8-b8k-unjam-a8l 04:29:38Z maxlen 131072 work: agent ks:  KSTAGE_UNJAM=1
+  free in 2 MiB+ blocks: 13.8 GiB
+ready in 105s; Model loading took 17.88 GiB;Available KV cache memory: 0.88 GiB;GPU KV cache size: 239,206 tokens;
+  mem: Maximum concurrency for 131,072 tokens per request: 1.82x;Actual usage is 19.33 GiB for consumed memory (weights + non-torch), 1.32 GiB for peak activation, and 0.09 GiB for CUDAGraph;
+  host RAM used: +12599 MiB, 46117 MiB available
+  bench: exit 0, 418s
+  agent x8 to 126976: 224 turns, 0 errors, wall 415s, decode median 68.5 tok/s, late TTFT median 15.25s, preemptions 40, prefix hits/queries 0/14995456, external hits 13563648
+  max running/waiting: Running: 8 reqs, Waiting: 0 reqs
+== phase p34-base-kvoff16-b8k-unjam-a16l 04:38:23Z maxlen 131072 work: agent ks:  KSTAGE_UNJAM=1
+  free in 2 MiB+ blocks: 13.9 GiB
+ready in 111s; Model loading took 17.88 GiB;Available KV cache memory: 0.88 GiB;GPU KV cache size: 239,206 tokens;
+  mem: Maximum concurrency for 131,072 tokens per request: 1.82x;Actual usage is 19.33 GiB for consumed memory (weights + non-torch), 1.32 GiB for peak activation, and 0.09 GiB for CUDAGraph;
+  host RAM used: +20989 MiB, 37723 MiB available
+  bench: exit 0, 838s
+  agent x16 to 126976: 448 turns, 0 errors, wall 835s, decode median 66.0 tok/s, late TTFT median 33.50s, preemptions 169, prefix hits/queries 0/29990912, external hits 27127296
+  max running/waiting: Running: 8 reqs, Waiting: 7 reqs
+== done 04:54:14Z
+profile: performance
+exit 0
