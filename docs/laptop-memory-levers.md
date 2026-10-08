@@ -113,8 +113,12 @@ source; **[arithmetic]** computed here; **[inference]** judgement, not tested.
      agents and 2.86M for sixteen, at no more than 4,114 tok/s [arithmetic]: the memory
      levers have reached the prefill-compute floor. A faster MoE kernel does not lower it
      (row V): FlashInfer's B12x prefills 98k 21% faster, but at equal KV it gains 1–2% on
-     agents, and its real KV is 0.75 GiB smaller, which costs 9–12%. Where the rest of the
-     agent wall goes is unmeasured.
+     agents, and its real KV is 0.75 GiB smaller, which costs 9–12%. Traces (p39) show
+     where the rest goes: past 100k tokens of context, a 4,096-token prefill step is 60–64%
+     attention and 29–32% MoE, with or without the cold tier. The deep end of the load is
+     bound by attention over the prefix, not by where the experts live (row L). Swapping
+     the attention kernel does not lower it (p40): Triton cuts late TTFT 11% but costs 17% of
+     wall (417 s vs 357 s), and capturing every decode size to 8 changes nothing.
      KV in RAM at 8,192 can deadlock vLLM 0.29.0's scheduler; `KSTAGE_UNJAM=1` clears it.
      The full 1M context serves with offload and not without (row G). The CPU computes a
      cold expert no faster than the copy engine moves one (row P).
@@ -410,7 +414,7 @@ Laptop, 131,072-token server, unless a row says otherwise. Decode is aggregate t
 | I | KV blocks evicted to RAM | `--kv-offloading-size 16 --kv-offloading-backend native` | no expert offload, 4 × 127k: 195 s (no offload 519, UVA 4 GiB 520), late TTFT 2.50 s, 0 preemptions. 2.20M of the 7.50M prompt tokens came back from RAM; recomputing them would take ~300 s [arithmetic]. Host RAM +20.9 GB | done: the fix for prefix eviction, at no VRAM cost. It adds no running room. With K6, 8 × 127k: 579 s vs K6 alone 589 s, 0 external hits: K6's 5.72 GiB holds all eight (312 of 478 blocks) [arithmetic], so nothing is evicted. 16 × 127k (p14): 744 s, late TTFT 25.0 s, 27.1M tokens back from RAM, host +20.6 GiB; with K6, 1,177 s, 7.1 s, 18.0M from RAM, host +36.6 GiB (22.4 GiB still available). At 8,192-token chunks host KV alone deadlocks vLLM's scheduler (below; `KSTAGE_UNJAM=1` clears it); with K6 it ran 16 × 127k in 765 s (p31, row D). Alone, its best chunk is 4,096: 351 s at 8 agents, 696 s at 16 (p33; p35 repeats them within 1 s); 6,144 loses, 378 s / 769 s (p36). With K6 at 3 GiB cold: 359 s / 716 s (p35, row D); at 2 GiB, 352 s / 698 s (p37) |
 | J | Routing histogram | `--enable-return-routed-experts` | the median layer's 32 most-routed experts of 128 take 0.52 (code) / 0.63 (eval) of routings; uniform would be 0.25 | done; drives K |
 | K | Hot experts on the card, cold in RAM | `probes/kstage` plugin: K2, K5, K6 | below. Laptop K6: decode 166 / 241 / 294 at 5.71 GiB KV (UVA 76 / 98 / 132 at 5.63), 6 × 98k in 282 s (UVA 572, K2 402); with P1, the live miss copy and LFU (p20) 176 / 260 / 419 at 5.44 GiB | K2, K5, K6 measured on both machines; K6's prefill (98k 25.3 s vs 15.4 none) was the open cost; P1 (row U) takes it to 18.0 s, 13.6 s at batch 8,192 |
-| L | Where offload's time goes | copy probes; nsys | read rates: Marlin through UVA 27.2, Triton gather 36.8, copy engine 50.9 GB/s (desktop 7.2 / 11–12.5 / 12.2) | nsys not run |
+| L | Where offload's time goes | copy probes; torch profiler (p39) | read rates: Marlin through UVA 27.2, Triton gather 36.8, copy engine 50.9 GB/s (desktop 7.2 / 11–12.5 / 12.2). 8 agents past 100k: a 4k prefill step is 60–64% attention, 29–32% MoE (p39) | traced; p40: Triton attention and full decode capture do not lower the wall |
 | M | Offload on the training side | QLoRA | | open |
 | N | Expert caches outside this vLLM | vLLM PR #37190, LMCache, ktransformers, llama.cpp | | needs a download (David) |
 | O | Fill K6 slots a layer ahead | `KSTAGE=predict` runs the next layers' gates on this layer's input | desktop (k7), one layer ahead: of the 2.63 cold experts a decode layer-step routes to, each token's top 6 predicted name 68% (fetching 2.68) and its top 10 83% (fetching 4.35); prefill 88% / 96%. Two layers ahead: 58% / 72% | measured (k11, desktop): a copy kernel beside a matmul takes the sum of both, not the longer (16 misses: 5.09 ms vs 1.95 + 3.14; 1 miss: 1.99 vs 1.97 + 0.06), so K6's in-kernel miss copies never hide behind compute. A fill ahead has to use the copy engine; P1 (row U) does that for prefill. Laptop, `probes/kstage/ce_probe.py` (2026-10-06): a CUDA graph can drive it. Its kernels write a copy plan into pinned memory and raise a flag (captured `cuStreamWriteValue32`); a host thread (`ce_helper.c`) issues the copies on its own stream and sets a flag the graph waits on (`cuStreamWaitValue32`). 23 layers each reading 160 MB on the card (~200 µs, decode-like), K expert rows (5.35 MiB) chosen on the device a layer ahead: per layer the handshake alone (K=0) adds 15–17 µs, K=1 52–60, K=2 121–124, K=3 258–264, with 0 bad of 22 / 44 / 66 rows checked (two runs, at most 2 or 1 steps queued) [measured]. A row alone takes ~108 µs at 51.8 GB/s, so K=1 hides ~60% of its copy, K=2 ~50%, K=3 ~25% [arithmetic]; in-kernel copies hide 0% (k11). Three rows need ~324 µs, more than the 200 µs of work, and the copies probably slow while the work saturates the card's memory [inference]. With no cap on queued steps (20 launched back to back) it hangs, three runs of three: the helper sits inside `cuMemcpyHtoDAsync` after 97 copies while the main thread sits in the graph launch; `CUDA_DEVICE_MAX_CONNECTIONS=32` and a high-priority stream change nothing [measured]. A launch blocked on a full queue holding a driver lock the copy needs, while the queued graph waits on that copy, fits [inference]; vLLM syncs on each step's sampled tokens, so it queues about one step [inference]. In vLLM (`KSTAGE_AHEAD=1`, laptop, K6 + P1 with one buffer, one draw each): at each MoE layer the next layer's gate, run on this layer's input, names its top `KSTAGE_AHEAD_K` experts and the helper copies those not in a slot. The first three serves hung about 4 s in. Host gdb, two dumps (`results/kv-levers/gdb-p18-ahead.txt`): vLLM's main thread is in `cuMemcpyDtoHAsync_v2` (a torch `setitem` into pageable memory) on a stream that waits for the helper's done flag, and the helper is in `pthread_rwlock_rdlock` inside `cuMemcpyDtoDAsync_v2` [measured]. `ce_lock.sh` puts three blocking calls on the main thread while its stream waits for the helper: with the helper on the caller's context a device-to-host copy and a sync complete and `cuMemFree` deadlocks; with the helper on its own context, or in a child process, all three complete. Beside a kernel on all 82 SMs its 4 GiB copy still runs at 50.9–52.0 GB/s, and the kernel slows 0.5% (caller's context, process) or 2.2% (own context) [measured, `results/kstage-laptop/ce_lock.out`]. So `CE_OWNCTX=1` is the default: the helper makes its own context (259 MiB of device memory, taken from KV) and the done flags live in a VMM page both contexts can write. A process would need shared pages: HOST VMM pages refuse a POSIX-fd handle and HOST_NUMA id 0 takes one [measured, not kept in a results file]. It then serves, ready in 110 s, with helper err 0 in all 66 stats lines. KV 5.44 → 5.15 GiB. Decode, aggregate tok/s at 1 / 4 / 16 streams: without ahead (p17) 169.5 / 235.2 / 348.3; ahead K=6 151.3 / 232.1 / 323.8 (−11 / −1 / −7%); K=10 143.4 / 202.8 / 272.0 [measured]. Misses per layer-step over the whole decode bench fall from 2.96 to 2.17 with K=6 (−27%, copying 3.24 rows a layer-step ahead) and to 1.83 with K=10 (−38%, copying 5.32): about one copied row in four replaces a miss, and the misses fall far less than the 68% / 83% of cold experts k7's prediction names [arithmetic; why is unknown]. At one stream there are 0.19 misses a layer-step, about 20 µs of copy to hide, against +31 µs a layer (5.90 → 6.61 ms a step over 23 MoE layers), so ahead cannot win there [arithmetic]. Eight agents to 127k: 458 s without, 449 s with (decode median 17.9 vs 18.5 tok/s, late TTFT 2.57 vs 2.53 s, misses 3.69 vs 2.59 a layer-step, ahead copying 3.28); P1 with two buffers took 447 s (p15), so a wash [measured]. Answers against p15's K6 + P1: v1 the same scores; v2 held_out2 0.971 vs 1.000 and two_flag 0.9 vs 1.0; alert 6/9 vs 5/9; trap3 noticed 6/12 vs 4/12, 0 fabricated. Items whose score changes: 5 / 3 / 2 (v2 / alert / trap3), against 1–4 / 4–6 / 0 between reruns of one setup, and one of the trap3 gains (rsnyc) is wrong, saying rsync has no `--dry-run`, but scores as noticed [measured]. Where the cost is (`ce2_suite.sh`, `results/kstage-laptop/ce2.out`: ce_probe, 23 layers of ~199 µs work), ms added a step: K=0 / 1 / 2 rows a layer +0.43 / +1.60 / +2.77; with `--devdone` (the graph sets an empty plan's done flag itself, so no round trip to the helper) +0.57 / +1.57 / +2.97; rows on half the layers, K=1 / 2 / 3, +1.46 / +2.05 / +3.54; on a quarter +1.13 / +1.27 / +1.92, and the same with two steps queued [measured]. Above K=0 a dense row costs 44–52 µs (about half its ~108 µs hidden) and a sparse one 66–110 µs, so cutting rows 78% (dense K=1 to a quarter of the layers) cuts the cost only 28% [arithmetic]. The fixed 19–25 µs a layer is most of vLLM's +31 at one stream, and since skipping the round trip does not lower it, it sits in the nodes ahead adds to the graph (plan kernel, flag write, wait), not in the helper [inference]. Where the time goes in vLLM (B1, p19, 2026-10-07; torch profiler on steady decode, `probes/kstage/trace_drive.py` + `trace_ahead.py`, `results/kv-levers/p19-trace.txt`; K6 + P1, K=6, 300-word prompts, one 0.6 s window per arm and stream count; kernels inside CUDA graphs keep their GPU times): the step period without → with ahead at 1 / 4 / 16 streams is 5,731 → 6,421 / 10,873 → 11,825 / 23,707 → 26,114 µs, +30.0 / +41.4 / +104.6 µs a MoE layer. Of that, added kernel time (the union over the graph's two or three streams) is +25.3 / +30.6 / +44.5 and added idle +4.7 / +10.8 / +60.1 [measured]. At one stream the kernels ahead adds a layer are the next gate's fp32 matmul 5.9 µs, `torch.topk` 7.8 (gatherTopK 4.8 + bitonicSort 3.1), the cast of x to fp32 3.5, `_copy_rows` +3.2, `_plan_kernel` 1.6, sigmoid 1.5 and the bias add 1.3: 24.7, against +25.3 [measured]. So the fixed cost is the predictor written as separate torch ops, not the handshake: the flag write and the wait on an empty plan cost at most the 4.7 µs of idle [inference]. The fp32 gate matmul grows with the batch: the router-sized gemmSN goes 16.9 → 33.3 µs a layer at 4 streams and 20.4 → 43.6 at 16, so ahead doubles it [measured]. At 16 streams the helper copies 358 MiB a step (265 copies, 7.9 ms of copy-engine time), yet K6's in-kernel `_copy_rows` falls only 493 → 460 µs a layer (−34), Marlin rises 311 → 335 (+24, probably the helper's copies taking memory bandwidth [inference]), and waits on done flags add 60 µs of idle a layer [measured]. Over each whole serve (warm-up and all three stream counts) misses fall 0.50 → 0.23 a layer-step with 0.38 rows copied ahead, so at most ~71% of copied rows replace a miss [arithmetic; the arms ran different step counts]. At one stream ahead copies 0.35 MiB a step (0.26 copies): nothing to hide, so pure cost [measured]. Under the profiler, per-stream decode was 87.9 / 60.5 / 42.1 tok/s without and 80.3 / 55.0 / 37.6 with (`p19.out`; start and stop stall the server 3–8 s, so these are low at one stream) [measured]. p19's first try died at load with `CUDA_ERROR_OUT_OF_MEMORY` in `cuMemCreate` on an idle card: K6 pins its host pages in 2 MiB pieces and after 11 days of uptime ~34 MiB of free 2 MiB blocks were left; `kv_levers.sh` now drops the page cache and compacts before each phase and logs the free 2 MiB+ blocks (16.6 GiB for p19) [measured]. With the live miss copy (row K; p20, 2026-10-07, two draws), which removes the grid copy's empty floor that p17–p19's ahead arms all paid, ahead K=6 still loses. Decode at 1 / 4 / 16 streams: 178 / 260 / 375 without, 164 / 249 / 353 with (−8 / −4 / −6%). LFU + ahead ran 164 / 285 / 391 against LFU's 176 / 260 / 419, but there ahead's fills still raised the LFU counts [measured]. So the floor was not what hid ahead's gain [measured]. B5 (p21, one draw per stream count, one server each): ahead's fills no longer touch the LFU counts, and new counters track whether each fill is used, evicted unused, or evicts an expert that then misses (`cache_test.py --ahead` checks them against a Python reference on CPU and GPU). Decode with LRU + ahead 158.0 / 245.4 / 320.7, with LFU + ahead 160.6 / 255.6 / 336.8. Of the rows ahead fills, 82 / 72 / 75% are used before eviction under LRU and 33 / 42 / 54% under LFU. Each fill evicts an expert; under LRU those evicted experts later miss 25 / 586 / 10,081 times, 3 / 7 / 32% of the used fills [measured]. At 16 streams LRU + ahead still misses 5.10 a layer-step, where without its fills about 8.4 would have [arithmetic: misses − misses of evicted experts + used fills, approximate]. Under LFU, the experts the predictor names that are not already in a slot are rarer ones, so fewer get used [inference]. Traces with the live copy (p20 trace arms, `results/kv-levers/p20-trace.txt`): at one stream ahead adds +29.5 µs a MoE layer (p19: +30.0), 25.0 of it kernels, so the predictor's separate ops are still the whole fixed cost [measured]. Over each trace serve, ahead halves misses (0.67 → 0.33 a layer-step; 73% of fills used; misses of evicted experts 10% of used fills), and LFU alone cuts them 16% (0.56). Yet per-stream decode at 1 / 4 / 16 streams is 85.9 / 76.0 / 43.1 tok/s without, 79.2 / 68.2 / 41.8 with ahead (−8 / −10 / −3%) and 86.9 / 74.6 / 48.0 with LFU (+1 / −2 / +11%) [measured]. A 0.6 s window cannot measure costs that depend on misses. At 4 streams, live and live + LFU spend 13 vs 55 µs a layer on miss copies. At 16 streams the ahead window ran 4.8% faster (in-kernel copy 449 → 256 µs a layer; idle +79, gate matmul +22, Marlin +12) while its whole streams ran 3% slower [measured]. p24 fused the predictor (`KSTAGE_AHEAD_FUSE=1`, `_ahead_kernel`: the gate dot split over H, sigmoid + bias, top-6 and the plan in one launch up to 16 tokens; in isolation 7.6 vs 16.5 µs a layer at one token and 9–11 vs 34 at 4–16, with the same cache state as the unfused path step for step, `probes/kstage/ahead_fused_test.py`, `results/kstage-laptop/ahead_fused.out`) [measured]. Decode did not move: per-stream 161.1 / 77.4 / 23.4 tok/s at 1 / 4 / 16 streams fused, 160.7 / 77.0 / 22.7 unfused, 180.0 / 78.8 / 26.2 live + LFU [measured]. p25 (B6) split ahead's cost. A dry arm (`KSTAGE_AHEAD_DRY=1`: predictor and flags, every plan empty) runs 158.9 / 75.8 / 25.6 against live + LFU's 180.8 / 76.8 / 25.2, so at one stream ahead's whole 12% loss is fixed plumbing, not copies: 0.76 ms a step, ~33 µs a MoE layer [arithmetic]. GPU-timed waits (`KSTAGE_AHEAD_TICK=1`, `%globaltimer` either side of the flag wait) at one stream: 7.1 µs for an empty plan, 29 µs for a plan with copies, 312 µs a step in all; with the predictor's ~8 µs, ~18 µs a layer is still unplaced [unknown; candidates: the request flag's memop, memop nodes breaking the graph's launch pipelining, the copy launch]. At 16 streams the fixed cost is gone (dry ≈ live + LFU) and the fill waits are the loss: 434 µs a wait with copies, 9.4 ms of a ~43 ms step (22%), while ahead fills ~6.6 experts a layer-step, 43% evicted unused, ~1.8× live + LFU's copy traffic for 28% fewer misses, and 35% of the misses left are experts a fill evicted [measured; ratios arithmetic]. p26 (one draw each) split dry's cost at one stream by leaving parts out (`KSTAGE_AHEAD_SKIP`, dry only). Per-stream decode: live + LFU 174.6 tok/s (its earlier draws 180.0 / 180.8); dry 158.2; without the request memop 159.6; without request and wait 165.6; without the predictor 169.6; without predictor, request and wait 177.7, and the same also without the helper thread 177.1 or with K6's own step as without ahead (ah 0) 177.6 [measured]. Per MoE layer: the predictor ~18 µs (17.7 alone, 18.5 beside the flags), the wait and its reset ~10, the request memop ~2, the helper and ah 0, 30 µs in all, the whole of dry's cost [arithmetic; live + LFU's draws spread 3.5%, ~9 µs a layer, so the request's 2 is within noise]. In isolation the fused predictor takes 7.6 µs a layer, so ~10 µs of its server cost is unplaced [unknown]. At 16 streams, fewer ids predicted a token (`KSTAGE_AHEAD_K`): K = 2 / 3 / 4 / 6 decode 26.8 / 26.7 / 26.2 / 23.3 tok/s per stream (aggregate 387.7 / 385.6 / 380.0 / 342.1) against live + LFU's 25.4 (368.9); misses a layer-step 5.35 / 5.09 / 4.69 / 4.35 against 6.11; fills 1.9 / 3.1 / 4.4 / 6.4 a layer-step, 32 / 36 / 42 / 44% evicted unused [measured; per layer-step arithmetic]. K = 2 is ahead's first win, +5% aggregate, but live + LFU's own 16-stream draws span 25.2–26.2 tok/s, so it needs repeats. The fused kernel passes its state checks at K = 1 and 2 as well (`results/kstage-laptop/ahead_fused_k1.out`, `_k2.out`) [measured]. p27 repeated them (`results/kv-levers/p27.out`): at 16 streams every ahead draw beats every live + LFU draw. Over p26 and p27, live + LFU averages 25.3 tok/s per stream, aggregate 367.2 (draws 364.4–368.9); K = 1 26.4 (381.5, two draws), K = 2 26.7 (385.9, three), K = 3 26.9 (389.4, three, 385.6–392.3): +3.9 / +5.1 / +6.0% aggregate [measured; means arithmetic]. K = 3 fills 3.0–3.1 experts a layer-step, 38% evicted unused, and the experts its fills evict miss 0.74 times a layer-step: 1.89 used fills less 0.74 caused misses = 1.15 saved, against the 1.24 drop measured (6.20 → 4.96) [arithmetic]. At 8 streams K = 2 decodes 47.3 tok/s per stream against 45.1 (+4.8%, two draws each); at 4, 80.6 against 79.7 (+1.1%, about the 1% live + LFU's two draws differ by) [measured]. B4 works as built: with `KSTAGE_AHEAD_MIN=8`, one stream's server made 44 ahead requests (ahead on makes ~5,000) and decoded 174.5 tok/s against live + LFU's 180.5 in the same round; live + LFU's one-stream draws span 174.6–180.8, so one draw cannot say whether anything is left [measured]. K = 3 from 8 tokens is the first ahead setting with no measured loss. p28 traced live + LFU, dry and K = 3 at 1 / 4 / 16 streams (`results/kv-levers/p28-trace.txt`, `probes/kstage/trace_overlap.py`). p26's unplaced ~10 µs is the fused predictor itself, slower in the server than alone: a median 16.0 / 17.3 / 18.7 µs a call (dry; 7.6 alone), while idle time grows 1.8 / 3.7 / 3.9 µs a layer [measured]. It runs on the routed experts' stream straight after `_copy_rows_live` (0.1 µs apart), so it lengthens that branch; the other branch's kernels (dense Marlin, LoRA) run during 12.3 µs of each call at one stream but 4.0 at 16 [measured], so at one stream it shares the SMs and at 16 it does sixteen tokens' work [inference]. K = 3 adds 18.1 / 22.4 / 22.5 µs a layer of predictor and 3.0 / 5.7 / 8.3 of idle, so its fill waits are now small; its copy engine moves 6.5 / 41.5 / 165.8 MiB a step beside the compute [measured]. The 16-stream windows are 30 steps, too few to split the live copy: dry, which fills nothing, cut `_copy_rows_live` by 71.6 µs a layer against K = 3's 73.8, while p25's one dry draw at 16 streams decoded 371.7, 1.2% over live + LFU's mean [measured], so the throughput draws above stay the measure of K = 3. Not written off. p29 ran K = 3 from 8 tokens on the load it is for, against live + LFU, one draw each: 8 agents to 127k took 418 s, 20.1 tok/s a stream, late TTFT 2.49 s, against 424 s, 19.6, 2.52 s; 16 agents to 127k with `kvoff16` 816 s, 10.5 tok/s, 4.92 s, 17 preemptions, against 817 s, 10.3, 4.71 s, 13 [measured]. Live + LFU drew 418 s at 8 agents in p22, so on the agent load ahead neither gains nor costs [measured]. At one stream the pairs drew 175.7 / 179.0 against 180.4 / 180.7: K = 3 from 8 tokens has trailed in all three same-round pairs (mean 176.4 against 180.5, −2.3%) though its one-stream graphs plan nothing [measured]. But p26's arm with every ahead part skipped, which is what the one-stream graphs run here, drew 177.6 against live + LFU's 174.6, and its spinning helper cost nothing measurable (177.1 without, 177.7 with), so the four pairs split 3–1 and the gap is unresolved [measured]. At 8 streams K = 3 decoded 48.8 tok/s a stream (328.4 total, one draw) against live + LFU's 45.2 / 45.0 and K = 2's 46.9 / 47.6 in p27, +8.2% over live + LFU [measured]. p30 let a fill evict only empty slots and experts below U uses' worth of LFU count (`KSTAGE_AHEAD_STALE=U`; the 0.74 misses a layer-step K = 3's evictions cause), two draws each at 16 streams: U = 2 drew 370.0 / 366.8 against live + LFU's 373.7 / 369.4, giving up ahead's whole gain; U = 32 drew 387.8 / 391.0, K = 3's own level (389.2 this round, 389.4 over p27's three); U = 8 drew 379.3 / 401.3, a spread six times any other arm's [measured]. So far, limiting what a fill may evict has not paid: the misses its evictions cause cost less than its fills save [inference]. K = 3 from 8 tokens decoded 48.4 tok/s a stream at 8 streams (p29: 48.8) [measured]. Every side-stream arm (`KSTAGE_AHEAD_SIDE=1`) died in graph capture: plan() skips the last MoE layer, but join() still made the capturing stream wait on the uncaptured side stream (fixed in ae35042). p32 (two draws an arm, c=16): live + LFU 366.2 / 372.2, K3-min8 389.3 / 387.8 (p27's 389.4 again), side 384.0 / 381.7, stale8 377.0 / 374.9, side + stale8 378.9 / 375.8 [measured]. Hiding the plan on a side stream loses 1.5% and 0.05 GiB of KV (5.16 → 5.11); at 8 streams it gives 47.7 a stream against K3-min8's 48.4–48.8, and 8 agents to 127k 415 s against 418 (p29). U = 8 over four draws averages 383.1, below K3, with p30's 401.3 the outlier. The side + stale8 server answers as K6 does: signed v1 129, v2 116, alert 4, trap3 4, the same items as p15's K6 on 158 of 158, 132 of 134, 8 of 9, 12 of 12. At one stream K3-min8 is neutral: p31's four pairs give 174.6 against 175.7, ahead leading two [measured]. K3-min8 on the main stream stays the best configuration; the side stream and stale-only fills are closed. Next: live misses copied by the copy engine from 8 tokens (48.5–50.9 GB/s against the live kernel's ~39 alone, `copy-rows-probe.txt`), and one request per two layers (B3; two layers ahead names 58% / 72%; less needed now that the waits are small). |
@@ -702,7 +706,8 @@ far below what the 98k prefill predicts: saving 32 µs a token, as it does there
 46 s off eight agents and 93 s off sixteen [arithmetic], and 8 s and 11 s came off. The
 agent wall is therefore not mostly MoE prefill [inference]. Where else it goes (13.6M /
 27.1M tokens of KV loaded from RAM, attention over long contexts, decode, at which B12x is
-slower) is unmeasured. The same arithmetic rules out porting K6 to B12x for agents: winning
+slower) was measured next: attention ("L: where the agent wall goes"). The same
+arithmetic rules out porting K6 to B12x for agents: winning
 back the 0.75 GiB would leave the 1–2% kernel gain [inference].
 
 Answers, G6q (thinking off; Marlin row from `tm-graphs092`):
@@ -720,6 +725,93 @@ did not repeat, alert's nine items move by 0.33 between draws, and both exact dr
 within the same spread [measured, two draws each]. **Verdict: not adopted.** B12x is the
 faster kernel for one long cold prompt (21% at 98k), but on agents it costs more in KV
 than it gains in compute.
+
+### L: where the agent wall goes (p39, p40)
+
+Row V left the agent wall unexplained below the prefill-compute floor. p39 traces it.
+
+- **Method.**
+  - `TRACE=1` starts the server with vLLM's torch profiler.
+  - `probes/kstage/trace_agents.py` runs the 8-agent load and opens a 3 s profiler window
+    at 15, 170 and 320 s after the first request. Those windows catch every agent at about
+    12k, 73k and 108–112k tokens of context.
+  - `probes/kstage/trace_steps.py` cuts each engine step at the sampler. It then cuts the
+    step again at the residual-add RMSNorm that starts every layer, and charges each slice
+    of wall, idle gaps included, to the layer type the slice holds.
+  - Graph kernels run on several streams at once, so a sum of kernel times would overstate
+    the wall.
+- **The profiler costs wall.** The traced runs took 390 s and 389 s, against 351 s (p33)
+  and 352 s (p37) for the same arms untraced [measured]. Flushing each window stalls the
+  engine [inference]. The step splits are the evidence here, not the traced walls.
+
+Steps by layer type. The rest of each step is input prep, lm_head, the sampler and copies.
+Two arms were traced: prefix KV in RAM with 4,096-token chunks (`base-kvoff8-b4k`), and K6
+with a 2 GiB cold tier, LFU and KV in RAM, with 8,192-token chunks (`live-lfu-cg2-kvoff8-b8k`,
+KV 2.71 GiB, 382 experts cold, 16.6 a layer) [measured]:
+
+| Arm | Context | Step | Wall | Attention | MoE | Mamba |
+|---|---|---|---|---|---|---|
+| prefix KV in RAM | ~75k | 4,096-token prefill | 673–707 ms | 53–54% | 36–38% | 8–9% |
+| prefix KV in RAM | ~111k | 4,096-token prefill | 852–865 ms (4.7–4.8k tok/s) | 62–64% | 29–30% | 7% |
+| prefix KV in RAM | ~13k | decode, 8 streams | 12.6 ms | 9% | 64% | 23% |
+| K6 2 GiB | ~12k | decode, 8 streams | 14.6 ms | 7% | 71% | 19% |
+| K6 2 GiB | ~73k | decode, 8 streams | 16.9 ms | 17% | | |
+| K6 2 GiB | ~73k | 2,480-token prefill | 440 ms | 52% | | |
+| K6 2 GiB | 108–112k | ~4,100-token prefill | 852–876 ms (4.6–4.9k tok/s) | 60–63% | 29–32% | |
+| K6 2 GiB | 108–112k | decode, 7 streams | 17.4 ms | | | |
+
+- **Deep prefill is attention-bound.** By kernel, the deepest 4,096-token step (865 ms)
+  is [measured]:
+  - FlashInfer's BatchPrefill: 533 ms (62%)
+  - Marlin MoE: 182 ms (21%)
+  - Marlin linear layers: 45 ms
+  - nvjet GEMMs: 26 ms
+  - LoRA expand: 10 ms
+  - each Mamba kernel: about 5 ms
+- **Attention grows with depth.** It adds about 4.75 ms for every 1k tokens of context,
+  per 4,096-token chunk [arithmetic, from the two depths].
+  - The work: six attention layers, 32 heads of 128 dims, 4,096 queries over 111k keys,
+    is 44.7 TFLOP a step [arithmetic].
+  - At 533 ms that is ~84 TFLOPS sustained [arithmetic]. The card's attainable peak for
+    this kernel is unknown.
+- **The cold tier costs decode, not the floor.**
+  - At 12k, K6's decode step is 2 ms (16%) slower than no expert offload, and the extra time
+    is in the MoE layers [measured].
+  - At depth, both arms run the same ~860 ms attention-bound prefill step. Host-to-device
+    copies take 202 ms of K6's 3.9 s deep window (~5%) [measured].
+  - That is why 351 s and 352 s tie: the deep end of the load is bound by attention over
+    the prefix, not by where the experts live [inference].
+- **Why 8,192-token chunks do not help.** Each turn adds 4,096 + 256 = 4,352 new tokens
+  [arithmetic], so its prefill never fills an 8k chunk. The deep K6 steps carry ~4.1k
+  tokens either way [measured].
+- **sm_120 has no fp8 prefill attention.** FlashInfer's fa2 prefill reads the fp8 KV,
+  converts it to bf16 inside the kernel, and multiplies it against bf16 queries. TRTLLM
+  prefill is unsupported on SM12x, which gets XQA decode only [sourced, vLLM 0.29.0
+  `utils/flashinfer.py` `supports_trtllm_attention`]; the traces show XQA's `kernel_mha` on
+  decode [measured]. `FLASH_ATTN` falls back to FA2 on sm_120, and takes fp8 KV only as
+  FA3 on SM90 or FA4 on SM100, so it needs bf16 KV here [sourced, `fa_utils.py`
+  `flash_attn_supports_kv_cache_dtype`]. `TRITON_ATTN` takes fp8 KV [sourced,
+  `triton_attn.py`].
+  p40 tries the levers this leaves.
+- **`auto` KV is fp8 for this checkpoint.** `--kv-cache-dtype auto` resolves to the
+  checkpoint's `kv_cache_quant_algo`, which is FP8 in its `hf_quant_config.json`
+  [sourced, vLLM 0.29.0 `utils/torch_utils.py` `resolve_kv_cache_dtype_string`]. So p40's
+  "kvbf16" arm logged "Using fp8_e4m3 data type to store kv cache" and ran as a second
+  draw of the control (358 s vs 357 s), and its `FLASH_ATTN` arm died at startup on the
+  same fp8 KV [measured]. Forcing bf16 takes `--kv-cache-dtype bfloat16`; p41 reruns both.
+- **p40** [measured, one draw each; laptop, no expert offload, 8 GiB of KV in RAM, 4k
+  chunks, 8 agents to 127k]:
+
+  | Arm | GPU KV tokens | Wall | Decode median | Late TTFT | Preemptions |
+  |---|---|---|---|---|---|
+  | control (FlashInfer, fp8 KV) | 491,520 | 357 s | 35.5 tok/s | 8.45 s | 0 |
+  | "kvbf16" (ran fp8, see above) | 478,412 | 358 s | 34.8 tok/s | 8.62 s | 0 |
+  | `TRITON_ATTN`, fp8 KV | 609,484 | 417 s | 30.9 tok/s | 7.53 s | 1 |
+  | `FLASH_ATTN`, "bf16" | — | did not start (fp8 KV) | | | |
+
+  Triton's prefill is the faster one at depth (late TTFT −11%) and it holds 24% more
+  tokens, but its decode is 13% slower, which sets the wall here. The padding arms are
+  under "CUDA-graph limits, judged", item 1.
 
 ## Untested levers, ranked
 
@@ -822,6 +914,79 @@ The expert-delta test (`probes/expert_delta.py`, `results/expert-delta/out.txt`)
 - **The experts are close to mutually orthogonal:** pairwise |cos| ≤ 0.041, and √2 = 1.41 is
   the distance between two orthogonal matrices of equal norm.
 - **Zero rows:** layer 1 has 1,372 all-zero up rows (0.6%) but no all-zero experts.
+
+## CUDA-graph limits, judged
+
+An outside assessment (2026-10-08) proposed four CUDA-graph directions. Each was checked
+against vLLM 0.29.0's source and the p39 traces; the padding claim was also run (p40).
+
+1. **Padding to capture sizes ("9 → 16 is 44% wasted").**
+   - Graphs serve only steps of 32 tokens or fewer: capture sizes 1, 2, 4, 8, 16, 24 and 32.
+     The agent load's 4k prefill steps and mixed steps exceed that and run without a graph.
+     Its deep decode steps run 3–8 streams [measured, p39].
+   - Decode here is bound by memory reads: expert weights and KV. A padded row adds math to
+     a step whose time is set by those reads, so 7 padded rows in 16 do not cost 44%
+     [inference]. A search found no measurement behind the 44% [sourced, agent search].
+   - **Lightning's router does pad into real experts** [sourced]:
+     - Its config (`n_group` 1, `topk_group` 1, a score bias, scaling 2.5) keeps
+       `GroupedTopKRouter`, because dropping the single group would change the advertised
+       routing method from DeepSeekV3 to Unspecified (`router_factory.py`,
+       `fused_moe/config.py` `get_routing_method_type`).
+     - `VLLM_MOE_SKIP_PADDING` (default on) hands the padding mask to the fused routers
+       only; `grouped_topk_router.py` never reads it.
+     - The V2 runner leaves stale token ids in padded rows, so they route like tokens.
+     - The result: expert weights read for nobody, and under K6, cold misses that copy
+       experts nobody asked for [inference].
+   - p40 test: `-cs8` captures every size from 1 to 8, so steps of 3, 5, 6 and 7 streams pad
+     by no rows instead of 1–3. KV is pinned (`-kvb270`), because more capture sizes inflate
+     vLLM's graph-memory estimate, which would otherwise move KV.
+   - **Result** [measured, one draw each; K6 with a 2 GiB cold tier, 8 GiB of KV in RAM,
+     8k chunks, 8 agents to 127k]:
+     - wall: 351 s with every size captured, 354 s without;
+     - decode median: 30.5 tok/s for both;
+     - late TTFT: 5.51 s vs 5.56 s;
+     - K6 misses: 0.83 vs 0.82 per layer-step (141,057 in 170,786 vs 139,650 in 170,053).
+     Padding moves nothing past noise. A padded row's stale token likely routes to experts
+     the real rows already pulled in, and graph steps are a small share of this load's wall
+     [inference]. **Verdict: not a lever for the agent load.** At most it is a side test for
+     decode-heavy serving, where 9–15 streams pad to 16; not a research effort.
+2. **"Graphs take 1–2 GB of VRAM."**
+   - The graph pool here is 0.07–0.10 GiB [measured, "The graph-memory estimate"].
+   - What costs KV is vLLM's estimate of it. vLLM profiles the first capture and adds a
+     second sample for each further size [sourced, agent read of `gpu_worker.py`]. It
+     guesses 0.59–0.65 GiB for 0.08–0.09 GiB of real pool.
+     `VLLM_MEMORY_PROFILER_ESTIMATE_CUDAGRAPHS=0` takes 0.60 GiB back (row 13).
+   - The other cost is the compiled model's peak activation. `FULL_DECODE_ONLY` graphs
+     without torch.compile give +0.87 GiB of KV (row T).
+   - The "cg2" and "cg3" in our run names are K6's cold tier in GiB (`KSTAGE_COLD_GB`), not
+     graphs.
+   - **Verdict:** no new lever. The two real ones are measured, and adopting them is
+     David's call.
+3. **Conditional nodes (CUDA 12.3+) for speculative decode and expert skip.**
+   - vLLM 0.29.0 uses no conditional nodes and no `cudaGraphExecUpdate` [sourced, grep of
+     the image's vllm]. FlashInfer ships conditional nodes in `fused_moe/da_moe.py`, which
+     vLLM does not import [sourced].
+   - Marlin MoE already gives no work to an expert no token routed to: its block alignment
+     makes blocks only for routed experts [sourced, `moe_align_block_size.py`].
+   - Draft models did not pay on Lightning (DFlash, MTP). A conditional node would save a
+     host round-trip; it would not raise the acceptance rate, which is what decides the
+     gain [inference]. NVIDIA's description:
+     https://developer.nvidia.com/blog/dynamic-control-flow-in-cuda-graphs-with-conditional-nodes
+   - **Verdict:** a separate later effort at most; it needs engine changes.
+4. **Kernel fusion and megakernels.**
+   - Hazy's "No Bubbles" is batch-1 Llama-1B on H100
+     [sourced, https://hazyresearch.stanford.edu/blog/2025-05-27-no-bubbles]. Mirage's MPK
+     ran on A100, H100 and B200 at batch 1–16, including one MoE (Qwen3-30B-A3B), as a
+     torch.compile backend, with no Mamba and no sm_120
+     [sourced, https://arxiv.org/html/2512.22219v1].
+   - What they remove is GPU idle time between kernels. Here that is 75 ms of a 3,023 ms
+     decode window (2.5%) and about 1% of a deep prefill window [measured, p39]. Fusion
+     could also save activation round-trips through memory; that is unmeasured [unknown].
+   - **Verdict:** not a lever for this load.
+
+What the assessment missed: at depth the agent wall is attention over the prefix, 54–64% of
+each 4,096-token prefill step (row L, "L: where the agent wall goes"). No graph change
+touches it.
 
 ## OS and system
 

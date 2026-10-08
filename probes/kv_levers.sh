@@ -5,7 +5,7 @@
 # flags in the table below, runs v1, v2, alert and trap3 thinking-on, and keeps its log.
 # Outputs go to results/kv-levers/; kv_levers_agree.py compares them with G6q's three runs.
 # usage: kv_levers.sh PHASE...   (or "round4" / "round5" for the doc's rows 2-9 / 10-14,
-#        "round6" / "round8" / "round7" / "round9" / "k6" / "p13" / "p14" / "p20" / "p21" / "p22" / "p23" / "p24" / "p25" / "p26" / "p27" / "p28" / "p29" / "p30" / "p31" / "p32" / "p33" / "p34" / "p35" / "p36" / "p37" for the experts-in-RAM program's passes)
+#        "round6" / "round8" / "round7" / "round9" / "k6" / "p13" / "p14" / "p20" / "p21" / "p22" / "p23" / "p24" / "p25" / "p26" / "p27" / "p28" / "p29" / "p30" / "p31" / "p32" / "p33" / "p34" / "p35" / "p36" / "p37" / "p38" / "p39" / "p40" for the experts-in-RAM program's passes)
 # Env per phase: MAXLEN / SEQS (default 16384 / 16); WORK="MODE..." runs probes/offload_bench.py
 # modes (decode prefill agent needle experts) with BARGS instead of the eval, to bench-TAG.json.
 # KS="KSTAGE=... VAR=..." loads the kstage plugin (probes/kstage) with those variables set;
@@ -63,7 +63,7 @@ phase() {  # tag [extra serve flags...]; env NOLORA=1 (no adapter), CAP=1 (capac
     set -- "$@" --profiler-config.profiler=torch --profiler-config.torch_profiler_dir=/trace \
       --profiler-config.torch_profiler_with_stack=false --profiler-config.ignore_frontend=true
   fi
-  echo "== phase $tag $(date -u +%H:%M:%SZ)${NOLORA:+ nolora}$( [ "${CAP:-0}" = 1 ] && echo ' cap-only')${MAXLEN:+ maxlen $MAXLEN}${WORK:+ work: $WORK}${KS:+ ks: $KS}"
+  echo "== phase $tag $(date -u +%H:%M:%SZ)$( [ "${NOLORA:-0}" = 1 ] && echo ' nolora')$( [ "${CAP:-0}" = 1 ] && echo ' cap-only')${MAXLEN:+ maxlen $MAXLEN}${WORK:+ work: $WORK}${KS:+ ks: $KS}"
   # K6 pins its host pages with cuMemCreate in 2 MiB pieces; after days of uptime the page cache
   # left 34 MiB of free 2 MiB blocks and p19 died with CUDA_ERROR_OUT_OF_MEMORY at load. Drop the
   # clean cache and compact first (no-op without passwordless sudo).
@@ -95,6 +95,15 @@ phase() {  # tag [extra serve flags...]; env NOLORA=1 (no adapter), CAP=1 (capac
   if [ "${CAP:-0}" = 1 ]; then
     local m=g6q; [ "${NOLORA:-0}" = 1 ] && m=lightning-nvfp4
     echo "  smoke: $(curl -s $B/v1/completions -H 'Content-Type: application/json' -d "{\"model\":\"$m\",\"prompt\":\"2+2=\",\"max_tokens\":4,\"temperature\":0}" | python3 -c 'import json,sys; print(repr(json.load(sys.stdin)["choices"][0]["text"]))' 2>&1)"
+    docker logs "$name" > "$J/serve-$tag.log" 2>&1; docker rm -f "$name" >/dev/null 2>&1; return 0
+  fi
+  if [ "${TRACE:-0}" = 1 ] && [ -n "${WORK:-}" ]; then   # p39: profiler windows inside the bench
+    local t=$(date +%s)
+    # shellcheck disable=SC2086  # WORK and BARGS are word lists
+    python3 "$here/probes/kstage/trace_agents.py" --server $B --at "${TAT:-15,170,320}" -- \
+      --base $B --model g6q --out "$J/bench-$tag.json" $WORK ${BARGS:-} > "$J/bench-$tag.log" 2>&1
+    echo "  bench: exit $?, $(( $(date +%s)-t ))s"; grep -E "^  (agent|window)" "$J/bench-$tag.log"
+    ls "$J/trace-$tag" | sed 's/^/  trace file: /'
     docker logs "$name" > "$J/serve-$tag.log" 2>&1; docker rm -f "$name" >/dev/null 2>&1; return 0
   fi
   if [ "${TRACE:-0}" = 1 ]; then
@@ -429,7 +438,15 @@ run() {  # the doc's lever table, row by row
     # targets; -nolora drops the adapter, -moeX swaps in a native FP4 kernel for sm_120.
     # -exact keeps B12x's FP8 block scales exact; -kvbN pins KV at N/100 GiB (p38f: Marlin at
     # B12x's 1.05 GiB, to split B12x's agent result into kernel and KV).
-    p31-*|p33-*|p34-*|p35-*|p36-*|p37-*|p38-*)
+    # p39 (row L): where the agent wall goes. -trace opens torch-profiler windows at 15, 170 and
+    # 320 s into the bench (TAT; trace_agents.py), i.e. shallow, middle and deep contexts.
+    # p40: what p39 found. Deep 4k prefill steps are 54-64% attention (FlashInfer fa2, bf16 Q over
+    # fp8 KV: sm_120 has no fp8-Q prefill), so -kvbf16 drops the in-kernel fp8 conversion, -triton
+    # and -fa2 swap the backend. And padded decode rows: Lightning's n_group=1 bias router stays
+    # GroupedTopKRouter, which ignores VLLM_MOE_SKIP_PADDING, so rows padded up to a capture size
+    # route stale tokens into real experts (cold misses under K6); -cs8 captures every size to 8,
+    # at KV pinned by -kvb so the graph-memory estimate cannot move KV.
+    p31-*|p33-*|p34-*|p35-*|p36-*|p37-*|p38-*|p39-*|p40-*|p41-*)
       local o=() w=$AGENT8L k="${KC6/KSTAGE_STATS=30/KSTAGE_STATS=1} KSTAGE_SLOTS=all KSTAGE_DMA_M=64"
       local nl=0 mb=marlin
       case $1 in *-nolora*) nl=1 ;; esac
@@ -448,12 +465,17 @@ run() {  # the doc's lever table, row by row
       esac
       case $1 in *-b[0-9]*k-*) local b=${1##*-b}; o+=(--max-num-batched-tokens $((${b%%k*} * 1024))) ;; esac
       case $1 in *-a16l) w=$AGENT16L ;; esac
+      # bfloat16, not auto: auto takes the checkpoint's kv_cache_quant_algo, FP8 here (p40's kvbf16 ran fp8)
+      case $1 in *-kvbf16*) o+=(--kv-cache-dtype bfloat16) ;; esac
+      case $1 in *-triton*) o+=(--attention-backend TRITON_ATTN) ;; *-fa2*) o+=(--attention-backend FLASH_ATTN) ;; esac
+      case $1 in *-cs8*) o+=(--compilation-config '{"cudagraph_capture_sizes": [1, 2, 3, 4, 5, 6, 7, 8, 16, 24, 32]}') ;; esac
       case $1 in *-kvb[0-9]*) local kb=${1##*-kvb}; o+=(--kv-cache-memory-bytes $((${kb%%-*} * 1073741824 / 100))) ;; esac
       case $1 in
         *-eval) NOLORA=$nl MOE=$mb KS="$k" MAXLEN=131072 phase "$1" "${G92[@]}" ;;   # quality, vs tm-graphs092
         *-c1-*) NOLORA=$nl MOE=$mb KS="$k" MAXLEN=131072 WORK=decode BARGS="--conc 1" phase "$1" "${G92[@]}" ;;
         *-pref*) NOLORA=$nl MOE=$mb KS="$k" MAXLEN=131072 WORK="decode prefill" BARGS="--conc 1,16 $PREF" \
                    phase "$1" "${G92[@]}" "${o[@]}" ;;
+        *-trace-*) NOLORA=$nl MOE=$mb KS="$k" MAXLEN=131072 TRACE=1 WORK=agent BARGS="$w" phase "$1" "${G92[@]}" "${o[@]}" ;;
         *) NOLORA=$nl MOE=$mb KS="$k" MAXLEN=131072 WORK=agent BARGS="$w" phase "$1" "${G92[@]}" "${o[@]}" ;;
       esac ;;
     *) echo "unknown phase $1"; return 9 ;;
@@ -531,6 +553,13 @@ for p in "$@"; do
     p38d) for q in base-moeb12-lgate-r2-eval base-moeb12-lgate-kvoff16-b4k-unjam-a16l; do run p38-$q; done ;;
     p38e) for q in base-moeb12-lgate-exact-eval base-moeb12-lgate-exact-r2-eval base-moeb12-lgate-exact-pref; do
             run p38-$q; done ;;
+    p39) for q in base-kvoff8-b4k-trace-a8l live-lfu-cg2-kvoff8-b8k-trace-a8l; do run p39-$q; done ;;
+    p40) for q in base-kvoff8-b4k-a8l base-kvoff8-b4k-kvbf16-a8l base-kvoff8-b4k-triton-a8l \
+                  base-kvoff8-b4k-fa2-kvbf16-a8l live-lfu-cg2-kvb270-kvoff8-b8k-a8l \
+                  live-lfu-cg2-kvb270-kvoff8-b8k-cs8-a8l; do run p40-$q; done ;;
+    # p41: p40's bf16 arms with bf16 KV (half the tokens per byte, so kvoff16 holds what kvoff8 did)
+    p41) for q in base-kvoff8-b4k-kvbf16-a8l base-kvoff16-b4k-kvbf16-a8l \
+                  base-kvoff16-b4k-fa2-kvbf16-a8l; do run p41-$q; done ;;
     p38f) for q in base-kvb105-kvoff8-b4k-unjam-a8l base-kvb105-kvoff16-b4k-unjam-a16l; do run p38-$q; done ;;   # Marlin at B12x's KV
     p36) for q in base-kvoff8-b6k-unjam-a8l base-kvoff16-b6k-unjam-a16l; do run p36-$q; done ;;
     p35) for q in live-lfu-cg3-b8k-a8l live-lfu-cg3-kvoff8-b8k-a8l live-lfu-cg3-kvoff16-b8k-a16l \
