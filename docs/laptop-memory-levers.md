@@ -111,7 +111,10 @@ source; **[arithmetic]** computed here; **[inference]** judgement, not tested.
      3 GiB tier buys 3.0× / 2.8× for 2–3% of wall. No offload takes 2,461 s for eight (row B).
      Every arm that recomputes nothing computes the same 1.43M uncached tokens for eight
      agents and 2.86M for sixteen, at no more than 4,114 tok/s [arithmetic]: the memory
-     levers have reached the prefill-compute floor; the next wall lever to test is the MoE kernel.
+     levers have reached the prefill-compute floor. A faster MoE kernel does not lower it
+     (row V): FlashInfer's B12x prefills 98k 21% faster, but at equal KV it gains 1–2% on
+     agents, and its real KV is 0.75 GiB smaller, which costs 9–12%. Where the rest of the
+     agent wall goes is unmeasured.
      KV in RAM at 8,192 can deadlock vLLM 0.29.0's scheduler; `KSTAGE_UNJAM=1` clears it.
      The full 1M context serves with offload and not without (row G). The CPU computes a
      cold expert no faster than the copy engine moves one (row P).
@@ -417,6 +420,7 @@ Laptop, 131,072-token server, unless a row says otherwise. Decode is aggregate t
 | S | The adapter under kstage | G6q LoRA through each mode | speed below; the plugin now hands MoE LoRA the router's ids. Research eval under K2 gather = under UVA: v1 0.989, v2 0.986; alert 6 vs 4 of 9, trap3 4 vs 5 of 12 (too few items to separate) | done (G6q has no routed-expert LoRA; fix for adapters that do). K6 (round 11): v1 0.989, v2 1.000, alert 5 of 9, trap3 4 of 12: K2's within the noise |
 | T | Decode graphs without torch.compile | `--compilation-config '{"mode":0,"cudagraph_mode":"FULL_DECODE_ONLY"}'`; `VLLM_USE_BREAKABLE_CUDAGRAPH=1` with mode 0 (piecewise graphs, experimental) | Eager's 1.40 GiB of extra KV (row H) is 0.95 of peak activation, measured in a profile pass through the compiled model, plus 0.45 of non-torch memory; the graphs themselves take 0.09. Round 12, `FULL_DECODE_ONLY` with mode 0 (`-fdo`): no offload KV 1.69 → 2.56 GiB, decode 202 / 430 / 701 → 188 / 359 / 712, 98k 15.4 → 15.5 s; UVA 4 GiB 5.63 → 6.50, 76 / 98 / 132 → 75 / 98 / 140, 34.8 → 34.4 s; K6 5.71 → 6.59, 166 / 241 / 294 → 156 / 203 / 297, 25.6 → 25.8 s. Breakable graphs under UVA (`-brk`) crashed in warmup: an illegal memory access surfaced in the grammar-bitmask kernel after both captures finished; the faulting kernel is unknown (asynchronous error) | `-fdo` done: +0.87 GiB KV on every arm; costs 0–7% of decode at one stream and 16 streams but 16–17% at four (K6's c=4 swings 211–259 between identical runs, so that is one draw); adopting it is David's call. `-brk` crash not localized (needs `CUDA_LAUNCH_BLOCKING=1`, or a run without offload) |
 | U | K6 prefill staged on the copy engine (P1) | `KSTAGE_DMA_M=64`: batches of 64+ tokens outside CUDA graphs leave the cache alone. Every non-resident expert of the layer `KSTAGE_DMA_BUF` ahead (default 2) is copied by the copy engine into staging rows, so Marlin reads no host memory | the cost it attacks: 98k prefill 25.3 s with K6 vs 15.4 s without offload. Copying the ~4 GiB of cold experts once per 2,048-token chunk at 51.8 GB/s is ~83 ms against K6's ~206 ms extra a chunk [arithmetic]. Staging takes ~0.5 GiB of device memory for two buffers [arithmetic]. Desktop, k13b, one draw: the first build crashed at install (fixed). The second sorted every expert tensor as small, so all staging ran as an on-device gather by SMs instead of the copy engine: prefill (7,560 tokens) 3.51 s with 64 slots or all, against K6 alone's 3.23 s (64 slots) and 2.70 s (all) and 1.14 s without offload. Decode is K6's own (126–131 / 162–195 / 212–234 vs 127–135 / 179–194 / 202–228): decode batches stay under 64 tokens. The MoE layers of a step took 501–528 ms at 80–244 tokens and 751–766 ms at 2,048, so gathering the ~765 cold experts (~4 GiB) costs ~500 ms a step, ~8 GB/s [arithmetic]. Greedy outputs match no offload 4–5 of 8, the permutation's pattern. Laptop, p15, fixed build, one draw each: 98k prefill 18.00 s (8k 0.97, 32k 4.64), against K6's 25.3 and no offload's 15.4; at `--max-num-batched-tokens 8192` 13.64 s (KV 4.36 GiB). The copy engine is busy 87–91 ms a 2,048-token step for 4.00 GiB (47–49 GB/s) while the step's MoE layers span 417–443 ms; at 8,192 tokens 84–86 ms (50–51 GB/s) against 577–1,277 ms. Steps of 80–208 tokens are copy-bound: 87–89 ms of copying against a 99–112 ms span. KV: two buffers 5.17 GiB, one (`KSTAGE_DMA_BUF=1`) 5.44, K6 alone 5.71; one buffer's 98k is 17.67 s. Decode is K6's (batches under 64 tokens): 168 / 238 / 351 aggregate (b8k 168 / 271 / 371). Research eval: v1 0.989, v2 1.000, alert 5 of 9, trap3 4 of 12, K6's scores exactly; v1 52 s, v2 47 s against K6's 93 s and 83 s [measured] | measured on the laptop: P1 removes 74% of K6's prefill penalty, (25.3 − 18.0) / (25.3 − 15.4) [arithmetic]; at batch 8,192 it beats no offload at the default batch. The remaining 2.6 s on a 98k prefill, ~54 ms a chunk against ~89 ms of copying, is not explained [unknown]; copies sharing the card's memory with Marlin's reads would fit [inference]. A higher `KSTAGE_DMA_M` changes nothing here (p16, one buffer, one draw each): 128 gives 98k 17.53 s, decode 167 / 248 / 346; 256 gives 17.53 s, 165 / 258 / 353; 64 gave 17.67 s, 167 / 273 / 341 [measured]. The bench has no steps between 64 and 256 tokens (2,048-token chunks, decode at 16 or fewer), so the threshold stays untested where it would matter: the agent loads' mixed steps [inference]. Desktop rerun with the copy engine (k13c, one draw each): prefill (7,560 tokens) 2.40–2.42 s, against the SM gather's 3.51–3.52 (k13b), K6 alone's 2.70–3.23 and no offload's 1.14. The copy engine moves 4.00 GiB a step in 354–369 ms (11.6–12.1 GB/s, the desktop's 12.2 ceiling, row L), and a 2,048-token step's MoE layers span 505 ms against the gather's 751–766, so on the desktop P1 is bound by its copy. Decode stays K6's, within a draw of the gather: 126 / 165 / 211 (64 slots), 131 / 212 / 218 (all), 135 / 206 / 222 (all, one buffer) against 126 / 162 / 212, 131 / 195 / 234, 130 / 194 / 233. Against both references the copy engine's greedy outputs (all slots) show the same first differences and drift as the gather's [measured] |
+| V | A different MoE kernel (p38) | `KSTAGE_MOE_NOLORA=1` (`-lgate`) lets vLLM pick a kernel without LoRA support; `--moe-backend flashinfer_b12x` (`-moeb12`) with `KSTAGE_B12X_FIX=1`, and `KSTAGE_B12X_EXACT=1` for exact scales | FlashInfer's B12x prefills 98k 21% faster (11.66 vs 14.84 s) but takes 0.75 GiB of KV in agent arms; agents to 127k 351 → 381 s (8), 697 → 781 s (16). Marlin pinned to B12x's KV: 389 / 792 s. The CUTLASS backends refuse the checkpoint | measured: not adopted. The agent loss is all KV; at equal KV the kernel gains 1–2%, so the agent wall is not mostly MoE prefill |
 
 Sourced facts these options rest on (vLLM 0.29.0 source):
 
@@ -624,6 +628,98 @@ With the adapter, gather beats hotcold at 4 GiB too; the cause is unknown.
 **Copy rates, laptop** (GB/s, `x-copy` probe): device memory 145.5; Marlin's read through
 UVA 27.2; copy engine, whole range 51.6, per row 48.5–50.9; Triton gather 36.8; a VMM
 range's host half 26.7. On the desktop: 7.2 / 12.2 / 11–12.5 [measured].
+
+### V: a different MoE kernel (p38)
+
+Every memory lever above stops at the prefill-compute floor (1.43M uncached tokens for eight
+agents, 2.86M for sixteen), so p38 asked whether a faster expert kernel lowers the floor.
+Lightning's experts run on Marlin, a W4A16 kernel: it stores weights as FP4 and multiplies
+them in BF16.
+
+- **Why it is always Marlin** [sourced]: with an adapter loaded, vLLM 0.29.0's LoRA gate
+  (`modular_kernel.py:594`) rejects every fused-MoE kernel that has no LoRA support. G6q puts
+  no LoRA on the routed experts (row S), so the gate guards nothing here.
+  `KSTAGE_MOE_NOLORA=1` (suffix `-lgate`) skips it, and `-moeb12` / `-moefic` / `-moecut`
+  pass `--moe-backend`.
+- **CUTLASS refuses the checkpoint** [measured]: both FLASHINFER_CUTLASS and VLLM_CUTLASS
+  stop at load with "does not support quantization scheme QuantKey(u8,scale(f8e4m3fn,static,
+  GroupShape(row=1, col=16)),scale2(f32,static,per_tensor),symmetric)xNone". The
+  checkpoint is `quant_algo=W4A16_NVFP4`.
+- **B12x needs two fixes to load** (FlashInfer's FP4 MoE for sm_120, `KSTAGE_B12X_FIX=1`).
+  First, the stored weights pad the expert width from 1,856 to 1,920, but vLLM gives the
+  kernel 1,856, so it crashes on shapes. The fix reads the width from the scale tensor.
+  Second, each of the 24 MoE layers allocates its own workspaces and output buffer, which
+  runs out of memory. Layers run one at a time, so the fix shares those buffers per shape.
+  The padding costs 0.45 GiB of weights, and peak activation is 0.30 GiB higher [measured].
+- **B12x runs W4A4, not W4A16** [sourced]: vLLM builds the kernel without a `quant_mode`,
+  and FlashInfer then defaults to `nvfp4`, which rounds activations to FP4 per 16-value
+  block inside the kernel. FlashInfer's W4A16 mode keeps a second, repacked copy of every
+  expert, and this card has no room for one.
+- **vLLM's hand-off to B12x loses precision** [sourced + measured]: it multiplies each
+  expert's global weight scale (6e-5 to 1e-3 here) into the FP8 E4M3 block scales and
+  sets the global scale to 1. That pushes the block scales into FP8's subnormal range,
+  where it has fewer bits. Six sampled layers show a median block-scale error of 5–7%,
+  a p99 of 18–29%, and 0–0.55% of blocks rounded to zero (`probes/b12x_scale_bake.py`).
+  Marlin receives the global scales separately, so it is exact. `KSTAGE_B12X_EXACT=1`
+  (`-exact`) keeps the stored block scales and passes the global scales to the kernel as
+  its per-expert alphas, with the activations' global scale set to 1 as before. It costs no
+  speed (decode 184.3 / 645.2 tok/s, 98k 12.13 s, against 184.5 / 644.3 and 12.15 baked),
+  and the eval cannot tell the two apart (below) [measured]. The size of the difference in
+  the logits is unmeasured. If B12x is ever used, `-exact` is the correct setting, since it
+  matches the checkpoint's scales [sourced].
+
+Speed, one draw each (98k = a 98,304-token prompt, cold):
+
+| Arm | Weights (GiB) | KV | Decode c=1 / c=16 (tok/s) | Prefill 8k / 32k / 98k (s) |
+|---|---|---|---|---|
+| Marlin, no LoRA | 17.86 | 1.79 GiB, 488,243 tokens | 221.7 / 718.4 | 0.77 / 3.64 / 14.84 |
+| B12x, no LoRA | 18.3 | 1.37 GiB, 373,555 tokens | 199.6 / 565.0 | 1.96 / 2.62 / 11.66 |
+| B12x + G6q | 18.33 | 1.27 GiB, 347,340 tokens | 184.5 / 644.3 | 2.05 / 2.78 / 12.15 |
+
+B12x prefills 98k 21% faster than Marlin and 32k 28% faster [arithmetic]. With the adapter
+loaded on both, B12x is also 21% faster (12.15 s against 15.4 s). Its cold 8k probably
+includes a first-call compile [inference]: warm 8k takes 0.26 s against Marlin's 0.39.
+Decode is 10% slower at one stream and 21% slower at sixteen, both without the adapter
+(199.6 / 565.0 against 221.7 / 718.4 tok/s, one draw) [arithmetic].
+
+Agents to 127k, prefix KV in RAM, 4,096-token chunks, G6q loaded. The B12x arms add
+`KSTAGE_UNJAM=1`, which acts only on a stall, and no 4,096-chunk run has stalled:
+
+| Arm | GPU KV | 8 agents: wall / late TTFT | 16 agents: wall / late TTFT / preemptions |
+|---|---|---|---|
+| Marlin (p33/p35) | 1.8 GiB | 351 s / 8.27 s | 697 s / 22.55 s / 0 |
+| B12x (p38c, p38d) | 1.05 GiB | 381 s / 12.50 s | 781 s / 28.31 s / 51 |
+| Marlin with KV pinned at 1.05 GiB (`-kvb105`, p38f) | 1.05 GiB | 389 s / 12.94 s | 792 s / 29.56 s / 51 |
+
+Both kernels compute the same 1.43M and 2.86M uncached tokens. B12x's KV pool is 0.75 GiB
+smaller: 0.45 GiB of padded weights (18.33 against 17.88 GiB) and a 0.30 GiB higher
+activation peak at 4,096-token batches (1.32 against 1.02) [arithmetic]. At sixteen agents
+the pool holds about two 127k contexts (285,081 tokens), so requests are preempted. Pinned
+to the same 285,081 tokens, Marlin runs the same schedule as B12x (51 preemptions, identical
+prefix and RAM hits) and takes 389 s and 792 s. At equal KV B12x is 2% and 1.4% faster
+[measured, one draw], so its whole agent loss is the KV it costs. The kernel gain is also
+far below what the 98k prefill predicts: saving 32 µs a token, as it does there, would take
+46 s off eight agents and 93 s off sixteen [arithmetic], and 8 s and 11 s came off. The
+agent wall is therefore not mostly MoE prefill [inference]. Where else it goes (13.6M /
+27.1M tokens of KV loaded from RAM, attention over long contexts, decode, at which B12x is
+slower) is unmeasured. The same arithmetic rules out porting K6 to B12x for agents: winning
+back the 0.75 GiB would leave the 1–2% kernel gain [inference].
+
+Answers, G6q (thinking off; Marlin row from `tm-graphs092`):
+
+| Arm | v1 hit and grounded | v2 grounded / hit and grounded | alert correct | trap3 noticed |
+|---|---|---|---|---|
+| Marlin | 0.989 | 1.000 / 1.000 | 0.556 | 0.333 |
+| B12x, draw 1 | 0.989 | 0.957 / 0.929 | 0.667 | 0.417 |
+| B12x, draw 2 | 0.989 | 0.986 / 0.986 | 0.333 | 0.333 |
+| B12x `-exact`, draw 1 | 0.989 | 0.986 / 0.971 | 0.556 | 0.417 |
+| B12x `-exact`, draw 2 | 0.989 | 1.000 / 0.986 | 0.667 | 0.417 |
+
+Neither W4A4 nor the baked scales cost anything this eval resolves. Baked draw 1's v2 dip
+did not repeat, alert's nine items move by 0.33 between draws, and both exact draws score
+within the same spread [measured, two draws each]. **Verdict: not adopted.** B12x is the
+faster kernel for one long cold prompt (21% at 98k), but on agents it costs more in KV
+than it gains in compute.
 
 ## Untested levers, ranked
 
