@@ -1567,7 +1567,111 @@ def _unjam(cls, mode):
     log(f"scheduler: unjam mode {mode}")
 
 
+def _moe_nolora(cls):
+    """KSTAGE_MOE_NOLORA=1: pick the MoE kernel as if LoRA were off. vLLM rejects every
+    experts class without LoRA support once --enable-lora is set (modular_kernel.py), even
+    when --lora-target-modules leaves the experts out, so NVFP4 always lands on Marlin. If
+    the experts are targets after all, LoRA's own assert (lora/layers/fused_moe.py) fails
+    the load instead of serving without the adapter."""
+    init = cls.__init__
+
+    def patched(self, *a, **k):
+        init(self, *a, **k)
+        object.__setattr__(self, "is_lora_enabled", False)
+
+    cls.__init__ = patched
+    log("moe-nolora: experts kernel chosen as if LoRA were off")
+
+
+def _b12x_fix(cls):
+    """KSTAGE_B12X_FIX=1: give FlashInfer's B12x MoE wrapper the padded intermediate size.
+    For a non-gated activation (Lightning's ReLU^2) vLLM 0.29.0 zero-pads the experts'
+    intermediate to a multiple of 128 (1,856 -> 1,920) after the experts object copied the
+    unpadded size, so the wrapper's scale reshape fails. The pad rows are zero, so the
+    padded size computes the same thing."""
+    pwal = cls.process_weights_after_loading
+    exact = os.environ.get("KSTAGE_B12X_EXACT") == "1"
+
+    def patched(self, layer):
+        if exact:
+            # vLLM folds each expert's global weight scale (~1e-4 here) into the FP8 block
+            # scales, which pushes them into FP8's subnormal range: median 6% error per block,
+            # up to 0.55% of blocks zeroed (measured on the checkpoint). Fold in 1.0 instead,
+            # then hand the kernel the global scales as its per-expert alphas.
+            g = (layer.w13_weight_scale_2.detach().clone(), layer.w2_weight_scale_2.detach().clone())
+            layer.w13_weight_scale_2.data.fill_(1.0)
+            layer.w2_weight_scale_2.data.fill_(1.0)
+        pwal(self, layer)
+        if exact:
+            layer.w13_weight_scale_2.data.copy_(g[0])
+            layer.w2_weight_scale_2.data.copy_(g[1])
+            assert self.g1_alphas.data_ptr() == layer.w13_weight_scale_2.data_ptr()
+            assert self.g2_alphas.data_ptr() == layer.w2_weight_scale_2.data_ptr()
+            if not getattr(cls, "_exact_logged", False):
+                cls._exact_logged = True
+                log(f"b12x-exact: block scales kept, alphas {g[0].min().item():.2e}.."
+                    f"{g[0].max().item():.2e} / {g[1].min().item():.2e}..{g[1].max().item():.2e}")
+        n = self.w2_scale.shape[-1] * 16
+        if n != self.intermediate_size_per_partition:
+            log(f"b12x-fix: intermediate {self.intermediate_size_per_partition} -> {n}")
+            self.intermediate_size_per_partition = n
+
+    cls.process_weights_after_loading = patched
+
+
+def _b12x_share(cls):
+    """KSTAGE_B12X_FIX=1, part two: one set of B12x scratch buffers for every MoE layer.
+    Each layer's wrapper pre-allocates its own workspaces and output buffer (258 MiB at
+    8,192 batched tokens, measured), which runs a 24 GB card out of memory. The layers run
+    one after another on one stream and vLLM copies the output out, so they can share."""
+    alloc = cls._allocate_buffers
+    shared = {}
+
+    def patched(self):
+        key = (self.num_experts, self.num_local_experts, self.top_k, self.hidden_size,
+               self.intermediate_size, self.max_num_tokens, self.quant_mode,
+               self.activation, self.output_dtype, str(self.device))
+        if key not in shared:
+            alloc(self)
+            shared[key] = (self._static_workspace, self._dynamic_workspace, self._moe_output)
+            log(f"b12x-share: one buffer set for {key[:6]}")
+        self._static_workspace, self._dynamic_workspace, self._moe_output = shared[key]
+
+    cls._allocate_buffers = patched
+
+
+def _b12x_exact_run(cls):
+    """KSTAGE_B12X_EXACT=1, part two: pass the activation global scale explicitly as 1.0.
+    Without it the kernel uses w1_alpha for both roles, which was 1.0 only because of the
+    fold that part one undoes. With it the kernel multiplies it into w1_alpha, so the
+    activations are quantised exactly as before and the output gets the exact weight scale."""
+    run = cls.run
+    ones = {}
+
+    def patched(self, *a, input_global_scale=None, **kw):
+        if input_global_scale is None and self.quant_mode == "nvfp4":
+            key = (self.num_local_experts, str(self.device))
+            if key not in ones:
+                # The first call runs under inference mode, whose tensors have no version
+                # counter, and run() keys its alpha fold on input_global_scale._version.
+                with torch.inference_mode(False):
+                    ones[key] = torch.ones(self.num_local_experts, dtype=torch.float32, device=self.device)
+            input_global_scale = ones[key]
+        return run(self, *a, input_global_scale=input_global_scale, **kw)
+
+    cls.run = patched
+
 def register():
+    if os.environ.get("KSTAGE_B12X_FIX") == "1":
+        from vllm.model_executor.layers.fused_moe.experts import flashinfer_b12x_moe
+        _b12x_fix(flashinfer_b12x_moe.FlashInferB12xExperts)
+        from flashinfer.fused_moe.cute_dsl import b12x_moe
+        _b12x_share(b12x_moe.B12xMoEWrapper)
+        if os.environ.get("KSTAGE_B12X_EXACT") == "1":
+            _b12x_exact_run(b12x_moe.B12xMoEWrapper)
+    if os.environ.get("KSTAGE_MOE_NOLORA") == "1":
+        from vllm.model_executor.layers.fused_moe import config
+        _moe_nolora(config.FusedMoEConfig)
     if os.environ.get("KSTAGE_PFFIX") == "1":
         from vllm.model_executor.offloader import prefetch
         _pf_fix(prefetch.PrefetchOffloader)

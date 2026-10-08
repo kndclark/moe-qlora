@@ -77,7 +77,7 @@ phase() {  # tag [extra serve flags...]; env NOLORA=1 (no adapter), CAP=1 (capac
     --pull never vllm/vllm-openai:v0.29.0 \
     --model nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4 \
     --revision bee7596271d1495f6992ae224aefde4410e816b8 --served-model-name lightning-nvfp4 \
-    --kv-cache-dtype fp8 --mamba-cache-mode align --moe-backend marlin \
+    --kv-cache-dtype fp8 --mamba-cache-mode align --moe-backend "${MOE:-marlin}" \
     --max-model-len "${MAXLEN:-16384}" --max-num-seqs "${SEQS:-16}" --gpu-memory-utilization 0.85 \
     "${extra[@]}" ${WORK:+--enable-prompt-tokens-details} "$@" >/dev/null || return 1
   local t0=$(date +%s)
@@ -103,9 +103,9 @@ phase() {  # tag [extra serve flags...]; env NOLORA=1 (no adapter), CAP=1 (capac
     docker logs "$name" > "$J/serve-$tag.log" 2>&1; docker rm -f "$name" >/dev/null 2>&1; return 0
   fi
   if [ -n "${WORK:-}" ]; then
-    local t=$(date +%s)
+    local t=$(date +%s) m=g6q; [ "${NOLORA:-0}" = 1 ] && m=lightning-nvfp4
     # shellcheck disable=SC2086  # WORK and BARGS are word lists
-    python3 "$here/probes/offload_bench.py" --base $B --model g6q --out "$J/bench-$tag.json" $WORK ${BARGS:-} \
+    python3 "$here/probes/offload_bench.py" --base $B --model $m --out "$J/bench-$tag.json" $WORK ${BARGS:-} \
       > "$J/bench-$tag.log" 2>&1
     echo "  bench: exit $?, $(( $(date +%s)-t ))s"; grep -E "^  (decode|prefill|agent|needle|experts)" "$J/bench-$tag.log"
     docker logs "$name" > "$J/serve-$tag.log" 2>&1
@@ -424,11 +424,22 @@ run() {  # the doc's lever table, row by row
     # (415 s, 835 s, 239k tokens of KV).
     # p37: the cold tier with host KV on. p35: 3 GiB + host KV at 8k ran 8 agents in 359 s (host
     # KV alone 351) and 16 in 716 s (697); without host KV, 768 s (8 x 127k overflowed 1.01M).
-    p31-*|p33-*|p34-*|p35-*|p36-*|p37-*)
+    # p38: the MoE kernel. Auto picks Marlin (FP4 unpacked to bf16) because any --enable-lora
+    # rejects experts without LoRA support (modular_kernel.py), even when the experts are not
+    # targets; -nolora drops the adapter, -moeX swaps in a native FP4 kernel for sm_120.
+    # -exact keeps B12x's FP8 block scales exact; -kvbN pins KV at N/100 GiB (p38f: Marlin at
+    # B12x's 1.05 GiB, to split B12x's agent result into kernel and KV).
+    p31-*|p33-*|p34-*|p35-*|p36-*|p37-*|p38-*)
       local o=() w=$AGENT8L k="${KC6/KSTAGE_STATS=30/KSTAGE_STATS=1} KSTAGE_SLOTS=all KSTAGE_DMA_M=64"
+      local nl=0 mb=marlin
+      case $1 in *-nolora*) nl=1 ;; esac
+      case $1 in *-moefic*) mb=flashinfer_cutlass ;; *-moeb12*) mb=flashinfer_b12x ;; *-moecut*) mb=cutlass ;; esac
       k="$k KSTAGE_DMA_BUF=1 KSTAGE_COPY_LIVE=82 KSTAGE_EVICT=lfu"
       case $1 in *-cg*) local g=${1#*-cg}; k="${k/KSTAGE_COLD_GB=4/KSTAGE_COLD_GB=${g%%-*}}" ;; esac
       case $1 in *-base*) k="" ;; esac
+      case $1 in *-lgate*) k="$k KSTAGE_MOE_NOLORA=1" ;; esac   # native kernel with the adapter
+      case $1 in *-moeb12*) k="$k KSTAGE_B12X_FIX=1" ;; esac   # padded intermediate (vllm_kstage.py)
+      case $1 in *-exact*) k="$k KSTAGE_B12X_EXACT=1" ;; esac   # B12x keeps the FP8 block scales exact
       case $1 in *-ujdiag*) k="$k KSTAGE_UNJAM=diag" ;; *-unjam*) k="$k KSTAGE_UNJAM=1" ;; esac
       case $1 in *-ahead*) k="$k KSTAGE_AHEAD=1 KSTAGE_AHEAD_FUSE=1 KSTAGE_AHEAD_K=3 KSTAGE_AHEAD_MIN=8" ;; esac
       case $1 in
@@ -437,9 +448,13 @@ run() {  # the doc's lever table, row by row
       esac
       case $1 in *-b[0-9]*k-*) local b=${1##*-b}; o+=(--max-num-batched-tokens $((${b%%k*} * 1024))) ;; esac
       case $1 in *-a16l) w=$AGENT16L ;; esac
+      case $1 in *-kvb[0-9]*) local kb=${1##*-kvb}; o+=(--kv-cache-memory-bytes $((${kb%%-*} * 1073741824 / 100))) ;; esac
       case $1 in
-        *-c1-*) KS="$k" MAXLEN=131072 WORK=decode BARGS="--conc 1" phase "$1" "${G92[@]}" ;;
-        *) KS="$k" MAXLEN=131072 WORK=agent BARGS="$w" phase "$1" "${G92[@]}" "${o[@]}" ;;
+        *-eval) NOLORA=$nl MOE=$mb KS="$k" MAXLEN=131072 phase "$1" "${G92[@]}" ;;   # quality, vs tm-graphs092
+        *-c1-*) NOLORA=$nl MOE=$mb KS="$k" MAXLEN=131072 WORK=decode BARGS="--conc 1" phase "$1" "${G92[@]}" ;;
+        *-pref*) NOLORA=$nl MOE=$mb KS="$k" MAXLEN=131072 WORK="decode prefill" BARGS="--conc 1,16 $PREF" \
+                   phase "$1" "${G92[@]}" "${o[@]}" ;;
+        *) NOLORA=$nl MOE=$mb KS="$k" MAXLEN=131072 WORK=agent BARGS="$w" phase "$1" "${G92[@]}" "${o[@]}" ;;
       esac ;;
     *) echo "unknown phase $1"; return 9 ;;
   esac
@@ -508,6 +523,15 @@ for p in "$@"; do
     p37) for q in live-lfu-cg2-kvoff8-b8k-a8l live-lfu-cg2-kvoff16-b8k-a16l live-lfu-cg3-kvoff8-b8k-r2-a8l \
                   live-lfu-cg3-kvoff8-b4k-a8l live-lfu-cg3-kvoff16-b4k-a16l live-lfu-cg1-kvoff8-b8k-unjam-a8l; do
             run p37-$q; done ;;
+    p38) for q in base-nolora-pref base-nolora-moefic-pref base-nolora-moeb12-pref base-nolora-moecut-pref; do
+           run p38-$q; done ;;
+    p38b) for q in base-nolora-moeb12-pref; do run p38-$q; done ;;
+    p38c) for q in base-moeb12-lgate-eval base-moeb12-lgate-pref base-moeb12-lgate-kvoff8-b4k-unjam-a8l; do
+            run p38-$q; done ;;
+    p38d) for q in base-moeb12-lgate-r2-eval base-moeb12-lgate-kvoff16-b4k-unjam-a16l; do run p38-$q; done ;;
+    p38e) for q in base-moeb12-lgate-exact-eval base-moeb12-lgate-exact-r2-eval base-moeb12-lgate-exact-pref; do
+            run p38-$q; done ;;
+    p38f) for q in base-kvb105-kvoff8-b4k-unjam-a8l base-kvb105-kvoff16-b4k-unjam-a16l; do run p38-$q; done ;;   # Marlin at B12x's KV
     p36) for q in base-kvoff8-b6k-unjam-a8l base-kvoff16-b6k-unjam-a16l; do run p36-$q; done ;;
     p35) for q in live-lfu-cg3-b8k-a8l live-lfu-cg3-kvoff8-b8k-a8l live-lfu-cg3-kvoff16-b8k-a16l \
                   base-kvoff8-b4k-r2-a8l base-kvoff16-b4k-r2-a16l; do run p35-$q; done ;;
