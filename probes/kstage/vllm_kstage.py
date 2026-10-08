@@ -1511,10 +1511,69 @@ def _lora_fix(cls):
     cls.apply_w13_lora = apply_w13_lora
 
 
+def _unjam(cls, mode):
+    """KSTAGE_UNJAM=diag|1: vLLM 0.29.0's scheduler can stall with nothing running when host KV
+    (--kv-offloading-backend native) shares a small GPU pool. p31: 8k prefill chunks left 239k
+    tokens, and 8 and 16 agents at 127k sat at Running 0, Waiting 7 for hours. A request whose
+    host KV load finished keeps the loaded blocks while it waits; when the queue head cannot get
+    blocks for its next chunk the waiting loop breaks, and only running requests are preempted,
+    so nothing frees a block. diag logs the stalled queues every 30 s; 1 also rotates each
+    waiting queue once per stalled step, so every waiting request gets a turn at the head. Only
+    the order changes: no block is freed, so the connector's per-request block ids stay valid."""
+    orig = cls.schedule
+    if getattr(orig, "_kstage", False):
+        return
+    from vllm.v1.core.sched.request_queue import FCFSRequestQueue
+    st = {"t0": None, "logged": 0.0, "rot": 0}
+
+    def row(self, name, r):
+        try:
+            need = self._request_remaining_blocks(r)
+        except Exception as e:
+            need = f"?{type(e).__name__}"
+        held = sum(len(g) for g in self.kv_cache_manager.get_block_ids(r.request_id))
+        fl = " inflight" if r in self._inflight_prefills else ""
+        return f"{name} {r.status.name} {r.num_computed_tokens}/{r.num_tokens} held {held} need {need}{fl}"
+
+    def schedule(self, *a, **k):
+        out = orig(self, *a, **k)
+        if out.total_num_scheduled_tokens or self.running or not (self.waiting or self.skipped_waiting):
+            if st["t0"] is not None and st["rot"]:
+                log(f"unjam: stall over after {time.monotonic() - st['t0']:.1f} s, {st['rot']} rotations")
+            st["t0"] = None
+            return out
+        now = time.monotonic()
+        if st["t0"] is None:
+            st["t0"], st["rot"] = now, 0
+        if now - st["t0"] < 2.0:  # loads in flight also schedule nothing for a moment
+            return out
+        if now - st["logged"] >= 30:
+            st["logged"] = now
+            pool = self.kv_cache_manager.block_pool
+            rows = [row(self, "skipped", r) for r in self.skipped_waiting]
+            rows += [row(self, "waiting", r) for r in self.waiting]
+            log(f"unjam: stalled {now - st['t0']:.0f} s, free {pool.get_num_free_blocks()}/"
+                f"{pool.num_gpu_blocks} blocks, reserved {self._inflight_prefill_reserved_blocks()}, "
+                f"rotations {st['rot']}; " + "; ".join(rows))
+        if mode == "1":
+            for q in (self.skipped_waiting, self.waiting):
+                if isinstance(q, FCFSRequestQueue) and len(q) > 1:
+                    q.add_request(q.pop_request())
+                    st["rot"] += 1
+        return out
+
+    schedule._kstage = True
+    cls.schedule = schedule
+    log(f"scheduler: unjam mode {mode}")
+
+
 def register():
     if os.environ.get("KSTAGE_PFFIX") == "1":
         from vllm.model_executor.offloader import prefetch
         _pf_fix(prefetch.PrefetchOffloader)
+    if os.environ.get("KSTAGE_UNJAM"):
+        from vllm.v1.core.sched import scheduler
+        _unjam(scheduler.Scheduler, os.environ["KSTAGE_UNJAM"])
     mode = os.environ.get("KSTAGE", "")
     if not mode:
         return
