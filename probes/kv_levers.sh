@@ -5,7 +5,7 @@
 # flags in the table below, runs v1, v2, alert and trap3 thinking-on, and keeps its log.
 # Outputs go to results/kv-levers/; kv_levers_agree.py compares them with G6q's three runs.
 # usage: kv_levers.sh PHASE...   (or "round4" / "round5" for the doc's rows 2-9 / 10-14,
-#        "round6" / "round8" / "round7" / "round9" / "k6" / "p13" / "p14" / "p20" / "p21" / "p22" / "p23" / "p24" / "p25" / "p26" / "p27" / "p28" / "p29" / "p30" / "p31" / "p32" / "p33" / "p34" / "p35" / "p36" for the experts-in-RAM program's passes)
+#        "round6" / "round8" / "round7" / "round9" / "k6" / "p13" / "p14" / "p20" / "p21" / "p22" / "p23" / "p24" / "p25" / "p26" / "p27" / "p28" / "p29" / "p30" / "p31" / "p32" / "p33" / "p34" / "p35" / "p36" / "p37" for the experts-in-RAM program's passes)
 # Env per phase: MAXLEN / SEQS (default 16384 / 16); WORK="MODE..." runs probes/offload_bench.py
 # modes (decode prefill agent needle experts) with BARGS instead of the eval, to bench-TAG.json.
 # KS="KSTAGE=... VAR=..." loads the kstage plugin (probes/kstage) with those variables set;
@@ -422,7 +422,9 @@ run() {  # the doc's lever table, row by row
     # to 389; and second draws of host KV alone at 4k chunks (p33: 351 s, 696 s).
     # p36: host KV alone at 6k chunks, unjammed: between p33's 4k (351 s, 696 s) and p34's 8k
     # (415 s, 835 s, 239k tokens of KV).
-    p31-*|p33-*|p34-*|p35-*|p36-*)
+    # p37: the cold tier with host KV on. p35: 3 GiB + host KV at 8k ran 8 agents in 359 s (host
+    # KV alone 351) and 16 in 716 s (697); without host KV, 768 s (8 x 127k overflowed 1.01M).
+    p31-*|p33-*|p34-*|p35-*|p36-*|p37-*)
       local o=() w=$AGENT8L k="${KC6/KSTAGE_STATS=30/KSTAGE_STATS=1} KSTAGE_SLOTS=all KSTAGE_DMA_M=64"
       k="$k KSTAGE_DMA_BUF=1 KSTAGE_COPY_LIVE=82 KSTAGE_EVICT=lfu"
       case $1 in *-cg*) local g=${1#*-cg}; k="${k/KSTAGE_COLD_GB=4/KSTAGE_COLD_GB=${g%%-*}}" ;; esac
@@ -503,6 +505,9 @@ for p in "$@"; do
     # KV alone at 4k (it deadlocked at 8k), last so a stall cannot cost the rest.
     p33) for q in live-lfu-b8k-r2-a8l live-lfu-b4k-a8l live-lfu-ahead-b8k-a8l live-lfu-kvoff16-b8k-r2-a16l \
                   live-lfu-kvoff16-b4k-a16l base-kvoff8-b4k-a8l base-kvoff16-b4k-a16l; do run p33-$q; done ;;
+    p37) for q in live-lfu-cg2-kvoff8-b8k-a8l live-lfu-cg2-kvoff16-b8k-a16l live-lfu-cg3-kvoff8-b8k-r2-a8l \
+                  live-lfu-cg3-kvoff8-b4k-a8l live-lfu-cg3-kvoff16-b4k-a16l live-lfu-cg1-kvoff8-b8k-unjam-a8l; do
+            run p37-$q; done ;;
     p36) for q in base-kvoff8-b6k-unjam-a8l base-kvoff16-b6k-unjam-a16l; do run p36-$q; done ;;
     p35) for q in live-lfu-cg3-b8k-a8l live-lfu-cg3-kvoff8-b8k-a8l live-lfu-cg3-kvoff16-b8k-a16l \
                   base-kvoff8-b4k-r2-a8l base-kvoff16-b4k-r2-a16l; do run p35-$q; done ;;
