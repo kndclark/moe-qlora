@@ -446,7 +446,7 @@ run() {  # the doc's lever table, row by row
     # GroupedTopKRouter, which ignores VLLM_MOE_SKIP_PADDING, so rows padded up to a capture size
     # route stale tokens into real experts (cold misses under K6); -cs8 captures every size to 8,
     # at KV pinned by -kvb so the graph-memory estimate cannot move KV.
-    p31-*|p33-*|p34-*|p35-*|p36-*|p37-*|p38-*|p39-*|p40-*|p41-*|p42-*|p43-*)
+    p31-*|p33-*|p34-*|p35-*|p36-*|p37-*|p38-*|p39-*|p40-*|p41-*|p42-*|p43-*|p44-*)
       local o=() w=$AGENT8L k="${KC6/KSTAGE_STATS=30/KSTAGE_STATS=1} KSTAGE_SLOTS=all KSTAGE_DMA_M=64"
       local nl=0 mb=marlin
       case $1 in *-nolora*) nl=1 ;; esac
@@ -569,6 +569,10 @@ for p in "$@"; do
     # faster on bf16 KV in p42 (56.9 tok/s vs FLASH_ATTN's 45.6)
     p43) for q in live-lfu-cg2-kvb270-kvoff8-b8k-kvbf16-a8l live-lfu-cg2-kvb270-kvoff8-b8k-fi-kvbf16-a8l; do
            run p43-$q; done ;;
+    # p44: does bf16 KV win once it has room? p43's FlashInfer arm held 415k tokens at a 2 GiB cold
+    # tier (fp8 held 740k); 3 and 4 GiB cold tiers with KV left to vLLM, ~565k and ~715k bf16 tokens
+    p44) for q in live-lfu-cg3-kvoff8-b8k-fi-kvbf16-a8l live-lfu-cg4-kvoff8-b8k-fi-kvbf16-a8l; do
+           run p44-$q; done ;;
     p38f) for q in base-kvb105-kvoff8-b4k-unjam-a8l base-kvb105-kvoff16-b4k-unjam-a16l; do run p38-$q; done ;;   # Marlin at B12x's KV
     p36) for q in base-kvoff8-b6k-unjam-a8l base-kvoff16-b6k-unjam-a16l; do run p36-$q; done ;;
     p35) for q in live-lfu-cg3-b8k-a8l live-lfu-cg3-kvoff8-b8k-a8l live-lfu-cg3-kvoff16-b8k-a16l \
