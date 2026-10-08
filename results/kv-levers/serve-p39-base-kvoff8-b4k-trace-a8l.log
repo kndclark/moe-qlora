@@ -1,0 +1,853 @@
+WARNING 10-08 13:40:45 [argparse_utils.py:276] With `vllm serve`, you should provide the model as a positional argument or in a config file instead of via the `--model` option. The `--model` option will be removed in a future version.
+WARNING 10-08 13:40:45 [argparse_utils.py:441] Found duplicate keys --gpu-memory-utilization
+(APIServer pid=1) INFO 10-08 13:40:45 [api_utils.py:347] 
+(APIServer pid=1) INFO 10-08 13:40:45 [api_utils.py:347]        █     █     █▄   ▄█
+(APIServer pid=1) INFO 10-08 13:40:45 [api_utils.py:347]  ▄▄ ▄█ █     █     █ ▀▄▀ █  version 0.29.0
+(APIServer pid=1) INFO 10-08 13:40:45 [api_utils.py:347]   █▄█▀ █     █     █     █  model   nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4
+(APIServer pid=1) INFO 10-08 13:40:45 [api_utils.py:347]    ▀▀  ▀▀▀▀▀ ▀▀▀▀▀ ▀     ▀
+(APIServer pid=1) INFO 10-08 13:40:45 [api_utils.py:347] 
+(APIServer pid=1) INFO 10-08 13:40:45 [api_utils.py:286] non-default args: {'model_tag': 'nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4', 'lora_modules': [LoRAModulePath(name='g6q', path='/adapter', base_model_name=None, is_3d_lora_weight=False)], 'enable_prompt_tokens_details': True, 'model': 'nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4', 'revision': 'bee7596271d1495f6992ae224aefde4410e816b8', 'max_model_len': 131072, 'served_model_name': ['lightning-nvfp4'], 'kv_cache_dtype': 'fp8', 'mamba_cache_mode': 'align', 'kv_offloading_size': 8.0, 'enable_lora': True, 'lora_target_modules': ['q_proj', 'k_proj', 'v_proj', 'o_proj', 'in_proj', 'up_proj', 'down_proj'], 'max_num_batched_tokens': 4096, 'max_num_seqs': 16, 'moe_backend': 'marlin', 'profiler_config': ProfilerConfig(profiler='torch', torch_profiler_dir='/trace', proton_profiler_dir='', proton_context='shadow', proton_data='tree', proton_backend=None, proton_mode=None, proton_hook=None, proton_output_format=None, torch_profiler_with_stack=False, torch_profiler_with_flops=False, torch_profiler_use_gzip=True, torch_profiler_dump_cuda_time_total=True, torch_profiler_record_shapes=False, torch_profiler_with_memory=False, capture_torch_profiler=False, detailed_trace_annotation=False, ignore_frontend=True, delay_iterations=0, max_iterations=0, warmup_iterations=0, active_iterations=5, wait_iterations=0)}
+(APIServer pid=1) INFO 10-08 13:40:45 [arg_utils.py:866] HF_HUB_OFFLINE is True, replace model_id [nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4] to model_path [/hf/hub/models--nvidia--NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4/snapshots/bee7596271d1495f6992ae224aefde4410e816b8]
+(APIServer pid=1) INFO 10-08 13:40:53 [model.py:684] Resolved architecture: NemotronHForCausalLM
+(APIServer pid=1) INFO 10-08 13:40:53 [model.py:2021] Using max model len 131072
+(APIServer pid=1) INFO 10-08 13:40:55 [cache.py:335] Using fp8 data type to store kv cache. It reduces the GPU memory footprint and boosts the performance. Meanwhile, it may cause accuracy drop without a proper scaling factor
+(APIServer pid=1) INFO 10-08 13:40:55 [scheduler.py:277] Chunked prefill is enabled with max_num_batched_tokens=4096.
+(APIServer pid=1) INFO 10-08 13:40:55 [config.py:676] Updating mamba_ssm_cache_dtype to 'float32' for NemotronH model
+(APIServer pid=1) WARNING 10-08 13:40:55 [modelopt.py:379] Detected ModelOpt fp8 checkpoint (quant_algo=FP8). Please note that the format is experimental and could change.
+(APIServer pid=1) WARNING 10-08 13:40:55 [modelopt.py:1029] Detected ModelOpt NVFP4 checkpoint (quant_algo=NVFP4). Please note that the format is experimental and could change in future.
+(APIServer pid=1) WARNING 10-08 13:40:55 [modelopt.py:1029] Detected ModelOpt NVFP4 checkpoint (quant_algo=W4A16_NVFP4). Please note that the format is experimental and could change in future.
+(APIServer pid=1) WARNING 10-08 13:40:55 [modelopt.py:1711] Detected ModelOpt MXFP8 checkpoint. Please note that the format is experimental and could change in future.
+(APIServer pid=1) INFO 10-08 13:40:55 [kernel.py:369] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+(EngineCore pid=225) INFO 10-08 13:41:02 [core.py:123] Initializing a V1 LLM engine (v0.29.0) with config: model='/hf/hub/models--nvidia--NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4/snapshots/bee7596271d1495f6992ae224aefde4410e816b8', speculative_config=None, tokenizer='/hf/hub/models--nvidia--NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4/snapshots/bee7596271d1495f6992ae224aefde4410e816b8', skip_tokenizer_init=False, tokenizer_mode=auto, revision=bee7596271d1495f6992ae224aefde4410e816b8, tokenizer_revision=bee7596271d1495f6992ae224aefde4410e816b8, trust_remote_code=False, dtype=torch.bfloat16, max_seq_len=131072, download_dir=None, load_format=auto, tensor_parallel_size=1, pipeline_parallel_size=1, data_parallel_size=1, decode_context_parallel_size=1, dcp_comm_backend=ag_rs, disable_custom_all_reduce=False, quantization=modelopt_mixed, quantization_config=None, enforce_eager=False, enable_return_routed_experts=False, kv_cache_dtype=fp8, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser='', reasoning_parser_plugin='', enable_in_reasoning=False), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, per_request_spec_decode_metrics='none', kv_cache_metrics=False, kv_cache_metrics_sample=0.01, cudagraph_metrics=False, enable_layerwise_nvtx_tracing=False, enable_mfu_metrics=False, enable_mm_processor_stats=False, enable_logging_iteration_details=False, jit_monitor_mode='warn', jit_monitor_verbose=False), seed=0, served_model_name=lightning-nvfp4, enable_prefix_caching=True, enable_chunked_prefill=True, pooler_config=None, compilation_config={'mode': <CompilationMode.VLLM_COMPILE: 3>, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'inductor', 'custom_ops': ['none'], 'ir_enable_torch_wrap': True, 'splitting_ops': ['vllm::unified_attention_with_output', 'vllm::unified_mla_attention_with_output', 'vllm::mamba_mixer2', 'vllm::mamba_mixer', 'vllm::short_conv', 'vllm::qwen4_exp_compute_ple_ngram_ids', 'vllm::qwen4_exp_ple_short_conv', 'vllm::qwen4_exp_qsa_with_output', 'vllm::linear_attention', 'vllm::qwen_gdn_attention_core', 'vllm::qwen_gdn_attention_core_fused_norm_packed', 'vllm::gdn_attention_core_xpu', 'vllm::olmo_hybrid_gdn_full_forward', 'vllm::sparse_attn_indexer', 'vllm::rocm_aiter_sparse_attn_indexer', 'vllm::deepseek_v4_attention', 'vllm::hpc_rope_norm_forward', 'vllm::unified_kv_cache_update', 'vllm::unified_mla_kv_cache_update'], 'compile_mm_encoder': False, 'cudagraph_mm_encoder': False, 'encoder_cudagraph_token_budgets': [], 'encoder_cudagraph_max_vision_items_per_batch': 0, 'encoder_cudagraph_max_frames_per_batch': None, 'compile_sizes': [], 'compile_ranges_endpoints': [4096], 'inductor_compile_config': {'enable_auto_functionalized_v2': False, 'combo_kernels': True, 'benchmark_combo_kernel': True}, 'inductor_passes': {}, 'cudagraph_mode': <CUDAGraphMode.FULL_AND_PIECEWISE: (2, 1)>, 'cudagraph_num_of_warmups': 1, 'cudagraph_capture_sizes': [1, 2, 4, 8, 16, 24, 32], 'cudagraph_copy_inputs': False, 'cudagraph_specialize_lora': True, 'use_inductor_graph_partition': False, 'pass_config': {'fuse_norm_quant': False, 'fuse_act_quant': False, 'fuse_attn_quant': False, 'enable_sp': False, 'fuse_gemm_comms': False, 'fuse_allreduce_rms': False, 'enable_qk_norm_rope_fusion': False, 'fuse_rope_kvcache_cat_mla': False, 'fuse_act_padding': False, 'fuse_qk_norm_rope_kvcache': False}, 'max_cudagraph_capture_size': 32, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': False}, 'local_cache_dir': None, 'fast_moe_cold_start': False, 'static_all_moe_layers': []}, kernel_config=KernelConfig(ir_op_priority=IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native']), enable_flashinfer_autotune=True, enable_cutedsl_warmup=True, enable_jit_warmup=True, enable_bf16x3_router_gemm=False, moe_backend='marlin', linear_backend='auto')
+(EngineCore pid=225) INFO 10-08 13:41:02 [parallel_state.py:1775] world_size=1 rank=0 local_rank=0 distributed_init_method=file:///tmp/vllm_dist_a6e87763961146cdb63177d00f041444 backend=nccl
+(EngineCore pid=225) INFO 10-08 13:41:02 [parallel_state.py:2119] rank 0 in world size 1 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, EP rank 0, EPLB rank N/A
+(EngineCore pid=225) INFO 10-08 13:41:02 [gpu_worker.py:429] Using V2 Model Runner
+(EngineCore pid=225) INFO 10-08 13:41:03 [model_runner.py:382] Loading model from scratch...
+(EngineCore pid=225) INFO 10-08 13:41:03 [__init__.py:726] Selected FlashInferFP8ScaledMMLinearKernel for ModelOptFp8LinearMethod
+(EngineCore pid=225) INFO 10-08 13:41:03 [deep_gemm.py:186] deep_gemm not found in site-packages, trying vendored vllm.third_party.deep_gemm
+(EngineCore pid=225) INFO 10-08 13:41:03 [deep_gemm.py:213] DeepGEMM PDL enabled on vllm.third_party.deep_gemm.
+(EngineCore pid=225) INFO 10-08 13:41:03 [deep_gemm.py:131] DeepGEMM E8M0 enabled on current platform.
+(EngineCore pid=225) INFO 10-08 13:41:03 [__init__.py:1066] Using MarlinNvFp4LinearKernel for NVFP4 GEMM
+(EngineCore pid=225) INFO 10-08 13:41:03 [nvfp4.py:261] Using 'MARLIN' NvFp4 MoE backend out of potential backends: ['FLASHINFER_TRTLLM', 'FLASHINFER_CUTEDSL', 'FLASHINFER_CUTEDSL_BATCHED', 'FLASHINFER_CUTLASS', 'VLLM_CUTLASS', 'MARLIN', 'HUMMING', 'EMULATION'].
+(EngineCore pid=225) INFO 10-08 13:41:03 [cuda.py:492] Using FLASHINFER attention backend out of potential backends: ['FLASHINFER', 'TRITON_ATTN'].
+(EngineCore pid=225) INFO 10-08 13:41:03 [weight_utils.py:863] Filesystem type for checkpoints: EXT4. Checkpoint size: 20.08 GiB. Available RAM: 54.99 GiB.
+(EngineCore pid=225) INFO 10-08 13:41:03 [weight_utils.py:886] Auto-prefetch is disabled because the filesystem (EXT4) is not a recognized network FS (NFS/Lustre). If you want to force prefetching, start vLLM with --safetensors-load-strategy=prefetch.
+(EngineCore pid=225) Loading safetensors checkpoint shards:   0% Completed | 0/52 [00:00<?, ?it/s]
+(EngineCore pid=225) Loading safetensors checkpoint shards:   2% Completed | 1/52 [00:00<00:08,  5.74it/s]
+(EngineCore pid=225) WARNING 10-08 13:41:04 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:   4% Completed | 2/52 [00:00<00:09,  5.36it/s]
+(EngineCore pid=225) WARNING 10-08 13:41:04 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:   8% Completed | 4/52 [00:00<00:06,  7.46it/s]
+(EngineCore pid=225) WARNING 10-08 13:41:04 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  13% Completed | 7/52 [00:00<00:04, 10.24it/s]
+(EngineCore pid=225) WARNING 10-08 13:41:04 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  17% Completed | 9/52 [00:00<00:04, 10.50it/s]
+(EngineCore pid=225) WARNING 10-08 13:41:04 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  21% Completed | 11/52 [00:01<00:03, 10.67it/s]
+(EngineCore pid=225) WARNING 10-08 13:41:05 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  27% Completed | 14/52 [00:01<00:03, 12.33it/s]
+(EngineCore pid=225) WARNING 10-08 13:41:05 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  31% Completed | 16/52 [00:01<00:03, 11.94it/s]
+(EngineCore pid=225) WARNING 10-08 13:41:05 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  35% Completed | 18/52 [00:01<00:02, 11.68it/s]
+(EngineCore pid=225) WARNING 10-08 13:41:05 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  40% Completed | 21/52 [00:01<00:02, 12.94it/s]
+(EngineCore pid=225) WARNING 10-08 13:41:05 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  44% Completed | 23/52 [00:02<00:02, 12.33it/s]
+(EngineCore pid=225) WARNING 10-08 13:41:05 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  48% Completed | 25/52 [00:02<00:02, 12.00it/s]
+(EngineCore pid=225) WARNING 10-08 13:41:06 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  54% Completed | 28/52 [00:02<00:01, 13.17it/s]
+(EngineCore pid=225) WARNING 10-08 13:41:06 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  58% Completed | 30/52 [00:02<00:01, 12.47it/s]
+(EngineCore pid=225) WARNING 10-08 13:41:06 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  62% Completed | 32/52 [00:02<00:01, 11.97it/s]
+(EngineCore pid=225) WARNING 10-08 13:41:06 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  67% Completed | 35/52 [00:03<00:01, 13.05it/s]
+(EngineCore pid=225) WARNING 10-08 13:41:06 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  71% Completed | 37/52 [00:03<00:01, 12.43it/s]
+(EngineCore pid=225) WARNING 10-08 13:41:07 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  75% Completed | 39/52 [00:03<00:01, 12.02it/s]
+(EngineCore pid=225) WARNING 10-08 13:41:07 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  79% Completed | 41/52 [00:03<00:00, 11.74it/s]
+(EngineCore pid=225) WARNING 10-08 13:41:07 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  85% Completed | 44/52 [00:03<00:00, 12.92it/s]
+(EngineCore pid=225) WARNING 10-08 13:41:07 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  88% Completed | 46/52 [00:03<00:00, 12.37it/s]
+(EngineCore pid=225) WARNING 10-08 13:41:07 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  92% Completed | 48/52 [00:04<00:00, 12.02it/s]
+(EngineCore pid=225) WARNING 10-08 13:41:07 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards:  96% Completed | 50/52 [00:04<00:00, 11.65it/s]
+(EngineCore pid=225) WARNING 10-08 13:41:08 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=225) Loading safetensors checkpoint shards: 100% Completed | 52/52 [00:04<00:00,  9.68it/s]
+(EngineCore pid=225) Loading safetensors checkpoint shards: 100% Completed | 52/52 [00:04<00:00, 11.34it/s]
+(EngineCore pid=225) 
+(EngineCore pid=225) INFO 10-08 13:41:08 [default_loader.py:430] Loading weights took 4.59 seconds
+(EngineCore pid=225) WARNING 10-08 13:41:08 [marlin.py:34] Your GPU does not have native support for FP4 computation but FP4 quantization is being used. Weight-only FP4 compression will be used leveraging the Marlin kernel. This may degrade performance for compute-heavy workloads.
+(EngineCore pid=225) WARNING 10-08 13:41:08 [marlin_utils_fp4.py:354] Your GPU does not have native support for FP4 computation but FP4 quantization is being used. Weight-only FP4 compression will be used leveraging the Marlin kernel. This may degrade performance for compute-heavy workloads.
+(EngineCore pid=225) INFO 10-08 13:41:08 [nvfp4.py:613] Using MoEPrepareAndFinalizeNoDPEPModular
+(EngineCore pid=225) WARNING 10-08 13:41:08 [kv_cache.py:130] Checkpoint does not provide a q scaling factor. Setting it to k_scale. This only matters for FP8 Attention backends (flash-attn or flashinfer).
+(EngineCore pid=225) WARNING 10-08 13:41:08 [kv_cache.py:185] Using uncalibrated q_scale 1.0 and/or prob_scale 1.0 with fp8 attention. This may cause accuracy issues. Please make sure q/prob scaling factors are available in the fp8 checkpoint.
+(EngineCore pid=225) INFO 10-08 13:41:09 [utils.py:102] MoE model detected. Using fused MoE LoRA implementation.
+(EngineCore pid=225) INFO 10-08 13:41:09 [punica_selector.py:20] Using PunicaWrapperGPU.
+(EngineCore pid=225) INFO 10-08 13:41:10 [model_runner.py:404] Model loading took 17.88 GiB memory and 6.998459 seconds
+(EngineCore pid=225) INFO 10-08 13:41:10 [topk_topp_sampler.py:62] Using FlashInfer for top-p & top-k sampling.
+(EngineCore pid=225) INFO 10-08 13:41:10 [interface.py:918] Setting attention block size to 4176 tokens to ensure that attention page size is >= mamba page size.
+(EngineCore pid=225) INFO 10-08 13:41:10 [interface.py:942] Padding mamba page size by 0.19% to ensure that mamba page size and attention page size are exactly equal.
+(EngineCore pid=225) INFO 10-08 13:41:10 [utils.py:306] Using LBHNC KV cache layout.
+(EngineCore pid=225) INFO 10-08 13:41:14 [backends.py:1094] Using cache directory: /root/.cache/vllm/torch_compile_cache/d2eb2309dc/rank_0_0/backbone for vLLM's torch.compile
+(EngineCore pid=225) INFO 10-08 13:41:14 [backends.py:1155] Dynamo bytecode transform time: 3.68 s
+(EngineCore pid=225) /usr/local/lib/python3.12/dist-packages/torch/_inductor/compile_fx.py:321: UserWarning: TensorFloat32 tensor cores for float32 matrix multiplication available but not enabled. Consider setting `torch.set_float32_matmul_precision('high')` for better performance.
+(EngineCore pid=225)   warnings.warn(
+(EngineCore pid=225) INFO 10-08 13:41:18 [backends.py:393] Compiling a graph for compile range (1, 4096) takes 4.00 s
+(EngineCore pid=225) INFO 10-08 13:41:20 [backends.py:920] collected artifacts: 30 entries, 5 artifacts, 5666361 bytes total
+(EngineCore pid=225) INFO 10-08 13:41:20 [decorators.py:719] saved AOT compiled function to /root/.cache/vllm/torch_compile_cache/torch_aot_compile/6b256141bba8f7744e7290804d869c2aaf7ab00eb4a8b8b14c32ad8b6d905f96/rank_0_0/model
+(EngineCore pid=225) INFO 10-08 13:41:20 [monitor.py:53] torch.compile took 9.69 s in total
+(EngineCore pid=225) WARNING 10-08 13:41:20 [utils.py:279] Using default LoRA kernel configs
+(EngineCore pid=225) Skipping cuDNN in bmm_fp8 auto candidates on SM12x: override_shape unavailable (cuDNN backend < 9.23.1); policy=ALL per-shape build is unbounded at serving time.
+(EngineCore pid=225) INFO 10-08 13:41:20 [mamba_mixer2.py:597] Warming up Mamba2 SSD Triton kernels...
+(EngineCore pid=225) INFO 10-08 13:41:55 [monitor.py:81] Initial profiling/warmup run took 34.36 s
+(EngineCore pid=225) WARNING 10-08 13:41:56 [kv_cache_utils.py:1326] Add 1 padding layers, may waste at most 4.35% KV cache memory
+(EngineCore pid=225) INFO 10-08 13:41:56 [flashinfer.py:910] FlashInfer resolved query dtypes: prefill=torch.bfloat16, decode=torch.bfloat16, decode_backend=xqa, kv_cache_dtype=torch.float8_e4m3fn, arch=sm120
+(EngineCore pid=225) INFO 10-08 13:41:56 [ssu_dispatch.py:310] Using triton Mamba SSU backend.
+(EngineCore pid=225) WARNING 10-08 13:41:57 [mamba_ssm.py:108] Using default Mamba SSU config. Performance might be sub-optimal! Config file not found at /usr/local/lib/python3.12/dist-packages/vllm/model_executor/layers/mamba/ops/configs/selective_state_update/headdim=64,dstate=128,device_name=NVIDIA_GeForce_RTX_5090_Laptop_GPU,cache_dtype=float32.json
+(EngineCore pid=225) Capturing CUDA graphs (PIECEWISE):   0%|          | 0/14 [00:00<?, ?it/s]Capturing CUDA graphs (PIECEWISE):   7%|▋         | 1/14 [00:00<00:04,  2.95it/s]Capturing CUDA graphs (PIECEWISE):  14%|█▍        | 2/14 [00:00<00:06,  1.92it/s]Capturing CUDA graphs (PIECEWISE):  21%|██▏       | 3/14 [00:05<00:24,  2.24s/it]Capturing CUDA graphs (PIECEWISE):  29%|██▊       | 4/14 [00:06<00:18,  1.87s/it]Capturing CUDA graphs (PIECEWISE):  36%|███▌      | 5/14 [00:06<00:11,  1.26s/it]Capturing CUDA graphs (PIECEWISE):  50%|█████     | 7/14 [00:06<00:04,  1.52it/s]Capturing CUDA graphs (PIECEWISE):  64%|██████▍   | 9/14 [00:07<00:02,  2.42it/s]Capturing CUDA graphs (PIECEWISE):  79%|███████▊  | 11/14 [00:07<00:00,  3.48it/s]Capturing CUDA graphs (PIECEWISE):  93%|█████████▎| 13/14 [00:07<00:00,  3.39it/s]Capturing CUDA graphs (PIECEWISE): 100%|██████████| 14/14 [00:09<00:00,  2.10it/s]Capturing CUDA graphs (PIECEWISE): 100%|██████████| 14/14 [00:09<00:00,  1.55it/s]
+(EngineCore pid=225) Capturing CUDA graphs (FULL):   0%|          | 0/2 [00:00<?, ?it/s]Capturing CUDA graphs (FULL): 100%|██████████| 2/2 [00:00<00:00, 14.27it/s]Capturing CUDA graphs (FULL): 100%|██████████| 2/2 [00:00<00:00, 14.26it/s]
+(EngineCore pid=225) INFO 10-08 13:42:05 [model_runner.py:960] Graph capturing finished in 9 secs, took 0.59 GiB
+(EngineCore pid=225) INFO 10-08 13:42:06 [gpu_worker.py:625] Available KV cache memory: 1.8 GiB
+(EngineCore pid=225) INFO 10-08 13:42:06 [gpu_worker.py:640] CUDA graph memory profiling is enabled (default since v0.21.0). The current --gpu-memory-utilization=0.9200 is equivalent to --gpu-memory-utilization=0.8923 without CUDA graph memory profiling. To maintain the same effective KV cache size as before, increase --gpu-memory-utilization to 0.9477. To disable, set VLLM_MEMORY_PROFILER_ESTIMATE_CUDAGRAPHS=0.
+(EngineCore pid=225) WARNING 10-08 13:42:06 [kv_cache_utils.py:1326] Add 1 padding layers, may waste at most 4.35% KV cache memory
+(EngineCore pid=225) INFO 10-08 13:42:06 [kv_cache_utils.py:2032] GPU KV cache size: 491,520 tokens, Maximum concurrency for 131,072 tokens per request: 3.75x
+(EngineCore pid=225) INFO 10-08 13:42:06 [factory.py:62] Creating v1 connector with name: OffloadingConnector and engine_id: 836e005c-9349-4d09-9d9e-13fa5df99815
+(EngineCore pid=225) WARNING 10-08 13:42:06 [base.py:203] Initializing KVConnectorBase_V1. This API is experimental and subject to change in the future as we iterate the design.
+(EngineCore pid=225) INFO 10-08 13:42:06 [factory.py:57] Creating offloading spec with name: CPUOffloadingSpec
+(EngineCore pid=225) INFO 10-08 13:42:06 [shared_offload_region.py:134] Created mmap file /dev/shm/vllm_offload_836e005c-9349-4d09-9d9e-13fa5df99815.mmap (8.58 GB)
+(EngineCore pid=225) INFO 10-08 13:42:06 [shared_offload_region.py:180] Unlinked mmap file /dev/shm/vllm_offload_836e005c-9349-4d09-9d9e-13fa5df99815.mmap
+(EngineCore pid=225) INFO 10-08 13:42:07 [gpu_worker.py:764] Allocating 6 CPU tensors...
+(EngineCore pid=225) INFO 10-08 13:42:07 [kernel_warmup.py:124] JIT kernel warmup starting.
+(EngineCore pid=225) INFO 10-08 13:42:07 [kernel_warmup.py:134] JIT kernel warmup finished in 0.00s.
+(EngineCore pid=225) INFO 10-08 13:42:08 [kernel_warmup.py:309] Using FlashInfer autotune cache file: /root/.cache/vllm/flashinfer_autotune_cache/0.6.18/120f/363e24f1b3837ce5ab43e655f4a326e2eb2fd435bb1431c162afcda334ad75d6/autotune_configs.json
+(EngineCore pid=225) 2026-10-08 13:42:08,173 - INFO - autotuner.py:972 - flashinfer.jit: [Autotuner]: Autotuning process starts ...
+(EngineCore pid=225) INFO 10-08 13:42:08 [kernel_warmup.py:266] Running FlashInfer autotune with 4096 tokens.
+(EngineCore pid=225) [AutoTuner]: Tuning fp8_gemm:   0%|          | 0/20 [00:00<?, ?profile/s][AutoTuner]: Tuning fp8_gemm:  10%|█         | 2/20 [00:00<00:01, 16.87profile/s][AutoTuner]: Tuning fp8_gemm:  20%|██        | 4/20 [00:00<00:00, 18.07profile/s][AutoTuner]: Tuning fp8_gemm:  30%|███       | 6/20 [00:00<00:00, 18.69profile/s][AutoTuner]: Tuning fp8_gemm:  40%|████      | 8/20 [00:00<00:00, 18.75profile/s][AutoTuner]: Tuning fp8_gemm:  50%|█████     | 10/20 [00:00<00:00, 17.89profile/s][AutoTuner]: Tuning fp8_gemm:  60%|██████    | 12/20 [00:00<00:00, 16.17profile/s][AutoTuner]: Tuning fp8_gemm:  70%|███████   | 14/20 [00:00<00:00, 14.62profile/s][AutoTuner]: Tuning fp8_gemm:  80%|████████  | 16/20 [00:01<00:00, 12.88profile/s][AutoTuner]: Tuning fp8_gemm:  90%|█████████ | 18/20 [00:01<00:00, 10.89profile/s][AutoTuner]: Tuning fp8_gemm: 100%|██████████| 20/20 [00:01<00:00,  9.00profile/s][AutoTuner]: Tuning fp8_gemm: 100%|██████████| 20/20 [00:01<00:00, 12.39profile/s]
+(EngineCore pid=225) [AutoTuner]: Tuning fp8_gemm:   0%|          | 0/20 [00:00<?, ?profile/s][AutoTuner]: Tuning fp8_gemm:  10%|█         | 2/20 [00:00<00:00, 19.17profile/s][AutoTuner]: Tuning fp8_gemm:  20%|██        | 4/20 [00:00<00:00, 19.27profile/s][AutoTuner]: Tuning fp8_gemm:  30%|███       | 6/20 [00:00<00:00, 19.30profile/s][AutoTuner]: Tuning fp8_gemm:  40%|████      | 8/20 [00:00<00:00, 19.26profile/s][AutoTuner]: Tuning fp8_gemm:  50%|█████     | 10/20 [00:00<00:00, 18.77profile/s][AutoTuner]: Tuning fp8_gemm:  60%|██████    | 12/20 [00:00<00:00, 17.74profile/s][AutoTuner]: Tuning fp8_gemm:  70%|███████   | 14/20 [00:00<00:00, 16.59profile/s][AutoTuner]: Tuning fp8_gemm:  80%|████████  | 16/20 [00:00<00:00, 15.33profile/s][AutoTuner]: Tuning fp8_gemm:  90%|█████████ | 18/20 [00:01<00:00, 13.72profile/s][AutoTuner]: Tuning fp8_gemm: 100%|██████████| 20/20 [00:01<00:00, 14.82profile/s][AutoTuner]: Tuning fp8_gemm: 100%|██████████| 20/20 [00:01<00:00, 16.26profile/s]
+(EngineCore pid=225) 2026-10-08 13:42:11,123 - INFO - autotuner.py:995 - flashinfer.jit: [Autotuner]: Autotuning process ends
+(EngineCore pid=225) 2026-10-08 13:42:11,137 - INFO - autotuner.py:2652 - flashinfer.jit: [Autotuner]: Saved 40 configs to /root/.cache/vllm/flashinfer_autotune_cache/0.6.18/120f/363e24f1b3837ce5ab43e655f4a326e2eb2fd435bb1431c162afcda334ad75d6/autotune_configs.json (40 new, 0 from previous config)
+(EngineCore pid=225) Capturing CUDA graphs (PIECEWISE):   0%|          | 0/14 [00:00<?, ?it/s]Capturing CUDA graphs (PIECEWISE):  14%|█▍        | 2/14 [00:00<00:01, 10.03it/s]Capturing CUDA graphs (PIECEWISE):  29%|██▊       | 4/14 [00:00<00:01,  9.50it/s]Capturing CUDA graphs (PIECEWISE):  43%|████▎     | 6/14 [00:00<00:00, 10.98it/s]Capturing CUDA graphs (PIECEWISE):  57%|█████▋    | 8/14 [00:00<00:00, 11.82it/s]Capturing CUDA graphs (PIECEWISE):  71%|███████▏  | 10/14 [00:00<00:00, 12.33it/s]Capturing CUDA graphs (PIECEWISE):  86%|████████▌ | 12/14 [00:01<00:00, 12.65it/s]Capturing CUDA graphs (PIECEWISE): 100%|██████████| 14/14 [00:01<00:00, 12.98it/s]Capturing CUDA graphs (PIECEWISE): 100%|██████████| 14/14 [00:01<00:00, 12.06it/s]
+(EngineCore pid=225) Capturing CUDA graphs (FULL):   0%|          | 0/10 [00:00<?, ?it/s]Capturing CUDA graphs (FULL):  20%|██        | 2/10 [00:00<00:00, 14.49it/s]Capturing CUDA graphs (FULL):  40%|████      | 4/10 [00:00<00:00, 14.27it/s]Capturing CUDA graphs (FULL):  60%|██████    | 6/10 [00:00<00:00, 14.36it/s]Capturing CUDA graphs (FULL):  80%|████████  | 8/10 [00:00<00:00, 14.21it/s]Capturing CUDA graphs (FULL): 100%|██████████| 10/10 [00:00<00:00, 13.93it/s]Capturing CUDA graphs (FULL): 100%|██████████| 10/10 [00:00<00:00, 14.09it/s]
+(EngineCore pid=225) INFO 10-08 13:42:13 [model_runner.py:960] Graph capturing finished in 2 secs, took 0.09 GiB
+(EngineCore pid=225) INFO 10-08 13:42:13 [gpu_worker.py:797] CUDA graph pool memory: 0.09 GiB (actual), 0.65 GiB (estimated), difference: 0.55 GiB (590.6%).
+(EngineCore pid=225) INFO 10-08 13:42:13 [gpu_worker.py:860] Free memory on device (22.8/23.4 GiB) on startup. Desired GPU memory utilization is (0.92, 21.53 GiB). Actual usage is 18.7 GiB for consumed memory (weights + non-torch), 1.02 GiB for peak activation, and 0.09 GiB for CUDAGraph memory. Replace gpu_memory_utilization config with `--kv-cache-memory=1674303960` (1.56 GiB) to fit into requested memory, or `--kv-cache-memory=3045537280` (2.84 GiB) to fully utilize gpu memory. Current kv cache memory in use is 1.8 GiB.
+(EngineCore pid=225) INFO 10-08 13:42:15 [jit_monitor.py:85] Kernel JIT monitor activated; monitored JIT compilations during inference will use mode=warn.
+(EngineCore pid=225) INFO 10-08 13:42:16 [torch_utils.py:277] Reducing Torch threads from 24 to 1 for serving. Set OMP_NUM_THREADS in the external environment to override.
+(EngineCore pid=225) INFO 10-08 13:42:16 [core.py:361] init engine (profile, create kv cache, warmup model) took 65.92 s (compilation: 9.69 s)
+(EngineCore pid=225) INFO 10-08 13:42:16 [factory.py:62] Creating v1 connector with name: OffloadingConnector and engine_id: 836e005c-9349-4d09-9d9e-13fa5df99815
+(EngineCore pid=225) WARNING 10-08 13:42:16 [base.py:203] Initializing KVConnectorBase_V1. This API is experimental and subject to change in the future as we iterate the design.
+(EngineCore pid=225) INFO 10-08 13:42:16 [factory.py:57] Creating offloading spec with name: CPUOffloadingSpec
+(EngineCore pid=225) INFO 10-08 13:42:16 [kernel.py:369] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+(APIServer pid=1) INFO 10-08 13:42:17 [entry.py:135] Supported tasks: ['generate']
+(APIServer pid=1) WARNING 10-08 13:42:17 [api_router.py:41] Profiler with mode 'torch' is enabled in the API server. This should ONLY be used for local development!
+(APIServer pid=1) INFO 10-08 13:42:17 [serving.py:216] Loaded new LoRA adapter: name 'g6q', path '/adapter'
+(APIServer pid=1) INFO 10-08 13:42:17 [hf.py:547] Detected the chat template content format to be 'string'. You can set `--chat-template-content-format` to override this.
+(APIServer pid=1) WARNING 10-08 13:42:18 [model.py:1759] Default vLLM sampling parameters have been overridden by the model's `generation_config.json`: `{'temperature': 1.0, 'top_p': 0.95}`. If this is not intended, please relaunch vLLM instance with `--generation-config vllm`.
+(APIServer pid=1) INFO 10-08 13:42:18 [entry.py:139] Starting vLLM server on http://0.0.0.0:8000
+(APIServer pid=1) INFO 10-08 13:42:18 [launcher.py:61] Available routes are:
+(APIServer pid=1) INFO 10-08 13:42:18 [launcher.py:70] Route: /openapi.json, Methods: HEAD, GET
+(APIServer pid=1) INFO 10-08 13:42:18 [launcher.py:70] Route: /docs, Methods: HEAD, GET
+(APIServer pid=1) INFO 10-08 13:42:18 [launcher.py:70] Route: /docs/oauth2-redirect, Methods: HEAD, GET
+(APIServer pid=1) INFO 10-08 13:42:18 [launcher.py:70] Route: /redoc, Methods: HEAD, GET
+(APIServer pid=1) INFO 10-08 13:42:18 [launcher.py:70] Route: /load, Methods: GET
+(APIServer pid=1) INFO 10-08 13:42:18 [launcher.py:70] Route: /version, Methods: GET
+(APIServer pid=1) INFO 10-08 13:42:18 [launcher.py:70] Route: /health, Methods: GET
+(APIServer pid=1) INFO 10-08 13:42:18 [launcher.py:70] Route: /metrics, Methods: GET
+(APIServer pid=1) INFO 10-08 13:42:18 [launcher.py:70] Route: /start_profile, Methods: POST
+(APIServer pid=1) INFO 10-08 13:42:18 [launcher.py:70] Route: /stop_profile, Methods: POST
+(APIServer pid=1) INFO 10-08 13:42:18 [launcher.py:70] Route: /tokenize, Methods: POST
+(APIServer pid=1) INFO 10-08 13:42:18 [launcher.py:70] Route: /detokenize, Methods: POST
+(APIServer pid=1) INFO 10-08 13:42:18 [launcher.py:70] Route: /v1/models, Methods: GET
+(APIServer pid=1) INFO 10-08 13:42:18 [launcher.py:70] Route: /ping, Methods: GET
+(APIServer pid=1) INFO 10-08 13:42:18 [launcher.py:70] Route: /ping, Methods: POST
+(APIServer pid=1) INFO 10-08 13:42:18 [launcher.py:70] Route: /invocations, Methods: POST
+(APIServer pid=1) INFO 10-08 13:42:18 [launcher.py:70] Route: /v1/chat/completions, Methods: POST
+(APIServer pid=1) INFO 10-08 13:42:18 [launcher.py:70] Route: /v1/chat/completions/batch, Methods: POST
+(APIServer pid=1) INFO 10-08 13:42:18 [launcher.py:70] Route: /v1/responses, Methods: POST
+(APIServer pid=1) INFO 10-08 13:42:18 [launcher.py:70] Route: /v1/responses/{response_id}, Methods: GET
+(APIServer pid=1) INFO 10-08 13:42:18 [launcher.py:70] Route: /v1/responses/{response_id}/cancel, Methods: POST
+(APIServer pid=1) INFO 10-08 13:42:18 [launcher.py:70] Route: /v1/completions, Methods: POST
+(APIServer pid=1) INFO 10-08 13:42:18 [launcher.py:70] Route: /v1/messages, Methods: POST
+(APIServer pid=1) INFO 10-08 13:42:18 [launcher.py:70] Route: /v1/messages/count_tokens, Methods: POST
+(APIServer pid=1) INFO 10-08 13:42:18 [launcher.py:70] Route: /generative_scoring, Methods: POST
+(APIServer pid=1) INFO 10-08 13:42:18 [launcher.py:70] Route: /scale_elastic_ep, Methods: POST
+(APIServer pid=1) INFO 10-08 13:42:18 [launcher.py:70] Route: /is_scaling_elastic_ep, Methods: POST
+(APIServer pid=1) INFO 10-08 13:42:18 [launcher.py:70] Route: /v1/chat/completions/render, Methods: POST
+(APIServer pid=1) INFO 10-08 13:42:18 [launcher.py:70] Route: /v1/messages/render, Methods: POST
+(APIServer pid=1) INFO 10-08 13:42:18 [launcher.py:70] Route: /v1/completions/render, Methods: POST
+(APIServer pid=1) INFO 10-08 13:42:18 [launcher.py:70] Route: /v1/chat/completions/derender, Methods: POST
+(APIServer pid=1) INFO 10-08 13:42:18 [launcher.py:70] Route: /v1/completions/derender, Methods: POST
+(APIServer pid=1) INFO 10-08 13:42:18 [launcher.py:70] Route: /inference/v1/generate, Methods: POST
+(APIServer pid=1) INFO:     Started server process [1]
+(APIServer pid=1) INFO:     Waiting for application startup.
+(APIServer pid=1) INFO:     Application startup complete.
+(APIServer pid=1) INFO:     172.17.0.1:53694 - "GET /health HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:53710 - "GET /metrics HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:53736 - "GET /metrics HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:53722 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:53742 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:53762 - "GET /metrics HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:53754 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:53768 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:53784 - "GET /metrics HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:53772 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:53788 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37456 - "GET /metrics HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37440 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37478 - "GET /metrics HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37472 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37484 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37488 - "GET /metrics HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37498 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37510 - "GET /metrics HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37500 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37520 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37528 - "GET /metrics HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37536 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37546 - "GET /metrics HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37544 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37550 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37564 - "GET /metrics HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37566 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) WARNING 10-08 13:42:21 [input_processor.py:196] vLLM has deprecated support for supporting different tokenizers for different LoRAs. By default, vLLM uses base model's tokenizer. If you are using a LoRA with its own tokenizer, consider specifying `--tokenizer [lora_path]` to use the LoRA tokenizer.
+(APIServer pid=1) INFO:     172.17.0.1:37568 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37578 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37586 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37590 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37592 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37600 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37602 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37606 - "GET /metrics HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37612 - "GET /metrics HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37618 - "GET /metrics HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37626 - "GET /metrics HTTP/1.1" 200 OK
+(EngineCore pid=225) WARNING 10-08 13:42:22 [jit_monitor.py:141] Triton kernel JIT compilation during inference: _causal_conv1d_fwd_kernel. This causes a latency spike; consider extending warmup to cover this shape/config.
+(EngineCore pid=225) WARNING 10-08 13:42:27 [jit_monitor.py:141] Triton kernel JIT compilation during inference: _lora_shrink_kernel. This causes a latency spike; consider extending warmup to cover this shape/config.
+(APIServer pid=1) INFO 10-08 13:42:28 [loggers.py:310] Engine 000: Avg prompt throughput: 5611.5 tokens/s, Avg generation throughput: 43.8 tokens/s, Running: 8 reqs, Waiting: 0 reqs, GPU KV cache usage: 32.2%, Prefix cache hit rate: 0.0%, External prefix cache hit rate: 0.0%
+(APIServer pid=1) INFO 10-08 13:42:28 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=8, vllm:kv_offload_lookup_sync_delay_seconds_sum=7.040705531835556e-05, vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_allocation_size_count=40, vllm:kv_offload_cpu_allocation_size_sum=40, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=495288320, vllm:kv_offload_store_time=0.02159625613689423, vllm:kv_offload_store_size_count=40, vllm:kv_offload_store_size_sum=495288320
+(APIServer pid=1) INFO:     172.17.0.1:50494 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:50506 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:50522 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:50524 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:50530 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:50532 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:50534 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:50536 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:42:37 [api_router.py:23] Starting profiler...
+(EngineCore pid=225) INFO 10-08 13:42:37 [wrapper.py:191] Torch profiling enabled. Traces will be saved to: /trace
+USDT:2026-10-08 13:42:37 225:225 SyncActivityProfilerHandler.cpp:52] profiler_start
+(APIServer pid=1) INFO 10-08 13:42:37 [api_router.py:25] Profiler started.
+(APIServer pid=1) INFO:     172.17.0.1:50538 - "POST /start_profile HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:42:38 [loggers.py:310] Engine 000: Avg prompt throughput: 6694.7 tokens/s, Avg generation throughput: 235.3 tokens/s, Running: 8 reqs, Waiting: 0 reqs, GPU KV cache usage: 43.0%, Prefix cache hit rate: 20.1%, External prefix cache hit rate: 0.0%
+(APIServer pid=1) INFO 10-08 13:42:38 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_lookup_sync_delay_seconds_count=8, vllm:kv_offload_lookup_sync_delay_seconds_sum=5.6043965741992e-05, vllm:kv_offload_cpu_allocation_size_count=60, vllm:kv_offload_cpu_allocation_size_sum=60, vllm:kv_offload_store_bytes=745164800, vllm:kv_offload_store_time=0.030972959965467457, vllm:kv_offload_store_size_count=60, vllm:kv_offload_store_size_sum=745164800
+(APIServer pid=1) INFO 10-08 13:42:40 [api_router.py:31] Stopping profiler...
+USDT:2026-10-08 13:42:40 225:225 SyncActivityProfilerHandler.cpp:59] profiler_stop
+(APIServer pid=1) INFO 10-08 13:42:48 [loggers.py:310] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 112.8 tokens/s, Running: 8 reqs, Waiting: 0 reqs, GPU KV cache usage: 43.0%, Prefix cache hit rate: 20.1%, External prefix cache hit rate: 0.0%
+(APIServer pid=1) INFO 10-08 13:42:48 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0
+(EngineCore pid=225) -------------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+(EngineCore pid=225)                                                    Name    Self CPU %      Self CPU   CPU total %     CPU total  CPU time avg     Self CUDA   Self CUDA %    CUDA total  CUDA time avg    # of Calls  
+(EngineCore pid=225) -------------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+(EngineCore pid=225)                    execute_context_0(0)_generation_8(8)         0.00%       0.000us         0.00%       0.000us       0.000us        8.396s       238.94%        8.396s      11.858ms           708  
+(EngineCore pid=225) void marlin_moe_wna16::Marlin<1125899906909960l, 562...         0.00%       0.000us         0.00%       0.000us       0.000us     838.993ms        23.88%     838.993ms     153.915us          5451  
+(EngineCore pid=225) void marlin_moe_wna16::Marlin<1125899906909960l, 562...         0.00%       0.000us         0.00%       0.000us       0.000us     800.728ms        22.79%     800.728ms     146.896us          5451  
+(EngineCore pid=225)                                     _lora_shrink_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     296.308ms         8.43%     296.308ms      15.435us         19197  
+(EngineCore pid=225) nvjet_sm120_qqtst_mma_64x32x64_16_32x16x64_tmaAB_bz_...         0.00%       0.000us         0.00%       0.000us       0.000us     231.015ms         6.57%     231.015ms      42.380us          5451  
+(EngineCore pid=225) void marlin::Marlin<1125899906909960l, 5629499534871...         0.00%       0.000us         0.00%       0.000us       0.000us     229.974ms         6.55%     229.974ms      20.731us         11093  
+(EngineCore pid=225)                           _selective_scan_update_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     148.356ms         4.22%     148.356ms      27.216us          5451  
+(EngineCore pid=225)                                     _lora_expand_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     145.884ms         4.15%     145.884ms       7.599us         19197  
+(EngineCore pid=225) void gemmSN_TN_kernel<float, 128, 16, 2, 4, 8, 9, fa...         0.00%       0.000us         0.00%       0.000us       0.000us     143.116ms         4.07%     143.116ms      26.366us          5428  
+(EngineCore pid=225) void cutlass::Kernel2<cutlass_80_wmma_tensorop_bf16_...         0.00%       0.000us         0.00%       0.000us       0.000us     116.756ms         3.32%     116.756ms      41.228us          2832  
+(EngineCore pid=225) sm89_xmma_gemm_e4m3bf16_e4m3f32_f32_tn_n_tilesize32x...         0.00%       0.000us         0.00%       0.000us       0.000us     110.962ms         3.16%     110.962ms      20.356us          5451  
+(EngineCore pid=225) kernel_mha(unsigned int, float, float const*, Vec<__...         0.00%       0.000us         0.00%       0.000us       0.000us     110.343ms         3.14%     110.343ms      77.597us          1422  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us      85.532ms         2.43%      85.532ms       4.450us         19220  
+(EngineCore pid=225)                                         _C::marlin_gemm         0.26%       7.507ms         0.46%      13.101ms      55.277us      63.906ms         1.82%      63.906ms     269.645us           237  
+(EngineCore pid=225)                   execute_context_1(16)_generation_7(7)         0.00%       0.000us         0.00%       0.000us       0.000us      39.687ms         1.13%      39.687ms       1.369ms            29  
+(EngineCore pid=225) void vllm::moe::moe_align_block_size_kernel<int>(int...         0.00%       0.000us         0.00%       0.000us       0.000us      35.906ms         1.02%      35.906ms       6.587us          5451  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us      23.904ms         0.68%      23.904ms       4.385us          5451  
+(EngineCore pid=225) void vllm::moe::single_group_topk::detail::single_gr...         0.00%       0.000us         0.00%       0.000us       0.000us      23.601ms         0.67%      23.601ms       4.330us          5451  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us      18.159ms         0.52%      18.159ms       3.331us          5451  
+(EngineCore pid=225)                            _causal_conv1d_update_kernel         0.00%       0.000us         0.00%       0.000us       0.000us      15.904ms         0.45%      15.904ms       2.918us          5451  
+(EngineCore pid=225) triton_red_fused__to_copy_add_clamp_fused_add_rms_no...         0.00%       0.000us         0.00%       0.000us       0.000us      15.534ms         0.44%      15.534ms       4.096us          3792  
+(EngineCore pid=225) void vllm::moe::moe_sum_vec_kernel<c10::BFloat16, in...         0.00%       0.000us         0.00%       0.000us       0.000us      14.504ms         0.41%      14.504ms       2.661us          5451  
+(EngineCore pid=225) triton_red_fused__to_copy_add_clamp_mean_mul_pow_rec...         0.00%       0.000us         0.00%       0.000us       0.000us      12.050ms         0.34%      12.050ms       2.211us          5451  
+(EngineCore pid=225) triton_red_fused__to_copy_fused_add_rms_norm_moe_for...         0.00%       0.000us         0.00%       0.000us       0.000us      11.410ms         0.32%      11.410ms       3.009us          3792  
+(EngineCore pid=225) void vllm::moe::count_and_sort_expert_tokens_kernel<...         0.00%       0.000us         0.00%       0.000us       0.000us       7.984ms         0.23%       7.984ms       1.465us          5451  
+(EngineCore pid=225)                             triton_poi_fused_pow_relu_0         0.00%       0.000us         0.00%       0.000us       0.000us       6.742ms         0.19%       6.742ms       1.237us          5451  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us       6.512ms         0.19%       6.512ms       1.095us          5945  
+(EngineCore pid=225) triton_red_fused__to_copy_add_clamp_fused_add_rms_no...         0.00%       0.000us         0.00%       0.000us       0.000us       5.869ms         0.17%       5.869ms       4.127us          1422  
+(EngineCore pid=225) void vllm::reshape_and_cache_flash_kernel<__nv_bfloa...         0.00%       0.000us         0.00%       0.000us       0.000us       5.546ms         0.16%       5.546ms       3.900us          1422  
+(EngineCore pid=225)                                   _gumbel_sample_kernel         0.00%       0.000us         0.00%       0.000us       0.000us       4.284ms         0.12%       4.284ms      18.075us           237  
+(EngineCore pid=225)                                        Memset (Unknown)         0.00%       0.000us         0.00%       0.000us       0.000us       4.170ms         0.12%       4.170ms       0.765us          5451  
+(EngineCore pid=225)                                             aten::copy_         0.32%       9.174ms         0.84%      24.182ms       3.417us       4.131ms         0.12%       4.136ms       0.584us          7077  
+(EngineCore pid=225)          triton_red_fused__to_copy_fused_add_rms_norm_0         0.00%       0.000us         0.00%       0.000us       0.000us       3.638ms         0.10%       3.638ms       2.558us          1422  
+(EngineCore pid=225) void at::native::elementwise_kernel<128, 4, at::nati...         0.00%       0.000us         0.00%       0.000us       0.000us       3.323ms         0.09%       3.323ms       2.337us          1422  
+(EngineCore pid=225)              triton_red_fused_fused_add_rms_norm_view_1         0.00%       0.000us         0.00%       0.000us       0.000us       3.196ms         0.09%       3.196ms       2.248us          1422  
+(EngineCore pid=225)                          Memcpy DtoH (Device -> Pinned)         0.00%       0.000us         0.00%       0.000us       0.000us       3.099ms         0.09%       3.099ms       6.364us           487  
+(EngineCore pid=225)                                            aten::gather         0.24%       6.953ms         0.39%      11.091ms       9.359us       2.552ms         0.07%       2.552ms       2.154us          1185  
+(EngineCore pid=225)                         _C_cache_ops::swap_blocks_batch         0.00%      50.827us         0.00%      50.827us      10.165us       2.490ms         0.07%       2.490ms     498.056us             5  
+(EngineCore pid=225)                                             aten::index         0.27%       7.601ms         0.57%      16.315ms      16.413us       2.037ms         0.06%       2.091ms       2.103us           994  
+(EngineCore pid=225) void at::native::_scatter_gather_elementwise_kernel<...         0.00%       0.000us         0.00%       0.000us       0.000us       1.988ms         0.06%       1.988ms       2.097us           948  
+(EngineCore pid=225)                _combine_sampled_and_draft_tokens_kernel         0.00%       0.000us         0.00%       0.000us       0.000us       1.809ms         0.05%       1.809ms       7.635us           237  
+(EngineCore pid=225)                                      aten::floor_divide         0.10%       2.811ms         0.24%       6.947ms       7.298us       1.657ms         0.05%       1.657ms       1.740us           952  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us       1.657ms         0.05%       1.657ms       1.747us           948  
+(EngineCore pid=225) void at::native::unrolled_elementwise_kernel<at::nat...         0.00%       0.000us         0.00%       0.000us       0.000us       1.589ms         0.05%       1.589ms       1.562us          1017  
+(EngineCore pid=225)                          Memcpy DtoD (Device -> Device)         0.00%       0.000us         0.00%       0.000us       0.000us       1.528ms         0.04%       1.528ms       1.270us          1203  
+(EngineCore pid=225)                                            aten::clamp_         0.11%       3.275ms         0.20%       5.798ms       6.116us       1.372ms         0.04%       1.372ms       1.448us           948  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us       1.372ms         0.04%       1.372ms       1.448us           948  
+(EngineCore pid=225)                                               aten::sub         0.25%       7.236ms         0.38%      10.751ms       3.435us       1.356ms         0.04%       1.356ms       0.433us          3130  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us       1.345ms         0.04%       1.345ms       1.419us           948  
+(EngineCore pid=225)                        precopy_mamba_align_fused_kernel         0.00%       0.000us         0.00%       0.000us       0.000us       1.338ms         0.04%       1.338ms       5.644us           237  
+(EngineCore pid=225)                                            aten::arange         0.21%       5.891ms         0.77%      22.091ms       9.274us       1.280ms         0.04%       2.560ms       1.075us          2382  
+(EngineCore pid=225)                                               aten::add         0.13%       3.598ms         0.21%       5.935ms       6.240us       1.278ms         0.04%       1.278ms       1.343us           951  
+(EngineCore pid=225) void at::native::elementwise_kernel<128, 2, at::nati...         0.00%       0.000us         0.00%       0.000us       0.000us       1.276ms         0.04%       1.276ms       1.346us           948  
+(EngineCore pid=225) void (anonymous namespace)::elementwise_kernel_with_...         0.00%       0.000us         0.00%       0.000us       0.000us       1.275ms         0.04%       1.275ms       1.076us          1185  
+(EngineCore pid=225)                          postprocess_mamba_fused_kernel         0.00%       0.000us         0.00%       0.000us       0.000us       1.195ms         0.03%       1.195ms       5.043us           237  
+(EngineCore pid=225) triton_red_fused__to_copy_clamp_embedding_mul_recipr...         0.00%       0.000us         0.00%       0.000us       0.000us       1.080ms         0.03%       1.080ms       4.556us           237  
+(EngineCore pid=225)                             _gather_block_tables_kernel         0.00%       0.000us         0.00%       0.000us       0.000us       1.067ms         0.03%       1.067ms       4.504us           237  
+(EngineCore pid=225)                                             aten::fill_         0.17%       4.781ms         0.33%       9.331ms       2.048us     954.626us         0.03%     954.626us       0.209us          4557  
+(EngineCore pid=225)                                      vllm::mamba_mixer2         0.38%      10.855ms         0.50%      14.474ms     629.317us     927.773us         0.03%       1.522ms      66.161us            23  
+(EngineCore pid=225) void at::native::index_elementwise_kernel<128, 4, at...         0.00%       0.000us         0.00%       0.000us       0.000us     924.833us         0.03%     924.833us       3.268us           283  
+(EngineCore pid=225)                                     _post_update_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     883.008us         0.03%     883.008us       3.726us           237  
+(EngineCore pid=225)                                            aten::argmax         0.06%       1.813ms         0.09%       2.530ms      10.454us     874.469us         0.02%     874.469us       3.614us           242  
+(EngineCore pid=225) void at::native::reduce_kernel<512, 1, at::native::R...         0.00%       0.000us         0.00%       0.000us       0.000us     874.469us         0.02%     874.469us       3.690us           237  
+(EngineCore pid=225)      triton_red_fused_add_fused_add_rms_norm_mul_view_2         0.00%       0.000us         0.00%       0.000us       0.000us     809.734us         0.02%     809.734us       3.417us           237  
+(EngineCore pid=225) void marlin::Marlin<1125899906909960l, 5629499534871...         0.00%       0.000us         0.00%       0.000us       0.000us     771.650us         0.02%     771.650us      16.775us            46  
+(EngineCore pid=225)                                cudaEventRecordWithFlags         0.05%       1.340ms         0.05%       1.340ms       0.921us     751.778us         0.02%     751.778us       0.517us          1455  
+(EngineCore pid=225)     triton_red_fused__to_copy_fused_add_rms_norm_view_1         0.00%       0.000us         0.00%       0.000us       0.000us     737.231us         0.02%     737.231us       3.111us           237  
+(EngineCore pid=225)                    _get_num_sampled_and_rejected_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     685.924us         0.02%     685.924us       2.894us           237  
+(EngineCore pid=225)                           _compute_slot_mappings_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     682.557us         0.02%     682.557us       2.880us           237  
+(EngineCore pid=225)                     vllm::unified_attention_with_output         0.03%     719.307us         0.04%       1.036ms     172.599us     666.501us         0.02%     681.284us     113.547us             6  
+(EngineCore pid=225) void at::native::index_elementwise_kernel<128, 4, at...         0.00%       0.000us         0.00%       0.000us       0.000us     662.979us         0.02%     662.979us       2.797us           237  
+(EngineCore pid=225)                                   cudaStreamIsCapturing         0.02%     605.471us         0.02%     605.471us       0.226us     660.994us         0.02%     660.994us       0.246us          2682  
+(EngineCore pid=225) void at::native::_scatter_gather_elementwise_kernel<...         0.00%       0.000us         0.00%       0.000us       0.000us     564.483us         0.02%     564.483us       2.382us           237  
+(EngineCore pid=225)                     preprocess_mamba_align_fused_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     486.468us         0.01%     486.468us       2.053us           237  
+(EngineCore pid=225) void at::native::vectorized_gather_kernel<16, long>(...         0.00%       0.000us         0.00%       0.000us       0.000us     449.599us         0.01%     449.599us       1.897us           237  
+(EngineCore pid=225)                                        cuLaunchKernelEx         0.30%       8.476ms         0.30%       8.476ms       3.033us     433.798us         0.01%     433.798us       0.155us          2795  
+(EngineCore pid=225)                          Memcpy HtoD (Pinned -> Device)         0.00%       0.000us         0.00%       0.000us       0.000us     374.368us         0.01%     374.368us       0.744us           503  
+(EngineCore pid=225)                            _prepare_pos_seq_lens_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     350.652us         0.01%     350.652us       1.480us           237  
+(EngineCore pid=225)                            _scatter_num_accepted_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     297.696us         0.01%     297.696us       1.256us           237  
+(EngineCore pid=225)                                           memcpy32_post         0.00%       0.000us         0.00%       0.000us       0.000us     291.780us         0.01%     291.780us       1.236us           236  
+(EngineCore pid=225) void flashinfer::BatchPrefillWithPagedKVCacheKernel<...         0.00%       0.000us         0.00%       0.000us       0.000us     273.186us         0.01%     273.186us      45.531us             6  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us     269.762us         0.01%     269.762us       1.138us           237  
+(EngineCore pid=225) void cutlass::Kernel2<cutlass_80_wmma_tensorop_bf16_...         0.00%       0.000us         0.00%       0.000us       0.000us     197.120us         0.01%     197.120us      32.853us             6  
+(EngineCore pid=225) void cutlass::Kernel2<cutlass_80_tensorop_bf16_s1681...         0.00%       0.000us         0.00%       0.000us       0.000us     182.912us         0.01%     182.912us      30.485us             6  
+(EngineCore pid=225)                                  aten::_index_put_impl_         0.00%     116.738us         0.01%     356.299us      15.491us     146.337us         0.00%     170.687us       7.421us            23  
+(EngineCore pid=225) void at::native::index_elementwise_kernel<128, 4, at...         0.00%       0.000us         0.00%       0.000us       0.000us     146.337us         0.00%     146.337us       6.362us            23  
+(EngineCore pid=225) void cutlass::Kernel2<cutlass_80_simt_sgemm_64x64_8x...         0.00%       0.000us         0.00%       0.000us       0.000us     143.742us         0.00%     143.742us       6.250us            23  
+(EngineCore pid=225)                                  _chunk_scan_fwd_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     138.432us         0.00%     138.432us       6.019us            23  
+(EngineCore pid=225)                               _causal_conv1d_fwd_kernel         0.00%       0.000us         0.00%       0.000us       0.000us      99.584us         0.00%      99.584us       4.330us            23  
+(EngineCore pid=225)                                 _chunk_state_fwd_kernel         0.00%       0.000us         0.00%       0.000us       0.000us      61.375us         0.00%      61.375us       2.668us            23  
+(EngineCore pid=225)                                          aten::_unique2         0.00%      71.488us         0.01%     186.132us      46.533us      60.257us         0.00%      64.289us      16.072us             4  
+(EngineCore pid=225)                                             aten::where         0.01%     199.009us         0.03%     835.091us      16.702us      59.840us         0.00%     138.816us       2.776us            50  
+(EngineCore pid=225) void at::native::elementwise_kernel<128, 2, at::nati...         0.00%       0.000us         0.00%       0.000us       0.000us      57.536us         0.00%      57.536us       2.502us            23  
+(EngineCore pid=225)                               _state_passing_fwd_kernel         0.00%       0.000us         0.00%       0.000us       0.000us      52.703us         0.00%      52.703us       2.291us            23  
+(EngineCore pid=225) void at_cuda_detail::cub::detail::radix_sort::Device...         0.00%       0.000us         0.00%       0.000us       0.000us      52.128us         0.00%      52.128us      13.032us             4  
+(EngineCore pid=225)                                   _bmm_chunk_fwd_kernel         0.00%       0.000us         0.00%       0.000us       0.000us      47.457us         0.00%      47.457us       2.063us            23  
+(EngineCore pid=225) void cublasLt::splitKreduce_kernel<32, 16, int, floa...         0.00%       0.000us         0.00%       0.000us       0.000us      42.273us         0.00%      42.273us       1.838us            23  
+(EngineCore pid=225)                                _chunk_cumsum_fwd_kernel         0.00%       0.000us         0.00%       0.000us       0.000us      40.030us         0.00%      40.030us       1.740us            23  
+(EngineCore pid=225) void flashinfer::PersistentVariableLengthMergeStates...         0.00%       0.000us         0.00%       0.000us       0.000us      28.834us         0.00%      28.834us       4.806us             6  
+(EngineCore pid=225) void at::native::unrolled_elementwise_kernel<at::nat...         0.00%       0.000us         0.00%       0.000us       0.000us      23.456us         0.00%      23.456us       0.977us            24  
+(EngineCore pid=225) -------------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+(EngineCore pid=225) Self CPU time total: 2.866s
+(EngineCore pid=225) Self CUDA time total: 3.514s
+(EngineCore pid=225) 
+(EngineCore pid=225) INFO 10-08 13:42:55 [wrapper.py:80] Profiler stopped successfully.
+(APIServer pid=1) INFO 10-08 13:42:55 [api_router.py:33] Profiler stopped.
+(APIServer pid=1) INFO:     172.17.0.1:60766 - "POST /stop_profile HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:42324 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:42340 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:42344 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:42356 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:42368 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:42378 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:42386 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:42388 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:42:58 [loggers.py:310] Engine 000: Avg prompt throughput: 2620.6 tokens/s, Avg generation throughput: 14.0 tokens/s, Running: 7 reqs, Waiting: 0 reqs, GPU KV cache usage: 47.0%, Prefix cache hit rate: 42.6%, External prefix cache hit rate: 0.0%
+(APIServer pid=1) INFO 10-08 13:42:58 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_lookup_sync_delay_seconds_count=7, vllm:kv_offload_lookup_sync_delay_seconds_sum=4.693749360740185e-05, vllm:kv_offload_cpu_allocation_size_count=35, vllm:kv_offload_cpu_allocation_size_sum=35, vllm:kv_offload_store_bytes=371466240, vllm:kv_offload_store_time=0.015434976011514664, vllm:kv_offload_store_size_count=30, vllm:kv_offload_store_size_sum=371466240
+(APIServer pid=1) INFO:     172.17.0.1:46386 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:46402 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:46412 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:46416 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:46424 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:46440 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:46454 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:46462 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:43:08 [loggers.py:310] Engine 000: Avg prompt throughput: 4508.4 tokens/s, Avg generation throughput: 350.7 tokens/s, Running: 8 reqs, Waiting: 0 reqs, GPU KV cache usage: 53.7%, Prefix cache hit rate: 56.7%, External prefix cache hit rate: 0.0%
+(APIServer pid=1) INFO 10-08 13:43:08 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=9, vllm:kv_offload_lookup_sync_delay_seconds_sum=5.913316272199154e-05, vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=619110400, vllm:kv_offload_store_time=0.025654175996780396, vllm:kv_offload_store_size_count=50, vllm:kv_offload_store_size_sum=619110400, vllm:kv_offload_cpu_allocation_size_count=45, vllm:kv_offload_cpu_allocation_size_sum=45
+(APIServer pid=1) INFO:     172.17.0.1:46474 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:46480 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:46484 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37960 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37966 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37978 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37988 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:38000 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:38006 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:38010 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:38016 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:38024 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:43:18 [loggers.py:310] Engine 000: Avg prompt throughput: 4754.8 tokens/s, Avg generation throughput: 258.8 tokens/s, Running: 7 reqs, Waiting: 0 reqs, GPU KV cache usage: 58.4%, Prefix cache hit rate: 66.5%, External prefix cache hit rate: 0.0%
+(APIServer pid=1) INFO 10-08 13:43:18 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_lookup_sync_delay_seconds_count=11, vllm:kv_offload_lookup_sync_delay_seconds_sum=7.26659782230854e-05, vllm:kv_offload_cpu_allocation_size_count=55, vllm:kv_offload_cpu_allocation_size_sum=55, vllm:kv_offload_store_bytes=619110400, vllm:kv_offload_store_time=0.02585827189683914, vllm:kv_offload_store_size_count=50, vllm:kv_offload_store_size_sum=619110400
+(APIServer pid=1) INFO:     172.17.0.1:38032 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:38048 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:38060 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:47416 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:47428 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:47442 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:47458 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:47466 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:47482 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:47486 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:47492 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:43:28 [loggers.py:310] Engine 000: Avg prompt throughput: 5473.2 tokens/s, Avg generation throughput: 208.4 tokens/s, Running: 7 reqs, Waiting: 1 reqs, Deferred: 1 reqs, GPU KV cache usage: 72.5%, Prefix cache hit rate: 52.8%, External prefix cache hit rate: 42.1%
+(APIServer pid=1) INFO 10-08 13:43:28 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=12, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.00021648313850164413, vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=681021440, vllm:kv_offload_store_time=0.028369055956602097, vllm:kv_offload_store_size_count=55, vllm:kv_offload_store_size_sum=681021440, vllm:kv_offload_cpu_allocation_size_count=55, vllm:kv_offload_cpu_allocation_size_sum=55, vllm:kv_offload_load_bytes=1098235904, vllm:kv_offload_load_time=0.02131439995765686, vllm:kv_offload_load_size_count=8, vllm:kv_offload_load_size_sum=1098235904
+(APIServer pid=1) INFO:     172.17.0.1:47504 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57754 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57768 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57774 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57776 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57778 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57780 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57786 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57792 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:43:38 [loggers.py:310] Engine 000: Avg prompt throughput: 5195.0 tokens/s, Avg generation throughput: 209.4 tokens/s, Running: 8 reqs, Waiting: 0 reqs, GPU KV cache usage: 77.2%, Prefix cache hit rate: 40.7%, External prefix cache hit rate: 59.2%
+(APIServer pid=1) INFO 10-08 13:43:38 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=619110400, vllm:kv_offload_store_time=0.025676640033721925, vllm:kv_offload_store_size_count=50, vllm:kv_offload_store_size_sum=619110400, vllm:kv_offload_cpu_allocation_size_count=45, vllm:kv_offload_cpu_allocation_size_sum=45, vllm:kv_offload_lookup_sync_delay_seconds_count=9, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0001982946414500475, vllm:kv_offload_load_bytes=1352577024, vllm:kv_offload_load_time=0.02636569595336914, vllm:kv_offload_load_size_count=9, vllm:kv_offload_load_size_sum=1352577024
+(APIServer pid=1) INFO:     172.17.0.1:43028 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:43036 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:43052 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:43068 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:43082 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:43088 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:43092 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:43108 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:43:48 [loggers.py:310] Engine 000: Avg prompt throughput: 4863.4 tokens/s, Avg generation throughput: 222.2 tokens/s, Running: 8 reqs, Waiting: 0 reqs, GPU KV cache usage: 80.5%, Prefix cache hit rate: 33.1%, External prefix cache hit rate: 67.0%
+(APIServer pid=1) INFO 10-08 13:43:48 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_allocation_size_count=45, vllm:kv_offload_cpu_allocation_size_sum=45, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=557199360, vllm:kv_offload_store_time=0.023854847997426994, vllm:kv_offload_store_size_count=45, vllm:kv_offload_store_size_sum=557199360, vllm:kv_offload_lookup_sync_delay_seconds_count=8, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0001941160298883915, vllm:kv_offload_load_bytes=1316323328, vllm:kv_offload_load_time=0.026829952478408817, vllm:kv_offload_load_size_count=8, vllm:kv_offload_load_size_sum=1316323328
+(APIServer pid=1) INFO:     172.17.0.1:44404 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:44406 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:44422 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:44426 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:44438 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:44442 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:44456 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:44460 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:43:58 [loggers.py:310] Engine 000: Avg prompt throughput: 4479.9 tokens/s, Avg generation throughput: 220.8 tokens/s, Running: 8 reqs, Waiting: 0 reqs, GPU KV cache usage: 85.9%, Prefix cache hit rate: 27.4%, External prefix cache hit rate: 72.0%
+(APIServer pid=1) INFO 10-08 13:43:58 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_lookup_sync_delay_seconds_count=8, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.00019477703608572483, vllm:kv_offload_load_bytes=1418952704, vllm:kv_offload_load_time=0.027674272298812863, vllm:kv_offload_load_size_count=8, vllm:kv_offload_load_size_sum=1418952704, vllm:kv_offload_cpu_allocation_size_count=40, vllm:kv_offload_cpu_allocation_size_sum=40, vllm:kv_offload_store_bytes=495288320, vllm:kv_offload_store_time=0.020503551930189132, vllm:kv_offload_store_size_count=40, vllm:kv_offload_store_size_sum=495288320
+(APIServer pid=1) INFO:     172.17.0.1:43738 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:43742 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:43758 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:43760 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:43768 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:43780 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:43790 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:43792 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:44:08 [loggers.py:310] Engine 000: Avg prompt throughput: 4620.5 tokens/s, Avg generation throughput: 195.2 tokens/s, Running: 8 reqs, Waiting: 0 reqs, GPU KV cache usage: 91.3%, Prefix cache hit rate: 23.1%, External prefix cache hit rate: 75.4%
+(APIServer pid=1) INFO 10-08 13:44:08 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_lookup_sync_delay_seconds_count=8, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0001966310665011406, vllm:kv_offload_load_bytes=1521582080, vllm:kv_offload_load_time=0.029591008186340334, vllm:kv_offload_load_size_count=8, vllm:kv_offload_load_size_sum=1521582080, vllm:kv_offload_cpu_allocation_size_count=40, vllm:kv_offload_cpu_allocation_size_sum=40, vllm:kv_offload_store_bytes=495288320, vllm:kv_offload_store_time=0.02052643221616745, vllm:kv_offload_store_size_count=40, vllm:kv_offload_store_size_sum=495288320
+(APIServer pid=1) INFO:     172.17.0.1:57480 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57486 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57496 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57504 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57520 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57526 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57532 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57548 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:44:18 [loggers.py:310] Engine 000: Avg prompt throughput: 4166.1 tokens/s, Avg generation throughput: 182.0 tokens/s, Running: 8 reqs, Waiting: 0 reqs, GPU KV cache usage: 98.7%, Prefix cache hit rate: 19.8%, External prefix cache hit rate: 78.0%
+(APIServer pid=1) INFO 10-08 13:44:18 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_lookup_sync_delay_seconds_count=10, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0002467564772814512, vllm:kv_offload_load_bytes=1624211456, vllm:kv_offload_load_time=0.03176764893531799, vllm:kv_offload_load_size_count=8, vllm:kv_offload_load_size_sum=1624211456, vllm:kv_offload_cpu_allocation_size_count=35, vllm:kv_offload_cpu_allocation_size_sum=35, vllm:kv_offload_store_bytes=433377280, vllm:kv_offload_store_time=0.018095263957977295, vllm:kv_offload_store_size_count=35, vllm:kv_offload_store_size_sum=433377280
+(APIServer pid=1) INFO:     172.17.0.1:56672 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:56676 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:56692 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:56708 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:56714 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:56716 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:56726 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:56734 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:44:28 [loggers.py:310] Engine 000: Avg prompt throughput: 4271.9 tokens/s, Avg generation throughput: 203.4 tokens/s, Running: 7 reqs, Waiting: 1 reqs, GPU KV cache usage: 94.0%, Prefix cache hit rate: 17.4%, External prefix cache hit rate: 79.7%
+(APIServer pid=1) INFO 10-08 13:44:28 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_allocation_size_count=40, vllm:kv_offload_cpu_allocation_size_sum=40, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=433377280, vllm:kv_offload_store_time=0.01802124798297882, vllm:kv_offload_store_size_count=35, vllm:kv_offload_store_size_sum=433377280, vllm:kv_offload_lookup_sync_delay_seconds_count=15, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0003639594651758671, vllm:kv_offload_load_bytes=1510985728, vllm:kv_offload_load_time=0.029518496036529545, vllm:kv_offload_load_size_count=7, vllm:kv_offload_load_size_sum=1510985728
+(APIServer pid=1) INFO:     172.17.0.1:59324 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:59340 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:59354 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:59370 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:59380 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:59390 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:59398 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:44:38 [loggers.py:310] Engine 000: Avg prompt throughput: 3747.1 tokens/s, Avg generation throughput: 178.2 tokens/s, Running: 7 reqs, Waiting: 1 reqs, GPU KV cache usage: 98.0%, Prefix cache hit rate: 15.4%, External prefix cache hit rate: 81.1%
+(APIServer pid=1) INFO 10-08 13:44:38 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=256, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.004225063836202025, vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=371466240, vllm:kv_offload_store_time=0.015549024105072022, vllm:kv_offload_store_size_count=30, vllm:kv_offload_store_size_sum=371466240, vllm:kv_offload_load_bytes=1587957760, vllm:kv_offload_load_time=0.0315482873916626, vllm:kv_offload_load_size_count=7, vllm:kv_offload_load_size_sum=1587957760, vllm:kv_offload_cpu_allocation_size_count=30, vllm:kv_offload_cpu_allocation_size_sum=30
+(APIServer pid=1) INFO:     172.17.0.1:38604 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:38608 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:38614 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:38616 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:38632 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:38636 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:38642 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:44:48 [loggers.py:310] Engine 000: Avg prompt throughput: 4465.6 tokens/s, Avg generation throughput: 178.5 tokens/s, Running: 6 reqs, Waiting: 2 reqs, Deferred: 1 reqs, GPU KV cache usage: 98.0%, Prefix cache hit rate: 13.8%, External prefix cache hit rate: 82.3%
+(APIServer pid=1) INFO 10-08 13:44:48 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=255, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.003947122022509575, vllm:kv_offload_store_bytes=433377280, vllm:kv_offload_store_time=0.018307712107896806, vllm:kv_offload_store_size_count=35, vllm:kv_offload_store_size_sum=433377280, vllm:kv_offload_cpu_cache_usage_perc=0.028400597907324365, vllm:kv_offload_cpu_allocation_size_count=30, vllm:kv_offload_cpu_allocation_size_sum=30, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.028400597907324365, vllm:kv_offload_load_bytes=1423417344, vllm:kv_offload_load_time=0.028492992401123046, vllm:kv_offload_load_size_count=6, vllm:kv_offload_load_size_sum=1423417344
+(APIServer pid=1) INFO:     172.17.0.1:41098 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:41104 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:41114 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:41124 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:41136 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:41146 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:41154 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:44:58 [loggers.py:310] Engine 000: Avg prompt throughput: 3905.6 tokens/s, Avg generation throughput: 178.3 tokens/s, Running: 5 reqs, Waiting: 2 reqs, GPU KV cache usage: 73.8%, Prefix cache hit rate: 12.7%, External prefix cache hit rate: 83.0%
+(APIServer pid=1) INFO 10-08 13:44:58 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=254, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.004049881594255567, vllm:kv_offload_load_bytes=1474732032, vllm:kv_offload_load_time=0.02909779214859009, vllm:kv_offload_load_size_count=6, vllm:kv_offload_load_size_sum=1474732032, vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_allocation_size_count=30, vllm:kv_offload_cpu_allocation_size_sum=30, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=371466240, vllm:kv_offload_store_time=0.015501952052116394, vllm:kv_offload_store_size_count=30, vllm:kv_offload_store_size_sum=371466240
+(APIServer pid=1) INFO:     172.17.0.1:57330 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57332 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57348 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57358 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57368 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57382 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:45:08 [loggers.py:310] Engine 000: Avg prompt throughput: 3992.4 tokens/s, Avg generation throughput: 153.8 tokens/s, Running: 4 reqs, Waiting: 3 reqs, Deferred: 2 reqs, GPU KV cache usage: 86.6%, Prefix cache hit rate: 11.5%, External prefix cache hit rate: 83.9%
+(APIServer pid=1) INFO 10-08 13:45:08 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=265, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.004204918863251805, vllm:kv_offload_cpu_cache_usage_perc=0.03139013452914798, vllm:kv_offload_cpu_allocation_size_count=30, vllm:kv_offload_cpu_allocation_size_sum=30, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.03139013452914798, vllm:kv_offload_load_bytes=1526046720, vllm:kv_offload_load_time=0.029762335777282715, vllm:kv_offload_load_size_count=6, vllm:kv_offload_load_size_sum=1526046720, vllm:kv_offload_store_bytes=371466240, vllm:kv_offload_store_time=0.015404351979494095, vllm:kv_offload_store_size_count=30, vllm:kv_offload_store_size_sum=371466240
+(APIServer pid=1) INFO 10-08 13:45:12 [api_router.py:23] Starting profiler...
+(EngineCore pid=225) /usr/local/lib/python3.12/dist-packages/torch/profiler/profiler.py:300: UserWarning: Warning: Profiler clears events at the end of each cycle. Only events from the current cycle will be reported. To keep events across cycles, set acc_events=True.
+(EngineCore pid=225)   _warn_once(
+USDT:2026-10-08 13:45:12 225:225 SyncActivityProfilerHandler.cpp:52] profiler_start
+(APIServer pid=1) INFO 10-08 13:45:12 [api_router.py:25] Profiler started.
+(APIServer pid=1) INFO:     172.17.0.1:41664 - "POST /start_profile HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:41680 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:41686 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:41698 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:45:15 [api_router.py:31] Stopping profiler...
+USDT:2026-10-08 13:45:16 225:225 SyncActivityProfilerHandler.cpp:59] profiler_stop
+(APIServer pid=1) INFO 10-08 13:45:18 [loggers.py:310] Engine 000: Avg prompt throughput: 2032.0 tokens/s, Avg generation throughput: 147.1 tokens/s, Running: 5 reqs, Waiting: 3 reqs, Deferred: 1 reqs, GPU KV cache usage: 94.6%, Prefix cache hit rate: 11.0%, External prefix cache hit rate: 84.2%
+(APIServer pid=1) INFO 10-08 13:45:18 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_cpu_cache_usage_perc=0.03886397608370702, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.031390134529147976, vllm:kv_offload_lookup_sync_delay_seconds_count=248, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.003936120308935642, vllm:kv_offload_load_bytes=801509376, vllm:kv_offload_load_time=0.015927616119384765, vllm:kv_offload_load_size_count=3, vllm:kv_offload_load_size_sum=801509376, vllm:kv_offload_cpu_allocation_size_count=20, vllm:kv_offload_cpu_allocation_size_sum=20, vllm:kv_offload_store_bytes=185733120, vllm:kv_offload_store_time=0.007708384037017823, vllm:kv_offload_store_size_count=15, vllm:kv_offload_store_size_sum=185733120
+(APIServer pid=1) INFO 10-08 13:45:28 [loggers.py:310] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 5 reqs, Waiting: 3 reqs, Deferred: 1 reqs, GPU KV cache usage: 94.6%, Prefix cache hit rate: 11.0%, External prefix cache hit rate: 84.2%
+(EngineCore pid=225) -------------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+(EngineCore pid=225)                                                    Name    Self CPU %      Self CPU   CPU total %     CPU total  CPU time avg     Self CUDA   Self CUDA %    CUDA total  CUDA time avg    # of Calls  
+(EngineCore pid=225) -------------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+(EngineCore pid=225)                    execute_context_0(0)_generation_6(6)         0.00%       0.000us         0.00%       0.000us       0.000us        5.772s       133.61%        5.772s      12.912ms           447  
+(EngineCore pid=225)                     vllm::unified_attention_with_output         0.08%       2.955ms         0.11%       4.255ms     177.302us     967.412ms        22.39%     967.904ms      40.329ms            24  
+(EngineCore pid=225) void flashinfer::BatchPrefillWithPagedKVCacheKernel<...         0.00%       0.000us         0.00%       0.000us       0.000us     963.131ms        22.29%     963.131ms      40.130ms            24  
+(EngineCore pid=225)                 execute_context_2(4093)_generation_3(3)         0.00%       0.000us         0.00%       0.000us       0.000us     707.739ms        16.38%     707.739ms     117.956ms             6  
+(EngineCore pid=225)                 execute_context_1(4092)_generation_4(4)         0.00%       0.000us         0.00%       0.000us       0.000us     672.198ms        15.56%     672.198ms     672.198ms             1  
+(EngineCore pid=225) void marlin_moe_wna16::Marlin<1125899906909960l, 562...         0.00%       0.000us         0.00%       0.000us       0.000us     529.645ms        12.26%     529.645ms     148.568us          3565  
+(EngineCore pid=225)                           _moe_C::moe_wna16_marlin_gemm         0.08%       3.237ms         0.17%       6.801ms      36.960us     519.401ms        12.02%     519.401ms       2.823ms           184  
+(EngineCore pid=225) void marlin_moe_wna16::Marlin<1125899906909960l, 562...         0.00%       0.000us         0.00%       0.000us       0.000us     504.617ms        11.68%     504.617ms     141.548us          3565  
+(EngineCore pid=225)                 execute_context_1(2739)_generation_4(4)         0.00%       0.000us         0.00%       0.000us       0.000us     487.376ms        11.28%     487.376ms     487.376ms             1  
+(EngineCore pid=225) kernel_mha(unsigned int, float, float const*, Vec<__...         0.00%       0.000us         0.00%       0.000us       0.000us     296.720ms         6.87%     296.720ms     312.996us           948  
+(EngineCore pid=225) void marlin_moe_wna16::Marlin<1125899906909960l, 562...         0.00%       0.000us         0.00%       0.000us       0.000us     265.720ms         6.15%     265.720ms       3.851ms            69  
+(EngineCore pid=225) void marlin_moe_wna16::Marlin<1125899906909960l, 562...         0.00%       0.000us         0.00%       0.000us       0.000us     239.214ms         5.54%     239.214ms       3.467ms            69  
+(EngineCore pid=225)                                     _lora_shrink_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     200.006ms         4.63%     200.006ms      15.628us         12798  
+(EngineCore pid=225)                                         _C::marlin_gemm         0.20%       8.002ms         0.39%      15.522ms      45.386us     168.296ms         3.90%     168.296ms     492.095us           342  
+(EngineCore pid=225) void marlin::Marlin<1125899906909960l, 5629499534871...         0.00%       0.000us         0.00%       0.000us       0.000us     151.756ms         3.51%     151.756ms      20.955us          7242  
+(EngineCore pid=225) nvjet_sm120_qqtst_mma_64x32x64_16_32x16x64_tmaAB_bz_...         0.00%       0.000us         0.00%       0.000us       0.000us     148.350ms         3.43%     148.350ms      41.883us          3542  
+(EngineCore pid=225)                   execute_context_1(84)_generation_3(3)         0.00%       0.000us         0.00%       0.000us       0.000us     128.964ms         2.99%     128.964ms      64.482ms             2  
+(EngineCore pid=225) void marlin::Marlin<1125899906909960l, 5629499534871...         0.00%       0.000us         0.00%       0.000us       0.000us     123.868ms         2.87%     123.868ms     538.557us           230  
+(EngineCore pid=225)                                     _lora_expand_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     119.228ms         2.76%     119.228ms       9.316us         12798  
+(EngineCore pid=225) void gemmSN_TN_kernel<float, 128, 16, 2, 4, 8, 9, fa...         0.00%       0.000us         0.00%       0.000us       0.000us      89.247ms         2.07%      89.247ms      25.697us          3473  
+(EngineCore pid=225)                    execute_context_0(0)_generation_4(4)         0.00%       0.000us         0.00%       0.000us       0.000us      87.706ms         2.03%      87.706ms       9.745ms             9  
+(EngineCore pid=225)                           _selective_scan_update_kernel         0.00%       0.000us         0.00%       0.000us       0.000us      76.963ms         1.78%      76.963ms      21.179us          3634  
+(EngineCore pid=225) sm89_xmma_gemm_e4m3bf16_e4m3f32_f32_tn_n_tilesize32x...         0.00%       0.000us         0.00%       0.000us       0.000us      73.476ms         1.70%      73.476ms      20.610us          3565  
+(EngineCore pid=225)                    execute_context_0(0)_generation_5(5)         0.00%       0.000us         0.00%       0.000us       0.000us      73.266ms         1.70%      73.266ms      12.211ms             6  
+(EngineCore pid=225)                                           vllm::bmm_fp8         0.81%      31.803ms         0.88%      34.508ms     187.543us      71.827ms         1.66%      71.827ms     390.361us           184  
+(EngineCore pid=225) void cutlass::Kernel2<cutlass_80_wmma_tensorop_bf16_...         0.00%       0.000us         0.00%       0.000us       0.000us      69.570ms         1.61%      69.570ms      37.646us          1848  
+(EngineCore pid=225) nvjet_sm120_qqtst_mma_128x128x64_6_64x64x64_tmaAB_bz...         0.00%       0.000us         0.00%       0.000us       0.000us      64.885ms         1.50%      64.885ms     564.216us           115  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us      56.842ms         1.32%      56.842ms       4.410us         12890  
+(EngineCore pid=225)                                      vllm::mamba_mixer2         1.36%      53.716ms         1.79%      70.294ms     764.068us      44.755ms         1.04%      47.986ms     521.583us            92  
+(EngineCore pid=225)                                                aten::mm         0.05%       2.096ms         0.07%       2.944ms      21.029us      44.155ms         1.02%      44.155ms     315.390us           140  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us      30.475ms         0.71%      30.475ms       8.386us          3634  
+(EngineCore pid=225) void cutlass::Kernel2<cutlass_80_tensorop_bf16_s1681...         0.00%       0.000us         0.00%       0.000us       0.000us      29.937ms         0.69%      29.937ms     831.580us            36  
+(EngineCore pid=225)                                       vllm::lora_expand         0.39%      15.315ms         0.43%      16.767ms      51.749us      27.499ms         0.64%      27.499ms      84.873us           324  
+(EngineCore pid=225) void vllm::moe::moe_align_block_size_kernel<int>(int...         0.00%       0.000us         0.00%       0.000us       0.000us      24.163ms         0.56%      24.163ms       6.649us          3634  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us      22.004ms         0.51%      22.004ms       6.055us          3634  
+(EngineCore pid=225) void vllm::moe::moe_sum_vec_kernel<c10::BFloat16, in...         0.00%       0.000us         0.00%       0.000us       0.000us      19.623ms         0.45%      19.623ms       5.400us          3634  
+(EngineCore pid=225)                         _C_cache_ops::swap_blocks_batch         0.01%     240.504us         0.01%     240.504us      30.063us      18.372ms         0.43%      18.372ms       2.296ms             8  
+(EngineCore pid=225) triton_red_fused__to_copy_add_clamp_fused_add_rms_no...         0.00%       0.000us         0.00%       0.000us       0.000us      16.248ms         0.38%      16.248ms       6.427us          2528  
+(EngineCore pid=225)                          Memcpy HtoD (Pinned -> Device)         0.00%       0.000us         0.00%       0.000us       0.000us      16.194ms         0.37%      16.194ms      37.399us           433  
+(EngineCore pid=225) void vllm::moe::single_group_topk::detail::single_gr...         0.00%       0.000us         0.00%       0.000us       0.000us      15.636ms         0.36%      15.636ms       4.303us          3634  
+(EngineCore pid=225)                                  _chunk_scan_fwd_kernel         0.00%       0.000us         0.00%       0.000us       0.000us      15.035ms         0.35%      15.035ms     163.427us            92  
+(EngineCore pid=225)                                               aten::pow         0.01%     516.961us         0.02%     834.525us       9.071us      14.626ms         0.34%      14.626ms     158.973us            92  
+(EngineCore pid=225) triton_red_fused__to_copy_fused_add_rms_norm_moe_for...         0.00%       0.000us         0.00%       0.000us       0.000us      14.047ms         0.33%      14.047ms       5.557us          2528  
+(EngineCore pid=225) triton_red_fused__to_copy_add_clamp_mean_mul_pow_rec...         0.00%       0.000us         0.00%       0.000us       0.000us      13.096ms         0.30%      13.096ms       3.604us          3634  
+(EngineCore pid=225)                                        aten::clamp_min_         0.01%     450.689us         0.02%     738.722us       8.030us      10.405ms         0.24%      10.405ms     113.098us            92  
+(EngineCore pid=225)                               _state_passing_fwd_kernel         0.00%       0.000us         0.00%       0.000us       0.000us      10.307ms         0.24%      10.307ms     112.037us            92  
+(EngineCore pid=225)                            _causal_conv1d_update_kernel         0.00%       0.000us         0.00%       0.000us       0.000us      10.092ms         0.23%      10.092ms       2.777us          3634  
+(EngineCore pid=225)                                         _moe_C::moe_sum         0.01%     229.627us         0.01%     482.373us       5.243us       9.910ms         0.23%       9.910ms     107.713us            92  
+(EngineCore pid=225)                                 _chunk_state_fwd_kernel         0.00%       0.000us         0.00%       0.000us       0.000us       8.860ms         0.21%       8.860ms      96.303us            92  
+(EngineCore pid=225)                                       vllm::lora_shrink         0.54%      21.430ms         0.65%      25.645ms      79.151us       8.561ms         0.20%       9.011ms      27.810us           324  
+(EngineCore pid=225)                             triton_poi_fused_pow_relu_0         0.00%       0.000us         0.00%       0.000us       0.000us       7.173ms         0.17%       7.173ms       1.974us          3634  
+(EngineCore pid=225) void cutlass::Kernel2<cutlass_80_simt_sgemm_128x256_...         0.00%       0.000us         0.00%       0.000us       0.000us       6.812ms         0.16%       6.812ms     148.088us            46  
+(EngineCore pid=225)                               _causal_conv1d_fwd_kernel         0.00%       0.000us         0.00%       0.000us       0.000us       6.438ms         0.15%       6.438ms      69.983us            92  
+(EngineCore pid=225) triton_red_fused__to_copy_fused_add_rms_norm_moe_for...         0.02%     684.779us         0.02%     908.958us      14.202us       6.361ms         0.15%       6.361ms      99.389us            64  
+(EngineCore pid=225) nvjet_sm120_qqtst_mma_128x64x64_8_64x32x64_tmaAB_bz_...         0.00%       0.000us         0.00%       0.000us       0.000us       6.323ms         0.15%       6.323ms     137.449us            46  
+(EngineCore pid=225) triton_red_fused__to_copy_add_clamp_fused_add_rms_no...         0.00%       0.000us         0.00%       0.000us       0.000us       6.134ms         0.14%       6.134ms       6.470us           948  
+(EngineCore pid=225) triton_red_fused__to_copy_add_clamp_fused_add_rms_no...         0.02%     840.553us         0.03%       1.020ms      15.939us       6.108ms         0.14%       6.108ms      95.431us            64  
+(EngineCore pid=225) void vllm::moe::count_and_sort_expert_tokens_kernel<...         0.00%       0.000us         0.00%       0.000us       0.000us       5.416ms         0.13%       5.416ms       1.490us          3634  
+(EngineCore pid=225) triton_red_fused__to_copy_add_clamp_mean_mul_pow_rec...         0.02%     906.858us         0.03%       1.187ms      12.903us       5.194ms         0.12%       5.194ms      56.454us            92  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us       4.342ms         0.10%       4.342ms       1.081us          4018  
+(EngineCore pid=225) void cutlass::Kernel2<cutlass_80_tensorop_bf16_s1681...         0.00%       0.000us         0.00%       0.000us       0.000us       4.099ms         0.09%       4.099ms     683.186us             6  
+(EngineCore pid=225)          triton_red_fused__to_copy_fused_add_rms_norm_0         0.00%       0.000us         0.00%       0.000us       0.000us       4.026ms         0.09%       4.026ms       4.247us           948  
+(EngineCore pid=225) void vllm::reshape_and_cache_flash_kernel<__nv_bfloa...         0.00%       0.000us         0.00%       0.000us       0.000us       3.939ms         0.09%       3.939ms       4.155us           948  
+(EngineCore pid=225)                                             aten::copy_         0.20%       7.902ms        32.35%        1.274s     238.478us       3.537ms         0.08%       3.566ms       0.668us          5342  
+(EngineCore pid=225)              triton_red_fused_fused_add_rms_norm_view_1         0.00%       0.000us         0.00%       0.000us       0.000us       3.177ms         0.07%       3.177ms       3.352us           948  
+(EngineCore pid=225)                          Memcpy DtoH (Device -> Pinned)         0.00%       0.000us         0.00%       0.000us       0.000us       2.957ms         0.07%       2.957ms       8.570us           345  
+(EngineCore pid=225)                                             aten::index         0.16%       6.273ms         0.37%      14.721ms      18.040us       2.791ms         0.06%       3.121ms       3.825us           816  
+(EngineCore pid=225)                                        Memset (Unknown)         0.00%       0.000us         0.00%       0.000us       0.000us       2.786ms         0.06%       2.786ms       0.787us          3542  
+(EngineCore pid=225) void cutlass::Kernel2<cutlass_80_simt_sgemm_128x128_...         0.00%       0.000us         0.00%       0.000us       0.000us       2.733ms         0.06%       2.733ms     118.840us            23  
+(EngineCore pid=225)                             triton_poi_fused_pow_relu_0         0.02%     694.935us         0.03%       1.025ms      11.141us       2.617ms         0.06%       2.617ms      28.441us            92  
+(EngineCore pid=225)                                   _bmm_chunk_fwd_kernel         0.00%       0.000us         0.00%       0.000us       0.000us       2.456ms         0.06%       2.456ms      26.700us            92  
+(EngineCore pid=225) triton_red_fused__to_copy_add_clamp_fused_add_rms_no...         0.01%     316.161us         0.01%     391.697us      16.321us       2.301ms         0.05%       2.301ms      95.883us            24  
+(EngineCore pid=225) void at::native::elementwise_kernel<128, 4, at::nati...         0.00%       0.000us         0.00%       0.000us       0.000us       2.253ms         0.05%       2.253ms       2.377us           948  
+(APIServer pid=1) INFO 10-08 13:45:29 [api_router.py:33] Profiler stopped.
+(APIServer pid=1) INFO:     172.17.0.1:41710 - "POST /stop_profile HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:59472 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:59486 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:59500 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:59512 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:59526 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:45:38 [loggers.py:310] Engine 000: Avg prompt throughput: 3415.7 tokens/s, Avg generation throughput: 152.5 tokens/s, Running: 5 reqs, Waiting: 3 reqs, Deferred: 1 reqs, GPU KV cache usage: 94.0%, Prefix cache hit rate: 10.3%, External prefix cache hit rate: 84.8%
+(APIServer pid=1) INFO 10-08 13:45:38 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=258, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.004136271309107542, vllm:kv_offload_cpu_cache_usage_perc=0.03288490284005979, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.03288490284005979, vllm:kv_offload_load_bytes=1335848960, vllm:kv_offload_load_time=0.02645376014709473, vllm:kv_offload_load_size_count=5, vllm:kv_offload_load_size_sum=1335848960, vllm:kv_offload_store_bytes=309555200, vllm:kv_offload_store_time=0.01286492794752121, vllm:kv_offload_store_size_count=25, vllm:kv_offload_store_size_sum=309555200, vllm:kv_offload_cpu_allocation_size_count=20, vllm:kv_offload_cpu_allocation_size_sum=20
+(APIServer pid=1) INFO:     172.17.0.1:59534 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:39666 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:39686 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:39672 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:45:48 [loggers.py:310] Engine 000: Avg prompt throughput: 4186.9 tokens/s, Avg generation throughput: 124.6 tokens/s, Running: 6 reqs, Waiting: 2 reqs, GPU KV cache usage: 96.0%, Prefix cache hit rate: 9.7%, External prefix cache hit rate: 85.1%
+(APIServer pid=1) INFO 10-08 13:45:48 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=209, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0033113628160208464, vllm:kv_offload_load_bytes=1399992320, vllm:kv_offload_load_time=0.027752031326293947, vllm:kv_offload_load_size_count=5, vllm:kv_offload_load_size_sum=1399992320, vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_allocation_size_count=30, vllm:kv_offload_cpu_allocation_size_sum=30, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=371466240, vllm:kv_offload_store_time=0.015500959992408754, vllm:kv_offload_store_size_count=30, vllm:kv_offload_store_size_sum=371466240
+(APIServer pid=1) INFO:     172.17.0.1:39694 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:39702 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:39992 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:40002 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:40006 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:40020 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:45:58 [loggers.py:310] Engine 000: Avg prompt throughput: 3538.8 tokens/s, Avg generation throughput: 146.3 tokens/s, Running: 5 reqs, Waiting: 3 reqs, Deferred: 1 reqs, GPU KV cache usage: 97.3%, Prefix cache hit rate: 9.0%, External prefix cache hit rate: 85.7%
+(APIServer pid=1) INFO 10-08 13:45:58 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=69, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.001235353760421276, vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=1718476800, vllm:kv_offload_load_time=0.03406582403182983, vllm:kv_offload_load_size_count=6, vllm:kv_offload_load_size_sum=1718476800, vllm:kv_offload_cpu_allocation_size_count=25, vllm:kv_offload_cpu_allocation_size_sum=25, vllm:kv_offload_store_bytes=309555200, vllm:kv_offload_store_time=0.012790303885936737, vllm:kv_offload_store_size_count=25, vllm:kv_offload_store_size_sum=309555200
+(APIServer pid=1) INFO:     172.17.0.1:40026 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:43388 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:43390 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:43394 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:43402 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:46:08 [loggers.py:310] Engine 000: Avg prompt throughput: 3591.9 tokens/s, Avg generation throughput: 129.4 tokens/s, Running: 5 reqs, Waiting: 3 reqs, GPU KV cache usage: 83.9%, Prefix cache hit rate: 8.6%, External prefix cache hit rate: 86.0%
+(APIServer pid=1) INFO 10-08 13:46:08 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_lookup_sync_delay_seconds_count=246, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.004194930894300342, vllm:kv_offload_cpu_allocation_size_count=25, vllm:kv_offload_cpu_allocation_size_sum=25, vllm:kv_offload_store_bytes=309555200, vllm:kv_offload_store_time=0.013159135967493057, vllm:kv_offload_store_size_count=25, vllm:kv_offload_store_size_sum=309555200, vllm:kv_offload_load_bytes=1171308544, vllm:kv_offload_load_time=0.02314652824401856, vllm:kv_offload_load_size_count=4, vllm:kv_offload_load_size_sum=1171308544
+(APIServer pid=1) INFO:     172.17.0.1:43416 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:32992 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:32998 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:33006 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:33016 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:46:18 [loggers.py:310] Engine 000: Avg prompt throughput: 3662.2 tokens/s, Avg generation throughput: 129.4 tokens/s, Running: 5 reqs, Waiting: 3 reqs, GPU KV cache usage: 86.6%, Prefix cache hit rate: 8.1%, External prefix cache hit rate: 86.4%
+(APIServer pid=1) INFO 10-08 13:46:18 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=266, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.004580200416967273, vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=1515450368, vllm:kv_offload_load_time=0.029539968013763428, vllm:kv_offload_load_size_count=5, vllm:kv_offload_load_size_sum=1515450368, vllm:kv_offload_cpu_allocation_size_count=25, vllm:kv_offload_cpu_allocation_size_sum=25, vllm:kv_offload_store_bytes=309555200, vllm:kv_offload_store_time=0.012819455951452254, vllm:kv_offload_store_size_count=25, vllm:kv_offload_store_size_sum=309555200
+(APIServer pid=1) INFO:     172.17.0.1:33030 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:54378 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:54388 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:54404 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:54418 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:46:28 [loggers.py:310] Engine 000: Avg prompt throughput: 3697.5 tokens/s, Avg generation throughput: 121.8 tokens/s, Running: 5 reqs, Waiting: 3 reqs, GPU KV cache usage: 87.9%, Prefix cache hit rate: 7.6%, External prefix cache hit rate: 86.7%
+(APIServer pid=1) INFO 10-08 13:46:28 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=251, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.004250719677656889, vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=1541107712, vllm:kv_offload_load_time=0.030297664165496827, vllm:kv_offload_load_size_count=5, vllm:kv_offload_load_size_sum=1541107712, vllm:kv_offload_cpu_allocation_size_count=25, vllm:kv_offload_cpu_allocation_size_sum=25, vllm:kv_offload_store_bytes=309555200, vllm:kv_offload_store_time=0.012964992046356202, vllm:kv_offload_store_size_count=25, vllm:kv_offload_store_size_sum=309555200
+(APIServer pid=1) INFO:     172.17.0.1:54434 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:54446 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:58248 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:58260 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:58276 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:46:38 [loggers.py:310] Engine 000: Avg prompt throughput: 3767.5 tokens/s, Avg generation throughput: 108.2 tokens/s, Running: 5 reqs, Waiting: 3 reqs, GPU KV cache usage: 90.6%, Prefix cache hit rate: 7.2%, External prefix cache hit rate: 87.0%
+(APIServer pid=1) INFO 10-08 13:46:38 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=224, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0038911662995815277, vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=1592422400, vllm:kv_offload_load_time=0.031295711994171145, vllm:kv_offload_load_size_count=5, vllm:kv_offload_load_size_sum=1592422400, vllm:kv_offload_cpu_allocation_size_count=25, vllm:kv_offload_cpu_allocation_size_sum=25, vllm:kv_offload_store_bytes=309555200, vllm:kv_offload_store_time=0.012899871826171874, vllm:kv_offload_store_size_count=25, vllm:kv_offload_store_size_sum=309555200
+(APIServer pid=1) INFO:     172.17.0.1:58284 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:55424 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:55432 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:55442 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:55450 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:46:48 [loggers.py:310] Engine 000: Avg prompt throughput: 3820.4 tokens/s, Avg generation throughput: 100.3 tokens/s, Running: 5 reqs, Waiting: 3 reqs, GPU KV cache usage: 92.6%, Prefix cache hit rate: 6.8%, External prefix cache hit rate: 87.3%
+(APIServer pid=1) INFO 10-08 13:46:48 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=208, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0035557060036808252, vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=1630908416, vllm:kv_offload_load_time=0.035639552593231205, vllm:kv_offload_load_size_count=5, vllm:kv_offload_load_size_sum=1630908416, vllm:kv_offload_cpu_allocation_size_count=25, vllm:kv_offload_cpu_allocation_size_sum=25, vllm:kv_offload_store_bytes=309555200, vllm:kv_offload_store_time=0.01287776005268097, vllm:kv_offload_store_size_count=25, vllm:kv_offload_store_size_sum=309555200
+(APIServer pid=1) INFO:     172.17.0.1:36454 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:36462 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:36466 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:36478 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:36486 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:46:58 [loggers.py:310] Engine 000: Avg prompt throughput: 3855.8 tokens/s, Avg generation throughput: 92.8 tokens/s, Running: 5 reqs, Waiting: 3 reqs, GPU KV cache usage: 94.0%, Prefix cache hit rate: 6.4%, External prefix cache hit rate: 87.6%
+(APIServer pid=1) INFO 10-08 13:46:58 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=194, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0035300790332257748, vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=1656565760, vllm:kv_offload_load_time=0.0329234561920166, vllm:kv_offload_load_size_count=5, vllm:kv_offload_load_size_sum=1656565760, vllm:kv_offload_cpu_allocation_size_count=25, vllm:kv_offload_cpu_allocation_size_sum=25, vllm:kv_offload_store_bytes=309555200, vllm:kv_offload_store_time=0.012826368004083632, vllm:kv_offload_store_size_count=25, vllm:kv_offload_store_size_sum=309555200
+(APIServer pid=1) INFO:     172.17.0.1:35776 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:35784 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:35794 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:35796 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:35808 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:47:08 [loggers.py:310] Engine 000: Avg prompt throughput: 3155.1 tokens/s, Avg generation throughput: 107.9 tokens/s, Running: 5 reqs, Waiting: 3 reqs, GPU KV cache usage: 99.3%, Prefix cache hit rate: 6.1%, External prefix cache hit rate: 87.9%
+(APIServer pid=1) INFO 10-08 13:47:08 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=221, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.003876561764627695, vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=1720709120, vllm:kv_offload_load_time=0.033713375568389894, vllm:kv_offload_load_size_count=5, vllm:kv_offload_load_size_sum=1720709120, vllm:kv_offload_cpu_allocation_size_count=20, vllm:kv_offload_cpu_allocation_size_sum=20, vllm:kv_offload_store_bytes=247644160, vllm:kv_offload_store_time=0.010224448055028916, vllm:kv_offload_store_size_count=20, vllm:kv_offload_store_size_sum=247644160
+(APIServer pid=1) INFO:     172.17.0.1:37894 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37906 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37918 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37934 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37948 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:47:18 [loggers.py:310] Engine 000: Avg prompt throughput: 3155.0 tokens/s, Avg generation throughput: 125.9 tokens/s, Running: 4 reqs, Waiting: 4 reqs, GPU KV cache usage: 81.2%, Prefix cache hit rate: 5.8%, External prefix cache hit rate: 88.1%
+(APIServer pid=1) INFO 10-08 13:47:18 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=256, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.004463284509256482, vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_allocation_size_count=25, vllm:kv_offload_cpu_allocation_size_sum=25, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=247644160, vllm:kv_offload_store_time=0.01024518394470215, vllm:kv_offload_store_size_count=20, vllm:kv_offload_store_size_sum=247644160, vllm:kv_offload_load_bytes=1389395968, vllm:kv_offload_load_time=0.027141183853149415, vllm:kv_offload_load_size_count=4, vllm:kv_offload_load_size_sum=1389395968
+(APIServer pid=1) INFO:     172.17.0.1:48260 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:48272 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:48282 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:48290 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:47:28 [loggers.py:310] Engine 000: Avg prompt throughput: 4031.6 tokens/s, Avg generation throughput: 113.3 tokens/s, Running: 4 reqs, Waiting: 4 reqs, GPU KV cache usage: 80.5%, Prefix cache hit rate: 5.6%, External prefix cache hit rate: 88.3%
+(APIServer pid=1) INFO 10-08 13:47:28 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=63, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0014338616747409105, vllm:kv_offload_store_bytes=309555200, vllm:kv_offload_store_time=0.012884928077459334, vllm:kv_offload_store_size_count=25, vllm:kv_offload_store_size_sum=309555200, vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=1427881984, vllm:kv_offload_load_time=0.02823372793197632, vllm:kv_offload_load_size_count=4, vllm:kv_offload_load_size_sum=1427881984, vllm:kv_offload_cpu_allocation_size_count=20, vllm:kv_offload_cpu_allocation_size_sum=20
+(APIServer pid=1) INFO:     172.17.0.1:59810 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:59824 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:59834 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:59838 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:47:38 [loggers.py:310] Engine 000: Avg prompt throughput: 3242.8 tokens/s, Avg generation throughput: 123.6 tokens/s, Running: 4 reqs, Waiting: 4 reqs, GPU KV cache usage: 81.2%, Prefix cache hit rate: 5.4%, External prefix cache hit rate: 88.4%
+(APIServer pid=1) INFO 10-08 13:47:38 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=317, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0055560527835041285, vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=1440710656, vllm:kv_offload_load_time=0.030090528011322025, vllm:kv_offload_load_size_count=4, vllm:kv_offload_load_size_sum=1440710656, vllm:kv_offload_cpu_allocation_size_count=20, vllm:kv_offload_cpu_allocation_size_sum=20, vllm:kv_offload_store_bytes=247644160, vllm:kv_offload_store_time=0.010261280000209809, vllm:kv_offload_store_size_count=20, vllm:kv_offload_store_size_sum=247644160
+(APIServer pid=1) INFO:     172.17.0.1:34068 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34074 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:47:42 [api_router.py:23] Starting profiler...
+USDT:2026-10-08 13:47:43 225:225 SyncActivityProfilerHandler.cpp:52] profiler_start
+(APIServer pid=1) INFO:     172.17.0.1:34088 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:47:43 [api_router.py:25] Profiler started.
+(APIServer pid=1) INFO:     172.17.0.1:34086 - "POST /start_profile HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34098 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:47:46 [api_router.py:31] Stopping profiler...
+USDT:2026-10-08 13:47:46 225:225 SyncActivityProfilerHandler.cpp:59] profiler_stop
+(APIServer pid=1) INFO 10-08 13:47:48 [loggers.py:310] Engine 000: Avg prompt throughput: 2471.8 tokens/s, Avg generation throughput: 70.2 tokens/s, Running: 4 reqs, Waiting: 4 reqs, GPU KV cache usage: 85.2%, Prefix cache hit rate: 5.2%, External prefix cache hit rate: 88.6%
+(APIServer pid=1) INFO 10-08 13:47:48 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=183, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0032141604460775852, vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=1479196672, vllm:kv_offload_load_time=0.02935452747344971, vllm:kv_offload_load_size_count=4, vllm:kv_offload_load_size_sum=1479196672, vllm:kv_offload_cpu_allocation_size_count=20, vllm:kv_offload_cpu_allocation_size_sum=20, vllm:kv_offload_store_bytes=185733120, vllm:kv_offload_store_time=0.007664575964212418, vllm:kv_offload_store_size_count=15, vllm:kv_offload_store_size_sum=185733120
+(EngineCore pid=225)                                   _gumbel_sample_kernel         0.00%       0.000us         0.00%       0.000us       0.000us       2.229ms         0.05%       2.229ms      14.105us           158  
+(EngineCore pid=225)                                             aten::fill_         0.13%       5.253ms         0.32%      12.630ms       3.487us       1.780ms         0.04%       1.783ms       0.492us          3622  
+(EngineCore pid=225)                                            aten::gather         0.11%       4.348ms         0.18%       7.123ms       9.016us       1.736ms         0.04%       1.736ms       2.198us           790  
+(EngineCore pid=225) void at::native::index_elementwise_kernel<128, 4, at...         0.00%       0.000us         0.00%       0.000us       0.000us       1.681ms         0.04%       1.681ms       5.680us           296  
+(EngineCore pid=225)          triton_red_fused__to_copy_fused_add_rms_norm_0         0.01%     225.530us         0.01%     293.398us      12.225us       1.626ms         0.04%       1.626ms      67.751us            24  
+(EngineCore pid=225) void at::native::unrolled_elementwise_kernel<at::nat...         0.00%       0.000us         0.00%       0.000us       0.000us       1.494ms         0.03%       1.494ms       1.646us           908  
+(EngineCore pid=225) void gemmSN_TN_kernel<float, 128, 16, 2, 4, 4, 4, tr...         0.00%       0.000us         0.00%       0.000us       0.000us       1.436ms         0.03%       1.436ms      20.809us            69  
+(EngineCore pid=225) void at::native::_scatter_gather_elementwise_kernel<...         0.00%       0.000us         0.00%       0.000us       0.000us       1.328ms         0.03%       1.328ms       2.101us           632  
+(EngineCore pid=225)                                               aten::sub         0.15%       5.868ms         0.21%       8.408ms       3.737us       1.232ms         0.03%       1.232ms       0.548us          2250  
+(EngineCore pid=225)                _combine_sampled_and_draft_tokens_kernel         0.00%       0.000us         0.00%       0.000us       0.000us       1.196ms         0.03%       1.196ms       7.573us           158  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us       1.189ms         0.03%       1.189ms       1.857us           640  
+(EngineCore pid=225)                                      aten::floor_divide         0.05%       1.873ms         0.12%       4.635ms       7.153us       1.179ms         0.03%       1.179ms       1.819us           648  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us       1.179ms         0.03%       1.179ms       1.865us           632  
+(EngineCore pid=225)                          Memcpy DtoD (Device -> Device)         0.00%       0.000us         0.00%       0.000us       0.000us       1.081ms         0.03%       1.081ms       1.287us           840  
+(EngineCore pid=225)              triton_red_fused_fused_add_rms_norm_view_1         0.01%     239.353us         0.01%     322.113us      13.421us       1.071ms         0.02%       1.071ms      44.617us            24  
+(EngineCore pid=225)                        precopy_mamba_align_fused_kernel         0.00%       0.000us         0.00%       0.000us       0.000us       1.039ms         0.02%       1.039ms       6.576us           158  
+(EngineCore pid=225)                            _moe_C::moe_align_block_size         0.02%     714.728us         0.05%       1.801ms      19.574us       1.026ms         0.02%       1.026ms      11.147us            92  
+(EngineCore pid=225)                             _gather_block_tables_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     956.225us         0.02%     956.225us       6.052us           158  
+(EngineCore pid=225)                                            aten::clamp_         0.05%       2.035ms         0.09%       3.673ms       5.811us     919.923us         0.02%     919.923us       1.456us           632  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us     919.923us         0.02%     919.923us       1.456us           632  
+(EngineCore pid=225) triton_red_fused__to_copy_clamp_embedding_mul_recipr...         0.00%       0.000us         0.00%       0.000us       0.000us     874.952us         0.02%     874.952us       5.538us           158  
+(EngineCore pid=225)                                            aten::arange         0.08%       3.277ms         0.34%      13.366ms       8.271us     865.658us         0.02%       1.731ms       1.071us          1616  
+(EngineCore pid=225)                                               aten::add         0.06%       2.493ms         0.10%       4.051ms       6.309us     865.232us         0.02%     865.232us       1.348us           642  
+(EngineCore pid=225) void at::native::elementwise_kernel<128, 2, at::nati...         0.00%       0.000us         0.00%       0.000us       0.000us     857.553us         0.02%     857.553us       1.357us           632  
+(EngineCore pid=225) void (anonymous namespace)::elementwise_kernel_with_...         0.00%       0.000us         0.00%       0.000us       0.000us     848.923us         0.02%     848.923us       1.075us           790  
+(EngineCore pid=225)      triton_red_fused_add_fused_add_rms_norm_mul_view_2         0.00%       0.000us         0.00%       0.000us       0.000us     803.017us         0.02%     803.017us       5.082us           158  
+(EngineCore pid=225) void marlin::Marlin<1125899906909960l, 5629499534871...         0.00%       0.000us         0.00%       0.000us       0.000us     792.642us         0.02%     792.642us      17.231us            46  
+(EngineCore pid=225) -------------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+(EngineCore pid=225) Self CPU time total: 3.938s
+(EngineCore pid=225) Self CUDA time total: 4.320s
+(EngineCore pid=225) 
+(EngineCore pid=225) -------------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+(EngineCore pid=225)                                                    Name    Self CPU %      Self CPU   CPU total %     CPU total  CPU time avg     Self CUDA   Self CUDA %    CUDA total  CUDA time avg    # of Calls  
+(EngineCore pid=225) -------------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+(EngineCore pid=225)                     vllm::unified_attention_with_output         0.12%       4.327ms         0.17%       6.270ms     174.164us        2.094s        57.85%        2.095s      58.195ms            36  
+(EngineCore pid=225) void flashinfer::BatchPrefillWithPagedKVCacheKernel<...         0.00%       0.000us         0.00%       0.000us       0.000us        2.087s        57.64%        2.087s      57.961ms            36  
+(EngineCore pid=225)                 execute_context_1(4093)_generation_3(3)         0.00%       0.000us         0.00%       0.000us       0.000us        1.697s        46.89%        1.697s     848.659ms             2  
+(EngineCore pid=225)                 execute_context_1(4064)_generation_3(3)         0.00%       0.000us         0.00%       0.000us       0.000us     866.197ms        23.93%     866.197ms     144.366ms             6  
+(EngineCore pid=225)                 execute_context_1(4064)_generation_2(2)         0.00%       0.000us         0.00%       0.000us       0.000us     840.723ms        23.23%     840.723ms     140.121ms             6  
+(EngineCore pid=225)                           _moe_C::moe_wna16_marlin_gemm         0.12%       4.451ms         0.26%       9.663ms      35.012us     767.291ms        21.20%     767.291ms       2.780ms           276  
+(EngineCore pid=225) void marlin_moe_wna16::Marlin<1125899906909960l, 562...         0.00%       0.000us         0.00%       0.000us       0.000us     388.429ms        10.73%     388.429ms       4.222ms            92  
+(EngineCore pid=225) void marlin_moe_wna16::Marlin<1125899906909960l, 562...         0.00%       0.000us         0.00%       0.000us       0.000us     349.916ms         9.67%     349.916ms       3.803ms            92  
+(EngineCore pid=225)                    execute_context_0(0)_generation_3(3)         0.00%       0.000us         0.00%       0.000us       0.000us     250.679ms         6.93%     250.679ms       9.284ms            27  
+(EngineCore pid=225)                   execute_context_1(83)_generation_3(3)         0.00%       0.000us         0.00%       0.000us       0.000us     247.195ms         6.83%     247.195ms      61.799ms             4  
+(EngineCore pid=225)                                         _C::marlin_gemm         0.18%       6.531ms         0.36%      13.065ms      44.288us     192.194ms         5.31%     192.194ms     651.504us           295  
+(EngineCore pid=225) void marlin::Marlin<1125899906909960l, 5629499534871...         0.00%       0.000us         0.00%       0.000us       0.000us     184.110ms         5.09%     184.110ms     667.064us           276  
+(EngineCore pid=225)                                           vllm::bmm_fp8         1.26%      46.152ms         1.37%      49.997ms     181.148us     108.120ms         2.99%     108.120ms     391.738us           276  
+(EngineCore pid=225)                    execute_context_0(0)_generation_4(4)         0.00%       0.000us         0.00%       0.000us       0.000us     107.011ms         2.96%     107.011ms       8.918ms            12  
+(EngineCore pid=225) nvjet_sm120_qqtst_mma_128x128x64_6_64x64x64_tmaAB_bz...         0.00%       0.000us         0.00%       0.000us       0.000us     105.027ms         2.90%     105.027ms     570.800us           184  
+(EngineCore pid=225)                                      vllm::mamba_mixer2         2.19%      79.956ms         2.85%     104.004ms     753.655us      67.295ms         1.86%      72.049ms     522.092us           138  
+(EngineCore pid=225)                                                aten::mm         0.08%       2.986ms         0.12%       4.209ms      20.043us      66.286ms         1.83%      66.286ms     315.647us           210  
+(EngineCore pid=225) void cutlass::Kernel2<cutlass_80_tensorop_bf16_s1681...         0.00%       0.000us         0.00%       0.000us       0.000us      51.381ms         1.42%      51.381ms     856.342us            60  
+(EngineCore pid=225)                                     _lora_expand_kernel         0.00%       0.000us         0.00%       0.000us       0.000us      48.815ms         1.35%      48.815ms      31.718us          1539  
+(EngineCore pid=225)                                       vllm::lora_expand         0.60%      21.842ms         0.66%      23.926ms      49.231us      42.101ms         1.16%      42.101ms      86.627us           486  
+(EngineCore pid=225) void marlin_moe_wna16::Marlin<1125899906909960l, 562...         0.00%       0.000us         0.00%       0.000us       0.000us      40.146ms         1.11%      40.146ms     116.366us           345  
+(EngineCore pid=225) void marlin_moe_wna16::Marlin<1125899906909960l, 562...         0.00%       0.000us         0.00%       0.000us       0.000us      38.604ms         1.07%      38.604ms     111.895us           345  
+(EngineCore pid=225) kernel_mha(unsigned int, float, float const*, Vec<__...         0.00%       0.000us         0.00%       0.000us       0.000us      26.805ms         0.74%      26.805ms     235.133us           114  
+(EngineCore pid=225)                                     _lora_shrink_kernel         0.00%       0.000us         0.00%       0.000us       0.000us      25.078ms         0.69%      25.078ms      16.295us          1539  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us      22.763ms         0.63%      22.763ms      52.089us           437  
+(EngineCore pid=225)                                  _chunk_scan_fwd_kernel         0.00%       0.000us         0.00%       0.000us       0.000us      22.211ms         0.61%      22.211ms     160.947us           138  
+(EngineCore pid=225)                                               aten::pow         0.02%     705.574us         0.03%       1.177ms       8.531us      21.862ms         0.60%      21.862ms     158.424us           138  
+(EngineCore pid=225)                         _C_cache_ops::swap_blocks_batch         0.01%     251.368us         0.01%     251.368us      20.947us      19.756ms         0.55%      19.756ms       1.646ms            12  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us      17.132ms         0.47%      17.132ms      39.204us           437  
+(EngineCore pid=225)                                        aten::clamp_min_         0.02%     643.889us         0.03%       1.054ms       7.638us      16.417ms         0.45%      16.417ms     118.965us           138  
+(EngineCore pid=225) void vllm::moe::moe_sum_vec_kernel<c10::BFloat16, in...         0.00%       0.000us         0.00%       0.000us       0.000us      15.296ms         0.42%      15.296ms      35.002us           437  
+(EngineCore pid=225)                               _state_passing_fwd_kernel         0.00%       0.000us         0.00%       0.000us       0.000us      15.180ms         0.42%      15.180ms     110.003us           138  
+(EngineCore pid=225)                          Memcpy HtoD (Pinned -> Device)         0.00%       0.000us         0.00%       0.000us       0.000us      14.877ms         0.41%      14.877ms      70.843us           210  
+(EngineCore pid=225)                                         _moe_C::moe_sum         0.01%     343.480us         0.02%     720.569us       5.222us      14.573ms         0.40%      14.573ms     105.603us           138  
+(EngineCore pid=225) void cutlass::Kernel2<cutlass_80_simt_sgemm_128x256_...         0.00%       0.000us         0.00%       0.000us       0.000us      13.751ms         0.38%      13.751ms     149.463us            92  
+(EngineCore pid=225)                                       vllm::lora_shrink         0.71%      25.999ms         0.89%      32.392ms      66.651us      13.478ms         0.37%      14.175ms      29.167us           486  
+(EngineCore pid=225)                                 _chunk_state_fwd_kernel         0.00%       0.000us         0.00%       0.000us       0.000us      13.462ms         0.37%      13.462ms      97.550us           138  
+(EngineCore pid=225) void marlin::Marlin<1125899906909960l, 5629499534871...         0.00%       0.000us         0.00%       0.000us       0.000us      13.367ms         0.37%      13.367ms      21.664us           617  
+(EngineCore pid=225) nvjet_sm120_qqtst_mma_64x32x64_16_32x16x64_tmaAB_bz_...         0.00%       0.000us         0.00%       0.000us       0.000us      11.522ms         0.32%      11.522ms      38.534us           299  
+(EngineCore pid=225)                               _causal_conv1d_fwd_kernel         0.00%       0.000us         0.00%       0.000us       0.000us      10.493ms         0.29%      10.493ms      76.039us           138  
+(EngineCore pid=225) triton_red_fused__to_copy_fused_add_rms_norm_moe_for...         0.00%       0.000us         0.00%       0.000us       0.000us      10.404ms         0.29%      10.404ms      34.224us           304  
+(EngineCore pid=225) triton_red_fused__to_copy_add_clamp_fused_add_rms_no...         0.00%       0.000us         0.00%       0.000us       0.000us      10.334ms         0.29%      10.334ms      33.994us           304  
+(EngineCore pid=225) triton_red_fused__to_copy_fused_add_rms_norm_moe_for...         0.03%     986.831us         0.04%       1.295ms      13.490us       9.845ms         0.27%       9.845ms     102.550us            96  
+(EngineCore pid=225) triton_red_fused__to_copy_add_clamp_fused_add_rms_no...         0.03%       1.230ms         0.04%       1.485ms      15.471us       9.548ms         0.26%       9.548ms      99.457us            96  
+(EngineCore pid=225) triton_red_fused__to_copy_add_clamp_mean_mul_pow_rec...         0.00%       0.000us         0.00%       0.000us       0.000us       8.292ms         0.23%       8.292ms      18.975us           437  
+(EngineCore pid=225) triton_red_fused__to_copy_add_clamp_mean_mul_pow_rec...         0.04%       1.329ms         0.05%       1.711ms      12.396us       7.744ms         0.21%       7.744ms      56.116us           138  
+(EngineCore pid=225) sm89_xmma_gemm_e4m3bf16_e4m3f32_f32_tn_n_tilesize32x...         0.00%       0.000us         0.00%       0.000us       0.000us       6.747ms         0.19%       6.747ms      19.557us           345  
+(EngineCore pid=225) void gemmSN_TN_kernel<float, 128, 16, 2, 4, 4, 4, tr...         0.00%       0.000us         0.00%       0.000us       0.000us       5.761ms         0.16%       5.761ms      19.268us           299  
+(EngineCore pid=225) void cutlass::Kernel2<cutlass_80_wmma_tensorop_bf16_...         0.00%       0.000us         0.00%       0.000us       0.000us       5.319ms         0.15%       5.319ms      34.095us           156  
+(EngineCore pid=225)                          Memcpy DtoH (Device -> Pinned)         0.00%       0.000us         0.00%       0.000us       0.000us       5.122ms         0.14%       5.122ms      60.974us            84  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us       4.953ms         0.14%       4.953ms       2.954us          1677  
+(EngineCore pid=225)                           _selective_scan_update_kernel         0.00%       0.000us         0.00%       0.000us       0.000us       4.700ms         0.13%       4.700ms      10.754us           437  
+(EngineCore pid=225)                             triton_poi_fused_pow_relu_0         0.00%       0.000us         0.00%       0.000us       0.000us       4.470ms         0.12%       4.470ms      10.228us           437  
+(EngineCore pid=225)                             triton_poi_fused_pow_relu_0         0.03%       1.006ms         0.04%       1.460ms      10.578us       4.037ms         0.11%       4.037ms      29.250us           138  
+(EngineCore pid=225) triton_red_fused__to_copy_add_clamp_fused_add_rms_no...         0.00%       0.000us         0.00%       0.000us       0.000us       3.885ms         0.11%       3.885ms      34.076us           114  
+(EngineCore pid=225)                                   _bmm_chunk_fwd_kernel         0.00%       0.000us         0.00%       0.000us       0.000us       3.691ms         0.10%       3.691ms      26.748us           138  
+(EngineCore pid=225) triton_red_fused__to_copy_add_clamp_fused_add_rms_no...         0.01%     466.991us         0.02%     574.916us      15.970us       3.584ms         0.10%       3.584ms      99.560us            36  
+(EngineCore pid=225) void vllm::moe::moe_align_block_size_kernel<int>(int...         0.00%       0.000us         0.00%       0.000us       0.000us       2.742ms         0.08%       2.742ms       6.274us           437  
+(EngineCore pid=225)          triton_red_fused__to_copy_fused_add_rms_norm_0         0.00%       0.000us         0.00%       0.000us       0.000us       2.722ms         0.08%       2.722ms      23.877us           114  
+(EngineCore pid=225)                                             aten::index         0.09%       3.279ms         0.24%       8.722ms      24.778us       2.678ms         0.07%       3.152ms       8.956us           352  
+(EngineCore pid=225) void at::native::index_elementwise_kernel<128, 4, at...         0.00%       0.000us         0.00%       0.000us       0.000us       2.593ms         0.07%       2.593ms       8.789us           295  
+(EngineCore pid=225)          triton_red_fused__to_copy_fused_add_rms_norm_0         0.01%     326.803us         0.01%     427.429us      11.873us       2.541ms         0.07%       2.541ms      70.570us            36  
+(EngineCore pid=225) void vllm::moe::single_group_topk::detail::single_gr...         0.00%       0.000us         0.00%       0.000us       0.000us       2.237ms         0.06%       2.237ms       5.119us           437  
+(EngineCore pid=225)              triton_red_fused_fused_add_rms_norm_view_1         0.00%       0.000us         0.00%       0.000us       0.000us       1.842ms         0.05%       1.842ms      16.158us           114  
+(EngineCore pid=225) nvjet_sm120_qqtst_mma_128x64x64_8_64x32x64_tmaAB_bz_...         0.00%       0.000us         0.00%       0.000us       0.000us       1.830ms         0.05%       1.830ms      39.779us            46  
+(EngineCore pid=225) void marlin::Marlin<1125899906909960l, 5629499534871...         0.00%       0.000us         0.00%       0.000us       0.000us       1.726ms         0.05%       1.726ms      18.757us            92  
+(EngineCore pid=225)              triton_red_fused_fused_add_rms_norm_view_1         0.01%     355.435us         0.01%     479.516us      13.320us       1.683ms         0.05%       1.683ms      46.739us            36  
+(EngineCore pid=225) void marlin::Marlin<1125899906909960l, 5629499534871...         0.00%       0.000us         0.00%       0.000us       0.000us       1.605ms         0.04%       1.605ms      17.450us            92  
+(EngineCore pid=225)                            _moe_C::moe_align_block_size         0.03%       1.063ms         0.07%       2.587ms      18.747us       1.556ms         0.04%       1.556ms      11.276us           138  
+(EngineCore pid=225)                                             aten::copy_         0.09%       3.449ms        82.61%        3.017s       1.779ms       1.514ms         0.04%       1.569ms       0.925us          1696  
+(EngineCore pid=225)                                             aten::fill_         0.09%       3.227ms         3.38%     123.404ms      96.259us       1.165ms         0.03%       1.174ms       0.916us          1282  
+(EngineCore pid=225)                            _causal_conv1d_update_kernel         0.00%       0.000us         0.00%       0.000us       0.000us       1.038ms         0.03%       1.038ms       2.375us           437  
+(EngineCore pid=225)                                    _moe_C::grouped_topk         0.03%       1.105ms         0.08%       2.762ms      20.016us       1.020ms         0.03%       1.020ms       7.394us           138  
+(EngineCore pid=225) void vllm::moe::count_and_sort_expert_tokens_kernel<...         0.00%       0.000us         0.00%       0.000us       0.000us       1.011ms         0.03%       1.011ms       2.314us           437  
+(EngineCore pid=225)                                  aten::_index_put_impl_         0.02%     814.131us         0.06%       2.319ms      16.805us     932.803us         0.03%       1.150ms       8.331us           138  
+(EngineCore pid=225) void at::native::index_elementwise_kernel<128, 4, at...         0.00%       0.000us         0.00%       0.000us       0.000us     932.803us         0.03%     932.803us       6.759us           138  
+(EngineCore pid=225) void vllm::reshape_and_cache_flash_kernel<__nv_bfloa...         0.00%       0.000us         0.00%       0.000us       0.000us     809.347us         0.02%     809.347us       7.100us           114  
+(EngineCore pid=225) void at::native::unrolled_elementwise_kernel<at::nat...         0.00%       0.000us         0.00%       0.000us       0.000us     801.217us         0.02%     801.217us       1.635us           490  
+(EngineCore pid=225)                                _chunk_cumsum_fwd_kernel         0.00%       0.000us         0.00%       0.000us       0.000us     672.485us         0.02%     672.485us       4.873us           138  
+(EngineCore pid=225)                                              aten::mul_         0.01%     264.727us         0.01%     376.813us      10.467us     643.363us         0.02%     643.363us      17.871us            36  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us     643.363us         0.02%     643.363us      17.871us            36  
+(EngineCore pid=225) void at::native::vectorized_elementwise_kernel<4, at...         0.00%       0.000us         0.00%       0.000us       0.000us     581.988us         0.02%     581.988us       1.005us           579  
+(APIServer pid=1) INFO 10-08 13:47:52 [api_router.py:33] Profiler stopped.
+(APIServer pid=1) INFO:     172.17.0.1:34108 - "POST /stop_profile HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:49948 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:49958 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:49962 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:47:58 [loggers.py:310] Engine 000: Avg prompt throughput: 1647.9 tokens/s, Avg generation throughput: 96.6 tokens/s, Running: 3 reqs, Waiting: 4 reqs, Deferred: 1 reqs, GPU KV cache usage: 85.2%, Prefix cache hit rate: 5.0%, External prefix cache hit rate: 88.7%
+(APIServer pid=1) INFO 10-08 13:47:58 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=247, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0040875570848584175, vllm:kv_offload_cpu_cache_usage_perc=0.05082212257100149, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.04334828101644245, vllm:kv_offload_store_bytes=123822080, vllm:kv_offload_store_time=0.005078655987977982, vllm:kv_offload_store_size_count=10, vllm:kv_offload_store_size_sum=123822080, vllm:kv_offload_load_bytes=739598336, vllm:kv_offload_load_time=0.014550400257110596, vllm:kv_offload_load_size_count=2, vllm:kv_offload_load_size_sum=739598336, vllm:kv_offload_cpu_allocation_size_count=10, vllm:kv_offload_cpu_allocation_size_sum=10
+(APIServer pid=1) INFO:     172.17.0.1:42140 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:42142 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:42156 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:48:08 [loggers.py:310] Engine 000: Avg prompt throughput: 3331.3 tokens/s, Avg generation throughput: 101.5 tokens/s, Running: 4 reqs, Waiting: 4 reqs, GPU KV cache usage: 89.9%, Prefix cache hit rate: 4.9%, External prefix cache hit rate: 88.9%
+(APIServer pid=1) INFO 10-08 13:48:08 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=258, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.004422537749633193, vllm:kv_offload_store_bytes=273301504, vllm:kv_offload_store_time=0.01142476785182953, vllm:kv_offload_store_size_count=22, vllm:kv_offload_store_size_sum=273301504, vllm:kv_offload_cpu_cache_usage_perc=0.0014947683109118087, vllm:kv_offload_cpu_cache_write_usage_perc=0.0014947683109118087, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=1517682688, vllm:kv_offload_load_time=0.02991484785079956, vllm:kv_offload_load_size_count=4, vllm:kv_offload_load_size_sum=1517682688, vllm:kv_offload_cpu_allocation_size_count=18, vllm:kv_offload_cpu_allocation_size_sum=18
+(APIServer pid=1) INFO:     172.17.0.1:42158 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:55614 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:55616 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:55622 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:48:18 [loggers.py:310] Engine 000: Avg prompt throughput: 3366.3 tokens/s, Avg generation throughput: 102.2 tokens/s, Running: 4 reqs, Waiting: 4 reqs, GPU KV cache usage: 90.6%, Prefix cache hit rate: 4.7%, External prefix cache hit rate: 89.0%
+(APIServer pid=1) INFO 10-08 13:48:18 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=261, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.004590943921357393, vllm:kv_offload_store_bytes=298958848, vllm:kv_offload_store_time=0.012440799951553345, vllm:kv_offload_store_size_count=24, vllm:kv_offload_store_size_sum=298958848, vllm:kv_offload_cpu_cache_usage_perc=0.0014947683109118087, vllm:kv_offload_cpu_allocation_size_count=24, vllm:kv_offload_cpu_allocation_size_sum=24, vllm:kv_offload_cpu_cache_write_usage_perc=0.0014947683109118087, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=1530511360, vllm:kv_offload_load_time=0.030186176300048828, vllm:kv_offload_load_size_count=4, vllm:kv_offload_load_size_sum=1530511360
+(APIServer pid=1) INFO:     172.17.0.1:55626 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:53742 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:53758 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:53760 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:53772 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:53780 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:48:28 [loggers.py:310] Engine 000: Avg prompt throughput: 3449.5 tokens/s, Avg generation throughput: 109.6 tokens/s, Running: 4 reqs, Waiting: 4 reqs, GPU KV cache usage: 93.3%, Prefix cache hit rate: 4.5%, External prefix cache hit rate: 89.4%
+(APIServer pid=1) INFO 10-08 13:48:28 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=285, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0054289596155285835, vllm:kv_offload_store_bytes=397123584, vllm:kv_offload_store_time=0.016528000116348265, vllm:kv_offload_store_size_count=32, vllm:kv_offload_store_size_sum=397123584, vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_allocation_size_count=31, vllm:kv_offload_cpu_allocation_size_sum=31, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=2424053760, vllm:kv_offload_load_time=0.04794636774063111, vllm:kv_offload_load_size_count=6, vllm:kv_offload_load_size_sum=2424053760
+(APIServer pid=1) INFO:     172.17.0.1:50184 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:50198 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:50204 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:50206 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:50210 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:50218 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:48:38 [loggers.py:310] Engine 000: Avg prompt throughput: 2225.5 tokens/s, Avg generation throughput: 195.8 tokens/s, Running: 3 reqs, Waiting: 5 reqs, Deferred: 1 reqs, GPU KV cache usage: 94.0%, Prefix cache hit rate: 4.2%, External prefix cache hit rate: 89.8%
+(APIServer pid=1) INFO 10-08 13:48:38 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=501, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.009057726711034775, vllm:kv_offload_cpu_cache_usage_perc=0.04932735426008968, vllm:kv_offload_cpu_allocation_size_count=25, vllm:kv_offload_cpu_allocation_size_sum=25, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.04932735426008968, vllm:kv_offload_store_bytes=309555200, vllm:kv_offload_store_time=0.012841663897037506, vllm:kv_offload_store_size_count=25, vllm:kv_offload_store_size_sum=309555200, vllm:kv_offload_load_bytes=2067083264, vllm:kv_offload_load_time=0.04085254430770874, vllm:kv_offload_load_size_count=5, vllm:kv_offload_load_size_sum=2067083264
+(APIServer pid=1) INFO:     172.17.0.1:44090 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 13:48:48 [loggers.py:310] Engine 000: Avg prompt throughput: 2755.3 tokens/s, Avg generation throughput: 107.6 tokens/s, Running: 4 reqs, Waiting: 0 reqs, GPU KV cache usage: 96.0%, Prefix cache hit rate: 4.1%, External prefix cache hit rate: 90.0%
+(APIServer pid=1) INFO 10-08 13:48:48 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=274, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.005161127774044871, vllm:kv_offload_load_bytes=2526683136, vllm:kv_offload_load_time=0.050012671470642096, vllm:kv_offload_load_size_count=6, vllm:kv_offload_load_size_sum=2526683136, vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_allocation_size_count=30, vllm:kv_offload_cpu_allocation_size_sum=30, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=371466240, vllm:kv_offload_store_time=0.015420383900403976, vllm:kv_offload_store_size_count=30, vllm:kv_offload_store_size_sum=371466240
+(APIServer pid=1) INFO:     172.17.0.1:47356 - "GET /metrics HTTP/1.1" 200 OK
