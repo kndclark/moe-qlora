@@ -894,7 +894,7 @@ desktop's RTX 3090 alone (`probes/desktop_agents.sh`). Both were promised on 202
 ran on 2026-10-08.
 
 - **Pool** [measured, one draw each; Lightning NVFP4 with G6q, CUDA graphs, 16 sequences,
-  0.85 of each card, 4k chunks, no KV in RAM]:
+  0.85 of each card, 4k chunks unless named, no KV in RAM]:
 
   | KV | GPU KV tokens | Agents | Wall | Decode median | Late TTFT | Preemptions |
   |---|---|---|---|---|---|---|
@@ -902,6 +902,10 @@ ran on 2026-10-08.
   | fp8 (FlashInfer) | 4,800,512 | 16 | 615 s | 14.8 tok/s | 5.57 s | 0 |
   | bf16 (`FLASH_ATTN`, picked by vLLM) | 2,813,432 | 8 | 341 s | 29.4 tok/s | 3.91 s | 0 |
   | bf16 (`FLASH_ATTN`, picked by vLLM) | 2,813,432 | 16 | 639 s | 12.7 tok/s | 3.79 s | 0 |
+  | fp8, 8k chunks | 4,220,518 | 8 | 339 s | 39.2 tok/s | 6.55 s | 0 |
+  | fp8, 8k chunks | 4,220,518 | 16 | 624 s | 16.6 tok/s | 7.61 s | 0 |
+  | fp8, 512 chunks (`bin/lab`'s default) | 5,026,611 | 8 | 363 s | 23.5 tok/s | 2.03 s | 0 |
+  | fp8, 512 chunks (`bin/lab`'s default) | 5,026,611 | 16 | 624 s | 11.9 tok/s | 2.09 s | 0 |
 
   - Against the laptop's best: 8 agents tie (351–357 s), 16 agents finish 12% sooner (697–
     698 s, p33–p37), and late TTFT is lower in every pool arm [measured].
@@ -911,6 +915,14 @@ ran on 2026-10-08.
   - bf16 on the pool cuts late TTFT 32–36% but decodes 14% slower, and the wall moves −4%
     at 8 agents and +4% at 16 [measured]. Single cards decode faster on bf16 (laptop and
     desktop both +28%); why the pool does not is unknown.
+  - 8k chunks move the pool's wall −4% at 8 agents and +1% at 16, inside one draw's
+    noise [inference], and cost 12% of its KV (4.22M tokens), twice what 16 agents need
+    [measured]. Decode is 12–15% faster and late TTFT 7–37% longer, as on the laptop.
+  - The lab's default 512-token chunks cost the wall 3% at 8 agents and 1% at 16, and cut
+    late TTFT to a third (2.03–2.09 s against 5.57–6.13); decode falls 20–31% [measured].
+    The default serves this load about as well as 4k [inference], with the lowest late
+    TTFT of any setup here, on any node [measured]. On one card b512 was refuted (less
+    KV, above); on the pool it holds the most KV of the three chunk sizes [measured].
 - **Desktop** [measured, one draw each; RTX 3090 (sm_86), `--linear-backend marlin`, fp8 KV
   unless named, 8 agents to 127k unless named]:
 

@@ -1,0 +1,28 @@
+
+[1m1/5  preflight[0m
+  gpu-lab:vllm-ray present on both nodes
+  no kernel or training run in the way
+  nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4 current in the mirror (last sync 2026-10-03T08:14:17-06:00)
+
+[1m2/5  stopping llama-swap, laptop first[0m
+Warning: The unit file, source configuration file or drop-ins of llama-swap.service changed on disk. Run 'systemctl daemon-reload' to reload units.
+  laptop  : inactive
+  laptop : wants 20368 MiB, vLLM will find 22783 MiB free
+  desktop : inactive
+  both cards free (desktop 33 MiB, laptop 280 MiB)
+  desktop: wants 20464 MiB, vLLM will find 23143 MiB free
+
+[1m3/5  ray cluster[0m
+  head   : ray-head on LINK:6379
+  worker : registered; head sees 2 GPUs
+
+[1m4/5  vllm serve nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4 across both cards[0m
+  launched; log: ssh llm "sudo docker exec ray-head tail -f /tmp/vllm-pool.log"
+
+[1m5/5  waiting for the endpoint[0m
+  models : nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4 pool g6q
+  split  : desktop 19930 MiB + laptop 21358 MiB
+
+[1mpool up. endpoint: http://LINK:8200/v1[0m
+  front door: model "pool" at http://LINK:4000/v1 (LiteLLM key required)
+  llama-swap is stopped on both nodes; 'lab pool down' then 'lab up' restores it.
