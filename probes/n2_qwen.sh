@@ -14,6 +14,7 @@
 set -u
 reps=$1
 here=$(cd "$(dirname "$0")/.." && pwd)
+addr=$(ssh -G llm | awk '/^hostname /{print $2}')   # the desktop's end of the direct link
 out=$here/results/noise
 mkdir -p "$out"
 H=$HOME/gpu-lab/bench/research_eval.py
@@ -59,7 +60,7 @@ for rep in $reps; do
     label=$tag-L-adv3-$mode-$rep
     [ "$tag" = v1 ] && label=L-adv3-$mode-$rep
     if [ -f "$out/research-eval-$label.json" ]; then echo "  $label: exists, skipped"; continue; fi
-    if [ "$set" = promql ] && ! curl -sf -m3 http://lab-desktop:9090/-/ready >/dev/null; then
+    if [ "$set" = promql ] && ! curl -sf -m3 http://$addr:9090/-/ready >/dev/null; then
       echo "  $label: SKIPPED, desktop Prometheus unreachable"; continue; fi
     t=$(date +%s)
     python3 "$H" --base $B --model research-v3 --label "$label" --set "$set" "${common[@]}" \

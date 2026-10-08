@@ -25,7 +25,7 @@ Contamination (all eval items as the base runs asked them, as g6p_build):
 
 Thinking: a third of the new records "off", seeded, as G6p.
 
-usage: python3 probes/g6q_build.py   (host python3 + docker; needs Prometheus at lab-desktop)
+usage: python3 probes/g6q_build.py   (host python3 + docker; needs the desktop's Prometheus, via ssh llm)
 writes results/research_dataset_g6q.json and results/g6q-build.json (the audit).
 """
 import collections
@@ -33,6 +33,7 @@ import json
 import os
 import random
 import re
+import subprocess
 import sys
 
 sys.dont_write_bytecode = True
@@ -45,7 +46,10 @@ G6P = os.path.join(REPO, "results", "research_dataset_g6p.json")
 OUT = os.path.join(REPO, "results", "research_dataset_g6q.json")
 AUDIT = os.path.join(REPO, "results", "g6q-build.json")
 EVAL_TAGS = ["v1", "v2", "rocky", "promqlcat", "general", "alert", "trap3"]
-PROM = "http://lab-desktop:9090"
+# the desktop's end of the direct link, as ssh resolves `llm`
+LLM = next(ln.split()[1] for ln in subprocess.run(["ssh", "-G", "llm"], capture_output=True, text=True,
+                                                  check=True).stdout.splitlines() if ln.startswith("hostname "))
+PROM = f"http://{LLM}:9090"
 WINDOW = 4000  # research_eval --window default
 SEED = 20260929
 

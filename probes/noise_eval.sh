@@ -9,6 +9,7 @@
 set -u
 adapter=$(realpath "$1"); reps=$2; with_base=${3:-}
 here=$(cd "$(dirname "$0")/.." && pwd)
+addr=$(ssh -G llm | awk '/^hostname /{print $2}')   # the desktop's end of the direct link
 out=$here/results/noise
 mkdir -p "$out"
 LABEL=${LABEL:?LABEL names the adapter}
@@ -52,7 +53,7 @@ fi
 run() {  # label model set [extra...]
   local label=$1 model=$2 set=$3; shift 3
   if [ -f "$out/research-eval-$label.json" ]; then echo "  $label: exists, skipped"; return; fi
-  if [ "$set" = promql ] && ! curl -sf -m3 http://lab-desktop:9090/-/ready >/dev/null; then
+  if [ "$set" = promql ] && ! curl -sf -m3 http://$addr:9090/-/ready >/dev/null; then
     echo "  $label: SKIPPED, desktop Prometheus unreachable"; return; fi
   local t=$(date +%s)
   python3 "$here/probes/g7a_eval.py" --base $B --model "$model" --label "$label" --set "$set" \

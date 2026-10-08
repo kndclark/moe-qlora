@@ -2,7 +2,7 @@
 # Gap ledger L3 / L4 / L5 / L11 (plan.md "Final stage"): base Lightning NVFP4 on ONE card,
 # the gate server's flags (g6_eval.sh, without LoRA) plus EXTRA, then gpu-lab bench.py
 # decode at c=1 and c=16 (as G7c2) and v1 thinking off (as G7c2) against it.
-# NODE=laptop serves on 127.0.0.1:8303 (sm_120); NODE=desktop on lab-desktop:8303 (sm_86,
+# NODE=laptop serves on 127.0.0.1:8303 (sm_120); NODE=desktop on <desktop>:8303 (sm_86,
 # needs EXTRA to include --linear-backend marlin). EXTRA is split on spaces, so JSON in it
 # must have none, e.g. --speculative-config {"method":"mtp","num_speculative_tokens":3}.
 # Outputs: results/lsingle/<LABEL>/{serve.log,bench-c1.json,bench-c16.json,
@@ -21,12 +21,13 @@
 set -u
 NODE=${NODE:?laptop or desktop} LABEL=${LABEL:?names the run}
 here=$(cd "$(dirname "$0")/.." && pwd)
+addr=$(ssh -G llm | awk '/^hostname /{print $2}')   # the desktop's end of the direct link
 out=$here/results/lsingle/$LABEL
 mkdir -p "$out"
 M=nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4
 name=lsingle-$LABEL
 if [ "$NODE" = desktop ]; then
-  B=http://lab-desktop:8303 port=lab-desktop:8303:8000 run=(ssh llm sudo docker)
+  B=http://$addr:8303 port=$addr:8303:8000 run=(ssh llm sudo docker)
 else
   B=http://127.0.0.1:8303 port=127.0.0.1:8303:8000 run=(docker)
 fi

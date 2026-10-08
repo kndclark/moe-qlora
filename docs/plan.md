@@ -1214,7 +1214,7 @@ or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a 
     - 58 promql records (29 specs x 2 phrasings; 4 make two calls). Each carries the
       promql tool in `extra_tools` with the description the eval's promqlcat set builds
       (metric catalog appended, read from the same Prometheus). Tool outputs are real:
-      research_eval's own `execute()` against lab-desktop:9090 at build time; answers are
+      research_eval's own `execute()` against the desktop's Prometheus (:9090) at build time; answers are
       computed from the returned values. Metrics: CPU temperatures, GPU clocks, battery
       health/cycles/discharging/power, power-limit default and max, throttle reasons,
       scrape_ok, memory-controller utilization, scrape duration and samples, llama-swap
@@ -1752,7 +1752,7 @@ or a hardware limit? **Answer: software** (a toolchain lowering, not a gate); a 
   UNKNOWN (nothing in this plan or memory measures it).
 - Run: `LABEL=g6u probes/g7b_desktop.sh results/g6u-train-adapter`: the gate's server
   flags and image (`vllm/vllm-openai:v0.29.0`, already on the desktop; the NVFP4
-  snapshot bee7596 is in the desktop's cache, 21 GB; no download), bound to lab-desktop
+  snapshot bee7596 is in the desktop's cache, 21 GB; no download), bound to the desktop's end of the direct link
   only; the seven thinking-off sets from the laptop through `probes/g7a_eval.py`, as the
   gate. After the 14B pool sweep (gpu-lab branch pool-14b-prefill) frees the card.
 - If the server refuses one flag as unsupported on sm_86, that flag is dropped once

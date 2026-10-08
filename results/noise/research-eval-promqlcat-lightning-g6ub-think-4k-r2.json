@@ -102,7 +102,7 @@
        "metric": {
         "__name__": "gpulab_ac_online",
         "arch": "sm_120",
-        "instance": "lab-laptop:9835",
+        "instance": "LINK:9835",
         "job": "gpu",
         "node": "laptop"
        },
@@ -169,7 +169,7 @@
        "metric": {
         "__name__": "gpulab_battery_capacity_percent",
         "arch": "sm_120",
-        "instance": "lab-laptop:9835",
+        "instance": "LINK:9835",
         "job": "gpu",
         "node": "laptop"
        },
@@ -201,7 +201,7 @@
    "tol": null,
    "run": {
     "status": "answered",
-    "final": "Here\u2019s what the **`up`** metric from the lab\u2019s Prometheus instance tells us:\n\n| Job (scrape job) | Instance | `up` value | Status |\n|------------------|----------|-----------|--------|\n| **vllm** | `localhost:8101` (desktop) | **0** | **down** |\n| **vllm** | `lab-laptop:8102` (laptop) | **0** | **down** |\n| **vllm** | `localhost:8102` (desktop) | **0** | **down** |\n| **vllm-pool** | `lab-desktop:8200` (pooled) | **0** | **down** |\n| **llama-swap** | `lab-laptop:8080` (laptop) | **0** | **down** |\n| gpu | `localhost:9835` (desktop) | 1 | up |\n| gpu | `lab-laptop:9835` (laptop) | 1 | up |\n| prometheus | `localhost:9090` | 1 | up |\n| llama\u2011swap | `localhost:8080` (desktop) | 1 | up |\n\n**Jobs with at least one target currently down**\n\n- **`vllm`** \u2013 three instances are down (desktop\u202f:8101, laptop\u202f:8102, desktop\u202f:8102).  \n- **`vllm-pool`** \u2013 its single instance (`lab-desktop:8200`) is down.  \n- **`llama-swap`** \u2013 the laptop instance (`lab-laptop:8080`) is down; the desktop instance is up.\n\nAll other scrape jobs (`gpu`, `prometheus`) have all their targets reporting `up = 1`, so they are healthy at the moment.",
+    "final": "Here\u2019s what the **`up`** metric from the lab\u2019s Prometheus instance tells us:\n\n| Job (scrape job) | Instance | `up` value | Status |\n|------------------|----------|-----------|--------|\n| **vllm** | `localhost:8101` (desktop) | **0** | **down** |\n| **vllm** | `LINK:8102` (laptop) | **0** | **down** |\n| **vllm** | `localhost:8102` (desktop) | **0** | **down** |\n| **vllm-pool** | `LINK:8200` (pooled) | **0** | **down** |\n| **llama-swap** | `LINK:8080` (laptop) | **0** | **down** |\n| gpu | `localhost:9835` (desktop) | 1 | up |\n| gpu | `LINK:9835` (laptop) | 1 | up |\n| prometheus | `localhost:9090` | 1 | up |\n| llama\u2011swap | `localhost:8080` (desktop) | 1 | up |\n\n**Jobs with at least one target currently down**\n\n- **`vllm`** \u2013 three instances are down (desktop\u202f:8101, laptop\u202f:8102, desktop\u202f:8102).  \n- **`vllm-pool`** \u2013 its single instance (`LINK:8200`) is down.  \n- **`llama-swap`** \u2013 the laptop instance (`LINK:8080`) is down; the desktop instance is up.\n\nAll other scrape jobs (`gpu`, `prometheus`) have all their targets reporting `up = 1`, so they are healthy at the moment.",
     "calls": [
      {
       "outcome": "executed",
@@ -227,7 +227,7 @@
       "prompt_tokens": 1408,
       "completion_tokens": 1145,
       "finish_reason": "stop",
-      "text": "We need to answer: \"Which of the lab's Prometheus scrape jobs have targets down right now?\" The up metric shows 0 or 1. up=1 means target up, up=0 means target down. We need to list jobs where some targets are down. From results, we see several with up=0: {job=\"vllm\", model=\"qwen3-coder\", node=\"desktop\"} up=0; {job=\"vllm\", model=\"qwen3-embed\", node=\"desktop\"} up=0; {job=\"llama-swap\", node=\"desktop\"} up=1 (so up). Also {job=\"vllm-pool\"} up=0? Actually result shows up=0 for job \"vllm-pool\". Also maybe others. Let's parse.\n\nList each line:\n\n1. {__name__=\"up\", arch=\"sm_86\", instance=\"localhost:8101\", job=\"vllm\", model=\"qwen3-coder\", node=\"desktop\"} 0 => job vllm target down.\n\n2. {__name__=\"up\", arch=\"sm_86\", instance=\"localhost:9835\", job=\"gpu\", node=\"desktop\"} 1 => up.\n\n3. {__name__=\"up\", arch=\"sm_120\", instance=\"lab-laptop:8102\", job=\"vllm\", model=\"qwen3-embed\", node=\"laptop\"} 0 => job vllm target down.\n\n4. {__name__=\"up\", arch=\"sm_86+sm_120\", instance=\"lab-desktop:8200\", job=\"vllm-pool\", model=\"pool\", node=\"pooled\"} 0 => job vllm-pool target down.\n\n5. {__name__=\"up\", arch=\"sm_120\", instance=\"lab-laptop:9835\", job=\"gpu\", node=\"laptop\"} 1 => up.\n\n6. {__name__=\"up\", arch=\"sm_86\", instance=\"localhost:8102\", job=\"vllm\", model=\"qwen3-embed\", node=\"desktop\"} 0 => job vllm target down (another instance).\n\n7. {__name__=\"up\", arch=\"sm_120\", instance=\"lab-laptop:8080\", job=\"llama-swap\", node=\"laptop\"} 0 => job llama-swap target down.\n\n8. {__name__=\"up\", arch=\"sm_86\", instance=\"localhost:8080\", job=\"llama-swap\", node=\"desktop\"} 1 => up.\n\n9. {__name__=\"up\", instance=\"localhost:9090\", job=\"prometheus\"} 1 => up.\n\nThus jobs with at least one target down: vllm, vllm-pool, llama-swap. Also maybe gpu job has up=1 only.\n\nWe can answer: vllm, vllm-pool, llama-swap have down targets. Provide details.\n\n</think>Here\u2019s what the **`up`** metric from the lab\u2019s Prometheus instance tells us:\n\n| Job (scrape job) | Instance | `up` value | Status |\n|------------------|----------|-----------|--------|\n| **vllm** | `localhost:8101` (desktop) | **0** | **down** |\n| **vllm** | `lab-laptop:8102` (laptop) | **0** | **down** |\n| **vllm** | `localhost:8102` (desktop) | **0** | **down** |\n| **vllm-pool** | `lab-desktop:8200` (pooled) | **0** | **down** |\n| **llama-swap** | `lab-laptop:8080` (laptop) | **0** | **down** |\n| gpu | `localhost:9835` (desktop) | 1 | up |\n| gpu | `lab-laptop:9835` (laptop) | 1 | up |\n| prometheus | `localhost:9090` | 1 | up |\n| llama\u2011swap | `localhost:8080` (desktop) | 1 | up |\n\n**Jobs with at least one target currently down**\n\n- **`vllm`** \u2013 three instances are down (desktop\u202f:8101, laptop\u202f:8102, desktop\u202f:8102).  \n- **`vllm-pool`** \u2013 its single instance (`lab-desktop:8200`) is down.  \n- **`llama-swap`** \u2013 the laptop instance (`lab-laptop:8080`) is down; the desktop instance is up.\n\nAll other scrape jobs (`gpu`, `prometheus`) have all their targets reporting `up = 1`, so they are healthy at the moment."
+      "text": "We need to answer: \"Which of the lab's Prometheus scrape jobs have targets down right now?\" The up metric shows 0 or 1. up=1 means target up, up=0 means target down. We need to list jobs where some targets are down. From results, we see several with up=0: {job=\"vllm\", model=\"qwen3-coder\", node=\"desktop\"} up=0; {job=\"vllm\", model=\"qwen3-embed\", node=\"desktop\"} up=0; {job=\"llama-swap\", node=\"desktop\"} up=1 (so up). Also {job=\"vllm-pool\"} up=0? Actually result shows up=0 for job \"vllm-pool\". Also maybe others. Let's parse.\n\nList each line:\n\n1. {__name__=\"up\", arch=\"sm_86\", instance=\"localhost:8101\", job=\"vllm\", model=\"qwen3-coder\", node=\"desktop\"} 0 => job vllm target down.\n\n2. {__name__=\"up\", arch=\"sm_86\", instance=\"localhost:9835\", job=\"gpu\", node=\"desktop\"} 1 => up.\n\n3. {__name__=\"up\", arch=\"sm_120\", instance=\"LINK:8102\", job=\"vllm\", model=\"qwen3-embed\", node=\"laptop\"} 0 => job vllm target down.\n\n4. {__name__=\"up\", arch=\"sm_86+sm_120\", instance=\"LINK:8200\", job=\"vllm-pool\", model=\"pool\", node=\"pooled\"} 0 => job vllm-pool target down.\n\n5. {__name__=\"up\", arch=\"sm_120\", instance=\"LINK:9835\", job=\"gpu\", node=\"laptop\"} 1 => up.\n\n6. {__name__=\"up\", arch=\"sm_86\", instance=\"localhost:8102\", job=\"vllm\", model=\"qwen3-embed\", node=\"desktop\"} 0 => job vllm target down (another instance).\n\n7. {__name__=\"up\", arch=\"sm_120\", instance=\"LINK:8080\", job=\"llama-swap\", node=\"laptop\"} 0 => job llama-swap target down.\n\n8. {__name__=\"up\", arch=\"sm_86\", instance=\"localhost:8080\", job=\"llama-swap\", node=\"desktop\"} 1 => up.\n\n9. {__name__=\"up\", instance=\"localhost:9090\", job=\"prometheus\"} 1 => up.\n\nThus jobs with at least one target down: vllm, vllm-pool, llama-swap. Also maybe gpu job has up=1 only.\n\nWe can answer: vllm, vllm-pool, llama-swap have down targets. Provide details.\n\n</think>Here\u2019s what the **`up`** metric from the lab\u2019s Prometheus instance tells us:\n\n| Job (scrape job) | Instance | `up` value | Status |\n|------------------|----------|-----------|--------|\n| **vllm** | `localhost:8101` (desktop) | **0** | **down** |\n| **vllm** | `LINK:8102` (laptop) | **0** | **down** |\n| **vllm** | `localhost:8102` (desktop) | **0** | **down** |\n| **vllm-pool** | `LINK:8200` (pooled) | **0** | **down** |\n| **llama-swap** | `LINK:8080` (laptop) | **0** | **down** |\n| gpu | `localhost:9835` (desktop) | 1 | up |\n| gpu | `LINK:9835` (laptop) | 1 | up |\n| prometheus | `localhost:9090` | 1 | up |\n| llama\u2011swap | `localhost:8080` (desktop) | 1 | up |\n\n**Jobs with at least one target currently down**\n\n- **`vllm`** \u2013 three instances are down (desktop\u202f:8101, laptop\u202f:8102, desktop\u202f:8102).  \n- **`vllm-pool`** \u2013 its single instance (`LINK:8200`) is down.  \n- **`llama-swap`** \u2013 the laptop instance (`LINK:8080`) is down; the desktop instance is up.\n\nAll other scrape jobs (`gpu`, `prometheus`) have all their targets reporting `up = 1`, so they are healthy at the moment."
      }
     ],
     "truth": {
@@ -250,7 +250,7 @@
        "metric": {
         "__name__": "up",
         "arch": "sm_120",
-        "instance": "lab-laptop:8102",
+        "instance": "LINK:8102",
         "job": "vllm",
         "model": "qwen3-embed",
         "node": "laptop"
@@ -264,7 +264,7 @@
        "metric": {
         "__name__": "up",
         "arch": "sm_86+sm_120",
-        "instance": "lab-desktop:8200",
+        "instance": "LINK:8200",
         "job": "vllm-pool",
         "model": "pool",
         "node": "pooled"
@@ -292,7 +292,7 @@
        "metric": {
         "__name__": "up",
         "arch": "sm_120",
-        "instance": "lab-laptop:8080",
+        "instance": "LINK:8080",
         "job": "llama-swap",
         "node": "laptop"
        },
@@ -570,7 +570,7 @@
        "metric": {
         "__name__": "gpulab_gpu_memory_used_mib",
         "arch": "sm_120",
-        "instance": "lab-laptop:9835",
+        "instance": "LINK:9835",
         "job": "gpu",
         "node": "laptop"
        },
@@ -765,7 +765,7 @@
        "metric": {
         "__name__": "gpulab_gpu_power_limit_watts",
         "arch": "sm_120",
-        "instance": "lab-laptop:9835",
+        "instance": "LINK:9835",
         "job": "gpu",
         "node": "laptop"
        },
@@ -899,7 +899,7 @@
        "metric": {
         "__name__": "gpulab_gpu_temperature_celsius",
         "arch": "sm_120",
-        "instance": "lab-laptop:9835",
+        "instance": "LINK:9835",
         "job": "gpu",
         "node": "laptop"
        },
@@ -1026,7 +1026,7 @@
       {
        "metric": {
         "arch": "sm_120",
-        "instance": "lab-laptop:9835",
+        "instance": "LINK:9835",
         "job": "gpu",
         "node": "laptop"
        },

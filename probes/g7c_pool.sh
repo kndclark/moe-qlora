@@ -14,11 +14,12 @@
 #   from /metrics land in spec-{eval,bench}.txt (empty without a draft).
 set -u
 here=$(cd "$(dirname "$0")/.." && pwd)
+addr=$(ssh -G llm | awk '/^hostname /{print $2}')   # the desktop's end of the direct link
 out=$here/results/${G7C_OUT:-g7c}
 mkdir -p "$out"
 LAB=/home/david/gpu-lab/bin/lab
 M=nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4
-B=http://lab-desktop:8200
+B=http://$addr:8200
 finish() {
   ssh llm "sudo docker exec ray-head cat /tmp/vllm-pool.log" > "$out/vllm-pool.log" 2>&1
   "$LAB" pool down > "$out/pool-down.log" 2>&1; echo "pool down exit $?"

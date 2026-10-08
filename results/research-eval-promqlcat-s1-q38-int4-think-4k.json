@@ -3,7 +3,7 @@
  "set": "promql",
  "promql_catalog": true,
  "model": "q38-int4",
- "base": "http://lab-desktop:8304",
+ "base": "http://LINK:8304",
  "tools": true,
  "thinking": "on",
  "max_tokens": 4096,
@@ -115,7 +115,7 @@
        "metric": {
         "__name__": "gpulab_ac_online",
         "arch": "sm_120",
-        "instance": "lab-laptop:9835",
+        "instance": "LINK:9835",
         "job": "gpu",
         "node": "laptop"
        },
@@ -182,7 +182,7 @@
        "metric": {
         "__name__": "gpulab_battery_capacity_percent",
         "arch": "sm_120",
-        "instance": "lab-laptop:9835",
+        "instance": "LINK:9835",
         "job": "gpu",
         "node": "laptop"
        },
@@ -214,7 +214,7 @@
    "tol": null,
    "run": {
     "status": "answered",
-    "final": "Right now, three scrape jobs have targets down (`up == 0`):\n\n| Job | Down target(s) | Node |\n|---|---|---|\n| **vllm** | `localhost:8101` (qwen3-coder) | desktop |\n| **vllm** | `localhost:8102` (qwen3-embed) | desktop |\n| **vllm** | `lab-laptop:8102` (qwen3-embed) | laptop |\n| **vllm-pool** | `lab-desktop:8200` (pool) | pooled |\n| **llama-swap** | `localhost:8080` | desktop |\n| **llama-swap** | `lab-laptop:8080` | laptop |\n\nSo effectively **all vLLM targets, the vllm-pool target, and both llama-swap targets are down**. The only healthy jobs are `gpu` (both desktop and laptop at `:9835`) and `prometheus` itself.",
+    "final": "Right now, three scrape jobs have targets down (`up == 0`):\n\n| Job | Down target(s) | Node |\n|---|---|---|\n| **vllm** | `localhost:8101` (qwen3-coder) | desktop |\n| **vllm** | `localhost:8102` (qwen3-embed) | desktop |\n| **vllm** | `LINK:8102` (qwen3-embed) | laptop |\n| **vllm-pool** | `LINK:8200` (pool) | pooled |\n| **llama-swap** | `localhost:8080` | desktop |\n| **llama-swap** | `LINK:8080` | laptop |\n\nSo effectively **all vLLM targets, the vllm-pool target, and both llama-swap targets are down**. The only healthy jobs are `gpu` (both desktop and laptop at `:9835`) and `prometheus` itself.",
     "calls": [
      {
       "outcome": "executed",
@@ -252,13 +252,13 @@
       "prompt_tokens": 1271,
       "completion_tokens": 257,
       "finish_reason": "stop",
-      "text": "The user is asking which scrape jobs have targets that are currently down. Let me check the results.\n\nDown targets (up == 0):\n- job=\"vllm\": instance localhost:8101 (node=desktop, model=qwen3-coder), lab-laptop:8102 (node=laptop, model=qwen3-embed), localhost:8102 (node=desktop, model=qwen3-embed)\n- job=\"vllm-pool\": lab-desktop:8200 (node=pooled)\n- job=\"llama-swap\": lab-laptop:8080 (node=laptop), localhost:8080 (node=desktop)\n\nSo the jobs with down targets are: vllm, vllm-pool, llama-swap.\n\nLet me also check whether there are any other jobs that are completely up, to get the full picture. I'll query all up values to see which jobs exist.\n</think>\n\n<tool_call>\n<function=promql>\n<parameter=query>\nup\n</parameter>\n</function>\n</tool_call>"
+      "text": "The user is asking which scrape jobs have targets that are currently down. Let me check the results.\n\nDown targets (up == 0):\n- job=\"vllm\": instance localhost:8101 (node=desktop, model=qwen3-coder), LINK:8102 (node=laptop, model=qwen3-embed), localhost:8102 (node=desktop, model=qwen3-embed)\n- job=\"vllm-pool\": LINK:8200 (node=pooled)\n- job=\"llama-swap\": LINK:8080 (node=laptop), localhost:8080 (node=desktop)\n\nSo the jobs with down targets are: vllm, vllm-pool, llama-swap.\n\nLet me also check whether there are any other jobs that are completely up, to get the full picture. I'll query all up values to see which jobs exist.\n</think>\n\n<tool_call>\n<function=promql>\n<parameter=query>\nup\n</parameter>\n</function>\n</tool_call>"
      },
      {
       "prompt_tokens": 1698,
       "completion_tokens": 427,
       "finish_reason": "stop",
-      "text": "Down targets (up == 0):\n- vllm job: localhost:8101 (desktop, qwen3-coder), lab-laptop:8102 (laptop, qwen3-embed), localhost:8102 (desktop, qwen3-embed)\n- vllm-pool job: lab-desktop:8200 (pooled)\n- llama-swap job: lab-laptop:8080 (laptop), localhost:8080 (desktop)\n\nUp targets: gpu (both), prometheus.\n\nSo the jobs with down targets are: vllm, vllm-pool, llama-swap.\n</think>\n\nRight now, three scrape jobs have targets down (`up == 0`):\n\n| Job | Down target(s) | Node |\n|---|---|---|\n| **vllm** | `localhost:8101` (qwen3-coder) | desktop |\n| **vllm** | `localhost:8102` (qwen3-embed) | desktop |\n| **vllm** | `lab-laptop:8102` (qwen3-embed) | laptop |\n| **vllm-pool** | `lab-desktop:8200` (pool) | pooled |\n| **llama-swap** | `localhost:8080` | desktop |\n| **llama-swap** | `lab-laptop:8080` | laptop |\n\nSo effectively **all vLLM targets, the vllm-pool target, and both llama-swap targets are down**. The only healthy jobs are `gpu` (both desktop and laptop at `:9835`) and `prometheus` itself."
+      "text": "Down targets (up == 0):\n- vllm job: localhost:8101 (desktop, qwen3-coder), LINK:8102 (laptop, qwen3-embed), localhost:8102 (desktop, qwen3-embed)\n- vllm-pool job: LINK:8200 (pooled)\n- llama-swap job: LINK:8080 (laptop), localhost:8080 (desktop)\n\nUp targets: gpu (both), prometheus.\n\nSo the jobs with down targets are: vllm, vllm-pool, llama-swap.\n</think>\n\nRight now, three scrape jobs have targets down (`up == 0`):\n\n| Job | Down target(s) | Node |\n|---|---|---|\n| **vllm** | `localhost:8101` (qwen3-coder) | desktop |\n| **vllm** | `localhost:8102` (qwen3-embed) | desktop |\n| **vllm** | `LINK:8102` (qwen3-embed) | laptop |\n| **vllm-pool** | `LINK:8200` (pool) | pooled |\n| **llama-swap** | `localhost:8080` | desktop |\n| **llama-swap** | `LINK:8080` | laptop |\n\nSo effectively **all vLLM targets, the vllm-pool target, and both llama-swap targets are down**. The only healthy jobs are `gpu` (both desktop and laptop at `:9835`) and `prometheus` itself."
      }
     ],
     "truth": {
@@ -281,7 +281,7 @@
        "metric": {
         "__name__": "up",
         "arch": "sm_120",
-        "instance": "lab-laptop:8102",
+        "instance": "LINK:8102",
         "job": "vllm",
         "model": "qwen3-embed",
         "node": "laptop"
@@ -295,7 +295,7 @@
        "metric": {
         "__name__": "up",
         "arch": "sm_86+sm_120",
-        "instance": "lab-desktop:8200",
+        "instance": "LINK:8200",
         "job": "vllm-pool",
         "model": "pool",
         "node": "pooled"
@@ -323,7 +323,7 @@
        "metric": {
         "__name__": "up",
         "arch": "sm_120",
-        "instance": "lab-laptop:8080",
+        "instance": "LINK:8080",
         "job": "llama-swap",
         "node": "laptop"
        },
@@ -614,7 +614,7 @@
        "metric": {
         "__name__": "gpulab_gpu_memory_used_mib",
         "arch": "sm_120",
-        "instance": "lab-laptop:9835",
+        "instance": "LINK:9835",
         "job": "gpu",
         "node": "laptop"
        },
@@ -827,7 +827,7 @@
        "metric": {
         "__name__": "gpulab_gpu_power_limit_watts",
         "arch": "sm_120",
-        "instance": "lab-laptop:9835",
+        "instance": "LINK:9835",
         "job": "gpu",
         "node": "laptop"
        },
@@ -961,7 +961,7 @@
        "metric": {
         "__name__": "gpulab_gpu_temperature_celsius",
         "arch": "sm_120",
-        "instance": "lab-laptop:9835",
+        "instance": "LINK:9835",
         "job": "gpu",
         "node": "laptop"
        },
@@ -993,7 +993,7 @@
    "tol": 0,
    "run": {
     "status": "answered",
-    "final": "**3 out of 9** scrape targets are up right now:\n\n| Target | Job | Node | Status |\n|---|---|---|---|\n| localhost:9835 | gpu | desktop | \u2705 up |\n| lab-laptop:9835 | gpu | laptop | \u2705 up |\n| localhost:9090 | prometheus | \u2014 | \u2705 up |\n\nDown (6):\n- vllm on desktop (both `qwen3-coder` :8101 and `qwen3-embed` :8102)\n- vllm on laptop (`qwen3-embed` :8102)\n- vllm-pool (lab-desktop:8200)\n- llama-swap on desktop and laptop (:8080)\n\nSo the GPU sensor scrapes and Prometheus itself are healthy, but all the vLLM and llama-swap endpoints are currently down.",
+    "final": "**3 out of 9** scrape targets are up right now:\n\n| Target | Job | Node | Status |\n|---|---|---|---|\n| localhost:9835 | gpu | desktop | \u2705 up |\n| LINK:9835 | gpu | laptop | \u2705 up |\n| localhost:9090 | prometheus | \u2014 | \u2705 up |\n\nDown (6):\n- vllm on desktop (both `qwen3-coder` :8101 and `qwen3-embed` :8102)\n- vllm on laptop (`qwen3-embed` :8102)\n- vllm-pool (LINK:8200)\n- llama-swap on desktop and laptop (:8080)\n\nSo the GPU sensor scrapes and Prometheus itself are healthy, but all the vLLM and llama-swap endpoints are currently down.",
     "calls": [
      {
       "outcome": "executed",
@@ -1037,7 +1037,7 @@
       "prompt_tokens": 1418,
       "completion_tokens": 445,
       "finish_reason": "stop",
-      "text": "The user is asking how many of the lab's Prometheus scrape targets are currently up.\n\nFrom the `up` query results:\n- vllm desktop (localhost:8101): 0\n- gpu desktop (localhost:9835): 1\n- vllm laptop (lab-laptop:8102): 0\n- vllm-pool pooled (lab-desktop:8200): 0\n- gpu laptop (lab-laptop:9835): 1\n- vllm desktop (localhost:8102): 0\n- llama-swap laptop (lab-laptop:8080): 0\n- llama-swap desktop (localhost:8080): 0\n- prometheus (localhost:9090): 1\n\nTotal: 9 targets, of which 3 are up (the 2 gpu scrapes and prometheus itself).\n</think>\n\n**3 out of 9** scrape targets are up right now:\n\n| Target | Job | Node | Status |\n|---|---|---|---|\n| localhost:9835 | gpu | desktop | \u2705 up |\n| lab-laptop:9835 | gpu | laptop | \u2705 up |\n| localhost:9090 | prometheus | \u2014 | \u2705 up |\n\nDown (6):\n- vllm on desktop (both `qwen3-coder` :8101 and `qwen3-embed` :8102)\n- vllm on laptop (`qwen3-embed` :8102)\n- vllm-pool (lab-desktop:8200)\n- llama-swap on desktop and laptop (:8080)\n\nSo the GPU sensor scrapes and Prometheus itself are healthy, but all the vLLM and llama-swap endpoints are currently down."
+      "text": "The user is asking how many of the lab's Prometheus scrape targets are currently up.\n\nFrom the `up` query results:\n- vllm desktop (localhost:8101): 0\n- gpu desktop (localhost:9835): 1\n- vllm laptop (LINK:8102): 0\n- vllm-pool pooled (LINK:8200): 0\n- gpu laptop (LINK:9835): 1\n- vllm desktop (localhost:8102): 0\n- llama-swap laptop (LINK:8080): 0\n- llama-swap desktop (localhost:8080): 0\n- prometheus (localhost:9090): 1\n\nTotal: 9 targets, of which 3 are up (the 2 gpu scrapes and prometheus itself).\n</think>\n\n**3 out of 9** scrape targets are up right now:\n\n| Target | Job | Node | Status |\n|---|---|---|---|\n| localhost:9835 | gpu | desktop | \u2705 up |\n| LINK:9835 | gpu | laptop | \u2705 up |\n| localhost:9090 | prometheus | \u2014 | \u2705 up |\n\nDown (6):\n- vllm on desktop (both `qwen3-coder` :8101 and `qwen3-embed` :8102)\n- vllm on laptop (`qwen3-embed` :8102)\n- vllm-pool (LINK:8200)\n- llama-swap on desktop and laptop (:8080)\n\nSo the GPU sensor scrapes and Prometheus itself are healthy, but all the vLLM and llama-swap endpoints are currently down."
      }
     ],
     "truth": {
@@ -1106,7 +1106,7 @@
       {
        "metric": {
         "arch": "sm_120",
-        "instance": "lab-laptop:9835",
+        "instance": "LINK:9835",
         "job": "gpu",
         "node": "laptop"
        },

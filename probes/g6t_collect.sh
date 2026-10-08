@@ -6,10 +6,11 @@
 #   with ADAPTER, the adapter is served as g6_eval.sh serves it (pass --model NAME too).
 set -u
 here=$(cd "$(dirname "$0")/.." && pwd)
+addr=$(ssh -G llm | awk '/^hostname /{print $2}')   # the desktop's end of the direct link
 out=$(realpath -m "$1"); shift
 name=g6t-collect
 B=http://127.0.0.1:8303
-curl -sf -m3 http://lab-desktop:9090/-/ready >/dev/null || { echo "desktop Prometheus unreachable"; exit 5; }
+curl -sf -m3 http://$addr:9090/-/ready >/dev/null || { echo "desktop Prometheus unreachable"; exit 5; }
 python3 "$here/probes/g7a_eval.py" --selfcheck | tail -1 | grep -qx "selfcheck PASS" || { echo "g7a_eval.py --selfcheck failed"; exit 4; }
 restore() {
   docker logs "$name" > "${out%.jsonl}-serve.log" 2>&1 || true

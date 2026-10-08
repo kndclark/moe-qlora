@@ -17,11 +17,12 @@
 #   2026-10-02 (docs/lightning-training.md); unset it is g6u, as G7d ran.
 set -u
 here=$(cd "$(dirname "$0")/.." && pwd)
+addr=$(ssh -G llm | awk '/^hostname /{print $2}')   # the desktop's end of the direct link
 out=$here/results/${G7D_OUT:-g7d}
 mkdir -p "$out"
 LAB=/home/david/gpu-lab/bin/lab
 M=${G7D_MODEL:-nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4}
-B=http://lab-desktop:8200
+B=http://$addr:8200
 LABEL=${G7D_ADAPTER:-g6u}
 python3 "$here/probes/g7a_eval.py" --selfcheck | tail -1 | grep -qx "selfcheck PASS" || { echo "g7a_eval.py --selfcheck failed"; exit 4; }
 finish() {

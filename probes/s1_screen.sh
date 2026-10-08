@@ -5,7 +5,7 @@
 # probes/g7a_eval.py (its --selfcheck gates the run). Before the evals it records vLLM's KV
 # capacity and gpu-lab bench.py decode at c=1 and c=16, as l_single.sh does.
 # NODE=laptop serves on 127.0.0.1:8304 (sm_120; platform profile max-power for the run).
-# NODE=desktop serves on lab-desktop:8304 (sm_86; free the card first: lab down --gpu-only).
+# NODE=desktop serves on <desktop>:8304 (sm_86; free the card first: lab down --gpu-only).
 # Outputs: results/research-eval-<set>-s1-<TAG>-{think-4k,nothink}.json (+ .log), and
 #   results/s1/<TAG>/{serve.log,kv.txt,bench-c{1,16}.{json,log}}. Existing evals are
 #   skipped, so a rerun resumes.
@@ -24,12 +24,13 @@
 set -u
 NODE=${NODE:?laptop or desktop} TAG=${TAG:?names the run} MODEL=${MODEL:?hf repo} REV=${REV:?pinned sha}
 here=$(cd "$(dirname "$0")/.." && pwd)
+addr=$(ssh -G llm | awk '/^hostname /{print $2}')   # the desktop's end of the direct link
 out=$here/results
 ftag=$TAG${REP:+-r$REP}
 mkdir -p "$out/s1/$ftag"
 name=s1-$ftag
 if [ "$NODE" = desktop ]; then
-  B=http://lab-desktop:8304 port=lab-desktop:8304:8000 run=(ssh llm sudo docker)
+  B=http://$addr:8304 port=$addr:8304:8000 run=(ssh llm sudo docker)
 else
   B=http://127.0.0.1:8304 port=127.0.0.1:8304:8000 run=(docker)
 fi
@@ -87,7 +88,7 @@ common=(--max-calls 3 --temperature 0 --window 4000 --seed 20260923 --concurrenc
 ev() {  # label thinking max_tokens set [extra...]
   local label=$1 think=$2 mt=$3 set=$4; shift 4
   if [ -f "$out/research-eval-$label.json" ]; then echo "  $label: exists, skipped"; return; fi
-  if [ "$set" = promql ] && ! curl -sf -m3 http://lab-desktop:9090/-/ready >/dev/null; then
+  if [ "$set" = promql ] && ! curl -sf -m3 http://$addr:9090/-/ready >/dev/null; then
     echo "  $label: SKIPPED, desktop Prometheus unreachable (link down?)"; return; fi
   local t=$(date +%s)
   python3 "$here/probes/g7a_eval.py" --base $B --model "$TAG" --label "$label" \

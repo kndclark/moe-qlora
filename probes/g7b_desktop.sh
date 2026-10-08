@@ -12,10 +12,11 @@ set -u
 adapter=$(realpath "$1")
 LABEL=${LABEL:?LABEL names the adapter}
 here=$(cd "$(dirname "$0")/.." && pwd)
+addr=$(ssh -G llm | awk '/^hostname /{print $2}')   # the desktop's end of the direct link
 out=$here/results/g7b
 mkdir -p "$out"
 name=g7b-$LABEL
-B=http://lab-desktop:8303
+B=http://$addr:8303
 remote=/home/david/g7b/$LABEL
 python3 "$here/probes/g7a_eval.py" --selfcheck | tail -1 | grep -qx "selfcheck PASS" || { echo "g7a_eval.py --selfcheck failed"; exit 4; }
 ssh llm "mkdir -p $remote" && scp -q -r "$adapter"/adapter_config.json "$adapter"/adapter_model.safetensors llm:$remote/ || exit 1
@@ -29,7 +30,7 @@ restore() {
   ssh llm "sudo docker rm -f $name" >/dev/null 2>&1
 }
 trap restore EXIT
-ssh llm "sudo docker run -d --name $name --gpus all --ipc=host -p lab-desktop:8303:8000 \
+ssh llm "sudo docker run -d --name $name --gpus all --ipc=host -p $addr:8303:8000 \
   -v /srv/model-cache:/hf:ro -v $remote:/adapter:ro -e HF_HOME=/hf -e HF_HUB_OFFLINE=1 \
   vllm/vllm-openai:v0.29.0 \
   --model nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4 \

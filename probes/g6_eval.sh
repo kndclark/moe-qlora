@@ -14,6 +14,7 @@
 set -u
 adapter=$(realpath "$1")
 here=$(cd "$(dirname "$0")/.." && pwd)
+addr=$(ssh -G llm | awk '/^hostname /{print $2}')   # the desktop's end of the direct link
 out=$here/results
 LABEL=${LABEL:-g6}
 name=$LABEL-eval
@@ -48,7 +49,7 @@ common=(--max-calls 3 --temperature 0 --window 4000 --seed 20260923 --concurrenc
 run() {  # label model thinking max_tokens set [extra...]
   local label=$1 model=$2 think=$3 mt=$4 set=$5; shift 5
   if [ -f "$out/research-eval-$label.json" ]; then echo "  $label: exists, skipped"; return; fi
-  if [ "$set" = promql ] && ! curl -sf -m3 http://lab-desktop:9090/-/ready >/dev/null; then
+  if [ "$set" = promql ] && ! curl -sf -m3 http://$addr:9090/-/ready >/dev/null; then
     echo "  $label: SKIPPED, desktop Prometheus unreachable (link down?)"; return; fi
   local t=$(date +%s)
   python3 "$here/probes/g7a_eval.py" --base $B --model "$model" --label "$label" \

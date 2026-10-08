@@ -62,7 +62,7 @@ g7a_eval.THINK_OPEN[0] = True
 
 REPO = os.path.dirname(here)
 DATASET = os.path.join(REPO, "results", "research_dataset_g6q.json")
-PROM = "http://lab-desktop:9090"
+PROM = g6q_build.PROM
 MAX_LEN = 2048
 ELIGIBLE = {"cli_grounded": "held_out", "compose": "two_flag", "task_procedure": "task",
             "trap_refusal": "trap", "asserted_trap": "trap", "alert_direct": "alert",
