@@ -446,7 +446,7 @@ run() {  # the doc's lever table, row by row
     # GroupedTopKRouter, which ignores VLLM_MOE_SKIP_PADDING, so rows padded up to a capture size
     # route stale tokens into real experts (cold misses under K6); -cs8 captures every size to 8,
     # at KV pinned by -kvb so the graph-memory estimate cannot move KV.
-    p31-*|p33-*|p34-*|p35-*|p36-*|p37-*|p38-*|p39-*|p40-*|p41-*)
+    p31-*|p33-*|p34-*|p35-*|p36-*|p37-*|p38-*|p39-*|p40-*|p41-*|p42-*|p43-*)
       local o=() w=$AGENT8L k="${KC6/KSTAGE_STATS=30/KSTAGE_STATS=1} KSTAGE_SLOTS=all KSTAGE_DMA_M=64"
       local nl=0 mb=marlin
       case $1 in *-nolora*) nl=1 ;; esac
@@ -467,9 +467,11 @@ run() {  # the doc's lever table, row by row
       case $1 in *-a16l) w=$AGENT16L ;; esac
       # bfloat16, not auto: auto takes the checkpoint's kv_cache_quant_algo, FP8 here (p40's kvbf16 ran fp8)
       case $1 in *-kvbf16*) o+=(--kv-cache-dtype bfloat16) ;; esac
-      case $1 in *-triton*) o+=(--attention-backend TRITON_ATTN) ;; *-fa2*) o+=(--attention-backend FLASH_ATTN) ;; esac
+      case $1 in *-triton*) o+=(--attention-backend TRITON_ATTN) ;; *-fa2*) o+=(--attention-backend FLASH_ATTN) ;;
+                 *-fi-*) o+=(--attention-backend FLASHINFER) ;; esac
       case $1 in *-cs8*) o+=(--compilation-config '{"cudagraph_capture_sizes": [1, 2, 3, 4, 5, 6, 7, 8, 16, 24, 32]}') ;; esac
-      case $1 in *-kvb[0-9]*) local kb=${1##*-kvb}; o+=(--kv-cache-memory-bytes $((${kb%%-*} * 1073741824 / 100))) ;; esac
+      # digits only: -kvbf16 is the KV dtype, not a size
+      if [[ $1 =~ -kvb([0-9]+)- ]]; then o+=(--kv-cache-memory-bytes $((BASH_REMATCH[1] * 1073741824 / 100))); fi
       case $1 in
         *-eval) NOLORA=$nl MOE=$mb KS="$k" MAXLEN=131072 phase "$1" "${G92[@]}" ;;   # quality, vs tm-graphs092
         *-c1-*) NOLORA=$nl MOE=$mb KS="$k" MAXLEN=131072 WORK=decode BARGS="--conc 1" phase "$1" "${G92[@]}" ;;
@@ -560,6 +562,13 @@ for p in "$@"; do
     # p41: p40's bf16 arms with bf16 KV (half the tokens per byte, so kvoff16 holds what kvoff8 did)
     p41) for q in base-kvoff8-b4k-kvbf16-a8l base-kvoff16-b4k-kvbf16-a8l \
                   base-kvoff16-b4k-fa2-kvbf16-a8l; do run p41-$q; done ;;
+    # p42: p41 found bf16 KV makes vLLM pick FLASH_ATTN (decode 45.6 tok/s vs 35.5, wall 385 s vs
+    # 357): -fi forces FlashInfer to split kernel from dtype; K6 frees GPU memory for bf16 KV
+    p42) for q in base-kvoff8-b4k-fi-kvbf16-a8l live-lfu-cg2-kvb270-kvoff8-b8k-kvbf16-a8l; do run p42-$q; done ;;
+    # p43: p42's K6 arm (it died on the -kvb parse) and the same on FlashInfer, which decoded
+    # faster on bf16 KV in p42 (56.9 tok/s vs FLASH_ATTN's 45.6)
+    p43) for q in live-lfu-cg2-kvb270-kvoff8-b8k-kvbf16-a8l live-lfu-cg2-kvb270-kvoff8-b8k-fi-kvbf16-a8l; do
+           run p43-$q; done ;;
     p38f) for q in base-kvb105-kvoff8-b4k-unjam-a8l base-kvb105-kvoff16-b4k-unjam-a16l; do run p38-$q; done ;;   # Marlin at B12x's KV
     p36) for q in base-kvoff8-b6k-unjam-a8l base-kvoff16-b6k-unjam-a16l; do run p36-$q; done ;;
     p35) for q in live-lfu-cg3-b8k-a8l live-lfu-cg3-kvoff8-b8k-a8l live-lfu-cg3-kvoff16-b8k-a16l \

@@ -7,7 +7,9 @@
 # one card takes host KV or K6. Ends with `lab pool down` and `lab up` on the desktop, as
 # g7c_pool.sh does. The pool binds to the direct link, which is llm's ssh address; that address
 # is written into nothing kept here (outputs are redacted on exit: the repo is public).
-# usage: [POOL_MAX_BATCHED_TOKENS=n] [PA_OUT=dir] [PA_NOLORA=1] pool_agents.sh LOAD...   (a8l, a16l)
+# PA_KV=bfloat16 trades KV room (4.8M fp8 tokens, ~2x what 16 agents need) for the faster bf16
+# decode p41-p42 found on the laptop.
+# usage: [POOL_MAX_BATCHED_TOKENS=n] [PA_OUT=dir] [PA_NOLORA=1] [PA_KV=dtype] pool_agents.sh LOAD...   (a8l, a16l)
 set -u
 here=$(cd "$(dirname "$0")/.." && pwd)
 out=$here/results/${PA_OUT:-pool-agents}
@@ -32,10 +34,10 @@ finish() {
 trap finish EXIT
 POOL_MODEL=$M POOL_MAXLEN=131072 POOL_WAIT_SECS=900 POOL_GPU_UTIL=${POOL_GPU_UTIL:-0.85} \
 POOL_MAX_BATCHED_TOKENS=${POOL_MAX_BATCHED_TOKENS:-4096} \
-POOL_EXTRA_FLAGS="--revision bee7596271d1495f6992ae224aefde4410e816b8 --kv-cache-dtype fp8 --mamba-cache-mode align --moe-backend marlin --linear-backend marlin --max-num-seqs 16 --enable-prompt-tokens-details${lora:+ $lora}" \
+POOL_EXTRA_FLAGS="--revision bee7596271d1495f6992ae224aefde4410e816b8 --kv-cache-dtype ${PA_KV:-fp8} --mamba-cache-mode align --moe-backend marlin --linear-backend marlin --max-num-seqs 16 --enable-prompt-tokens-details${lora:+ $lora}" \
   "$LAB" pool up > "$out/pool-up.log" 2>&1
 rc=$?
-echo "== pool up exit $rc $(date -u +%H:%M:%SZ) chunks ${POOL_MAX_BATCHED_TOKENS:-4096} model $model"
+echo "== pool up exit $rc $(date -u +%H:%M:%SZ) chunks ${POOL_MAX_BATCHED_TOKENS:-4096} model $model kv ${PA_KV:-fp8}"
 if [ $rc -ne 0 ]; then
   ssh llm "sudo docker exec ray-head cat /tmp/vllm-pool.log" < /dev/null 2>/dev/null | grep -E "Error|error" | tail -4 | cut -c1-240
   exit 1

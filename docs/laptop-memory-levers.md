@@ -812,6 +812,39 @@ KV 2.71 GiB, 382 experts cold, 16.6 a layer) [measured]:
   Triton's prefill is the faster one at depth (late TTFT −11%) and it holds 24% more
   tokens, but its decode is 13% slower, which sets the wall here. The padding arms are
   under "CUDA-graph limits, judged", item 1.
+- **p41** [measured, one draw each; p40's load and settings with `--kv-cache-dtype
+  bfloat16`]:
+
+  | Arm | GPU KV tokens | Wall | Decode median | Late TTFT | Preemptions | Host RAM |
+  |---|---|---|---|---|---|---|
+  | bf16 KV, 8 GiB in RAM | 337,833 | 385 s | 45.6 tok/s | 11.81 s | 8 | +12.9 GiB |
+  | bf16 KV, 16 GiB in RAM | 337,833 | 384 s | 45.6 tok/s | 11.80 s | 8 | +21.1 GiB |
+  | bf16 KV, 16 GiB, `FLASH_ATTN` forced | 337,833 | 384 s | 45.5 tok/s | 11.79 s | 8 | +21.2 GiB |
+
+  - With bf16 KV vLLM picks `FLASH_ATTN` by itself ("Using FLASH_ATTN attention backend out
+    of potential backends: ['FLASH_ATTN', 'FLASHINFER', ...]") [measured]. Under fp8 KV
+    `FLASH_ATTN` is not eligible, which is why the default has been FlashInfer. The forced
+    arm is a second draw of the one above it.
+  - Decode is 28% faster than the fp8 control (45.6 vs 35.5 tok/s), but late TTFT is 40%
+    longer, eight requests were preempted, and the wall is 8% longer [measured]. The GPU
+    holds 0.69 times the tokens: bf16 doubles the bytes per attention token, while each
+    page's Mamba state stays the same size [arithmetic]. The lost room is the likely cost
+    [inference].
+  - 16 GiB of KV in RAM changes nothing against 8: both read the same 13,626,096 tokens
+    back from RAM [measured], so 8 GiB of bf16 already holds what this load re-reads
+    [inference].
+  - Open: whether the faster decode is the kernel or the dtype, and whether bf16 KV wins
+    once it has room. p42 forces FlashInfer on bf16 KV, and runs bf16 KV beside the K6
+    expert cache, which frees GPU memory for it.
+- **p42** [measured, one draw; p41's first arm with `--attention-backend FLASHINFER`]:
+  276,912 GPU KV tokens, wall 381 s, decode median 56.9 tok/s, late TTFT 13.35 s, 25
+  preemptions. The dtype makes the decode, not the kernel: FlashInfer on bf16 decodes 60%
+  faster than on fp8 (35.5) and 25% faster than `FLASH_ATTN` on bf16 (45.6). It also
+  leaves less room, 1.8 GiB of KV against `FLASH_ATTN`'s 2.2 at the same settings
+  [measured], so more requests are preempted, and the GPU served 44,016 prefix tokens
+  against the fp8 control's 609,696: almost every hit (13,705,744 tokens) was read back
+  from RAM. The wall sits between the two (381 s vs 357 and 385). p42's K6 arm died on a
+  parse bug in the arm name (`-kvbf16` read as a KV size) before it started; p43 reruns it.
 
 ## Untested levers, ranked
 

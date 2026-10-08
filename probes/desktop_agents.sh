@@ -59,6 +59,10 @@ phase() {  # tag pin_gib bench_args serve_flags...; env KS="KSTAGE=... VAR=..." 
   echo "ready in $(( $(date +%s)-t0 ))s; $(docker logs "$name" 2>&1 | grep -oE "Model loading took [0-9.]+ GiB|Available KV cache memory: [0-9.]+ GiB|GPU KV cache size: [0-9,]+ tokens" | tr '\n' ';')"
   echo "  backends: $(docker logs "$name" 2>&1 | grep -oE "Using [A-Za-z0-9_]+ (attention )?backend[^,;]*|Selected [A-Za-z0-9_]+ for [A-Za-z ]+" | sort -u | tr '\n' ';' | cut -c1-300)"
   [ -z "${KS:-}" ] || docker logs "$name" 2>&1 | grep -E "kstage: (cache|installed|registered)" | sed 's/^.*kstage:/  kstage:/' | sort -u
+  # d41's K6 arm ran without K6: the copy lacked vllm_kstage-0.1.dist-info, the plugin's entry point
+  if [ -n "${KS:-}" ] && ! docker logs "$name" 2>&1 | grep -q "kstage: installed"; then
+    echo "  kstage not installed: arm stopped"; docker logs "$name" > "$J/serve-$tag.log" 2>&1
+    docker rm -f "$name" >/dev/null 2>&1; return 5; fi
   echo "  host RAM used: +$(( $(free -m | awk '/^Mem:/{print $3}') - ram0 )) MiB, $(free -m | awk '/^Mem:/{print $7}') MiB available"
   local t=$(date +%s)
   # The client gets 40 minutes; a stall ends the bench, never the container (its log is kept)
@@ -85,6 +89,9 @@ run() {  # d41-{base|cgN}[-kvoffN][-bNk][-kvbf16]-a8l|a16l
 for p in "$@"; do
   case $p in
     d41) for q in d41-base-kvoff8-b4k-a8l d41-base-kvoff8-b8k-a8l d41-base-b4k-a8l d41-k6-b8k-a8l; do run $q; done ;;
+    # d43: d41's K6 arm with K6 loaded, and d42's 16 agents on 8 GiB of host KV: native host KV
+    # lives in /dev/shm, half of RAM here (15 GiB), so kvoff16 cannot start; K6 + kvoff8 pins 25
+    d43) for q in d43-k6-b8k-a8l d43-base-kvoff8-b4k-a16l; do run $q; done ;;
     *) run "$p" ;;
   esac
 done
