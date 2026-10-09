@@ -1741,3 +1741,69 @@ per token, ~0.37 s per decode step, ~43 tok/s aggregate). The weights are downlo
 (cyankiwi/GLM-4.5-Air-AWQ-4bit, rev a22f274d, on the desktop) and verified against the
 manifest -- 23 of 23 files, 63,425,665,893 bytes, all world-readable -- if a later
 question needs them.
+
+## G1b: the allowlist in the tool description, pre-registered 2026-10-09
+
+G1 left one question open: would GLM reach Lightning if the bash tool's description stated
+the allowlist, instead of only the refusal? G1b is that arm. It is a new protocol, so both
+models run under it; neither is compared against G1's runs for a verdict.
+
+### Protocol: S1's, with one change
+
+- **`research_eval.py --allowlist-in-tool`** (gpu-lab 528c9ae). The bash tool's description
+  gains one sentence: "In this evaluation the harness runs only `<tool> --help`,
+  `<tool> -h`, `<tool> <subcommand> --help` and `man <page>`; any other command, pipes and
+  extra arguments included, is refused." The allowlist itself, the refusal text, the items
+  and the scorer are unchanged.
+  - Without the flag the harness is as before: `--list-items` is byte-identical and
+    `TOOLS` matches `training/tools.py` (MEASURED).
+- **Arms**, both on the laptop through `probes/s1_screen.sh` with `G7A="--allowlist-in-tool"`:
+  - `glm47f-nvfp4-ad`: G1's GLM serving, unchanged (`GadflyII/GLM-4.7-Flash-NVFP4` @
+    `3cdd7f37`, `UTIL=0.92`).
+  - `lightning-ad`: Lightning NVFP4 @ `bee75962` with G6's serve flags (`--kv-cache-dtype
+    fp8 --mamba-cache-mode align --moe-backend marlin --enforce-eager --enable-lora
+    --max-lora-rank 16 --max-loras 1`, `UTIL=0.85`). No adapter is mounted; G6's server,
+    which made the thinking-on reference, mounted one that base requests did not use.
+- **Cost (ARITHMETIC, from G1's and G6's eval times):** about 10 minutes of evals for GLM
+  and 37 for Lightning, plus two server starts and benches: about an hour a draw.
+
+### Readings, CHOSEN before the run
+
+1. **Thinking on (primary): GLM-ad against Lightning-ad**, all seven sets, by G1's rule:
+   - **beats**: the pooled sign test favours GLM-ad at p < 0.05, and no row is a Holm
+     loss;
+   - **reaches**: no pooled test favours Lightning-ad at p < 0.05, and no Holm loss;
+   - **behind**: anything else.
+
+   A Holm loss is a row lost by P1 (sign p < 0.05) whose p survives Holm over all tested
+   rows. G1's "Holm 3 of 20" counted surviving rows both ways; all three were losses, so
+   the two counts agree on G1 (MEASURED, `g1b_compare.py --g1`).
+2. **One draw is not a verdict.** If reading 1 says "beats" or "reaches", both arms run
+   twice more (`REP=2`, `REP=3`). The verdict is then read again on all three runs a side
+   (each item's mean, `s1_compare.rows_rep`, as N1 did), and it stands only if that
+   reading agrees. "Behind" on the first draw stands, as in G1.
+3. **Thinking off:** reported by the same rule. It does not trigger repeats by itself.
+4. **What the note changed (descriptive, not a verdict):**
+   - each arm against its own G1 run: pooled items and P1, and for Lightning thinking on,
+     against N1's three repeats as well;
+   - the refusal audit on v1's `held_out` and rocky's `rocky_held_out`: items with a
+     refused call, the share that later make an executed call, and the items stopped at
+     the call limit. On G1's runs it reproduces G1's table exactly (MEASURED,
+     `g1b_compare.py --g1`).
+
+   Expectation (INFERENCE, not a rule): GLM's refused items fall. Whether its flag-lookup
+   rows then close on Lightning is unknown, which is why the arm runs.
+5. **Downstream.** G6q stays the serving choice; its runs are under the old protocol and
+   are not compared here. If GLM-ad beats Lightning-ad by readings 1 and 2, the next arm
+   is G6q under the new protocol, before any serving change. Air still runs only if Flash
+   at least reaches Lightning (G1 reading 4).
+
+### Checks, before any reading is taken
+
+- Every `-ad` output records `"allowlist_in_tool": true`.
+- Each item's first prompt is longer than in G1's run of the same model by one constant
+  number of tokens (the note), on every item: the note reached the prompt, and nothing
+  else in it moved.
+- A run that fails either check is discarded and rerun, not read.
+
+Script: `probes/g1b_compare.py` writes `results/g1b-compare.json`.
