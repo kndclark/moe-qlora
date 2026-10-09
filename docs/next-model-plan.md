@@ -1630,3 +1630,62 @@ per request, TTFT the median)
 - **prefetch measured twice that, but needs less in RAM.** Two options, neither run here:
   - a smaller offload, which leaves less KV;
   - a vLLM that frees the pinned copies made while loading.
+
+## G1: GLM-4.7-Flash against Lightning, pre-registered 2026-10-09
+
+David's question: what is the most powerful GLM this lab can reasonably host, and does
+it beat Nemotron 3.5 Lightning?
+
+### What is hostable (SOURCED, HF API; ARITHMETIC)
+
+- GLM-4.6, GLM-4.7 and GLM-5.x (355B class and up) do not fit 48 GB of VRAM plus the
+  laptop's 61 GiB of RAM at any 4-bit build.
+- **GLM-4.5-Air** (106B, 12B active) is the biggest that fits. The smallest builds are
+  `cyankiwi/GLM-4.5-Air-AWQ-4bit` (59.07 GiB, W4A16, no remote code) and
+  `Firworks/GLM-4.5-Air-nvfp4` (62.0 GB).
+  - It needs the pool and offload. Two 24 GB cards leave about 40 GiB for weights and
+    KV, so at least 19 GiB must live in RAM. That RAM is the laptop's (51.8 GB/s to the
+    GPU; the desktop's 12.2).
+  - KV is 188,416 bytes a token in bf16 (46 layers, 8 KV heads of 128).
+  - At c=16 nearly every expert is touched each decode step. The step then streams the
+    offloaded 19 GiB: about 0.37 s a step, about 43 tok/s aggregate. A full S1 eval
+    would take many hours.
+- **GLM-4.7-Flash** (30B, about 3B active, MLA) fits one card. It is the like-for-like
+  rival to Lightning (30B-A3B), so it is screened first.
+  - Build: `GadflyII/GLM-4.7-Flash-NVFP4` @ `3cdd7f37`, 19.06 GiB, compressed-tensors
+    NVFP4, `Glm4MoeLiteForCausalLM` (native in vLLM 0.29.0), no remote code.
+  - Manifest: `results/s1-glm47f-nvfp4-manifest.json`.
+  - Air's download (`results/s1-glm45air-awq-manifest.json`, @ `a22f274d`) runs on the
+    desktop meanwhile.
+
+### Protocol: S1's, with two changes
+
+- **Tool calls.** GLM's template asks for
+  `<tool_call>NAME<arg_key>K</arg_key><arg_value>V</arg_value></tool_call>`. The
+  harness's parser does not read it. `probes/g7a_eval.py` gains a reader for it beside
+  Lightning's XML form; the scorer is untouched.
+  - It runs only after the existing forms fail. Re-parsing all 46,805 stored outputs
+    that contain `<tool_call>` gives 0 differences (MEASURED).
+- **Thinking.** GLM's template ends the prompt in an open `<think>` (on) or a closed
+  `</think>` (off), switched by `enable_thinking`. This is Lightning's case, and
+  g7a_eval's `--thinking on` already handles it.
+- **`UTIL=0.92`, not 0.85.** At 0.85, about 1 GiB is left for activations and KV after
+  19 GiB of weights. One 16k sequence needs 0.88 GB (MLA: 47 layers × 576 × 2 bytes).
+  This moves throughput, not scores.
+
+### Readings, CHOSEN before the run
+
+1. **Does it beat base Lightning? (thinking on, primary)** It beats Lightning only if:
+   - the pooled sign test favours it at p < 0.05 against base Lightning's S1 run and
+     against each of N1's three repeats;
+   - no row is a P1 Holm loss.
+
+   It **reaches** Lightning if no pooled test favours Lightning at p < 0.05 and no row
+   is a P1 Holm loss. Otherwise it is **behind**.
+2. **One draw is not a verdict.** If reading 1 says "beats" on one GLM run, GLM runs
+   twice more (`REP=3`) before the claim stands (N1's lesson: Qwen3.8's "beats" was
+   one draw).
+3. **Thinking off, and against G6q:** reported by the same rule. G6q stays the serving
+   choice unless GLM beats it by reading 1's rule.
+4. **Air** is run only if Flash at least reaches Lightning. A bigger sibling of a model
+   that is behind is a long eval for an unlikely flip.
