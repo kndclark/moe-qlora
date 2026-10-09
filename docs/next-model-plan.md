@@ -1807,3 +1807,96 @@ models run under it; neither is compared against G1's runs for a verdict.
 - A run that fails either check is discarded and rerun, not read.
 
 Script: `probes/g1b_compare.py` writes `results/g1b-compare.json`.
+
+### G1b result (MEASURED, 2026-10-09)
+
+**Verdict, by the pre-registered rule: GLM-4.7-Flash is still behind Lightning thinking
+on, with the allowlist stated in both arms' tool descriptions.** By reading 2, "behind"
+on the first draw stands, so no repeats were run. Thinking off, one draw reads **reaches**.
+Reading 3 does not trigger repeats, so that is one draw, not a confirmed verdict.
+G6q stays the serving choice. Air is not run: G1's reading 4 gates it on reading 1
+(thinking on), which is "behind".
+
+Checks:
+- `"allowlist_in_tool": true` in all 28 `-ad` outputs.
+- GLM's first prompt is +49 tokens over its G1 run on 478 of 478 items. The flag commit
+  (gpu-lab 528c9ae, 13 lines in, 2 out) is the only harness change between the two
+  runs.
+- Lightning's first prompt is +49 on 459 items and differs on 19: +59 on all 18
+  promqlcat items, and +42 on rocky_task-iperf3-19. Both differences are on the
+  reference side. Lightning's reference runs date from 2026-09-27, under a harness
+  (sha256 a56bfe79) from before the history purge, which matches no commit now. Its
+  stored iperf3 question reads `LINK` where the model saw an address, and the purge
+  turned the promql `--prom` default into a hostname.
+- The new runs share one harness, so the primary comparison is unaffected. Both runs
+  were kept.
+
+Serving on the laptop (16k context):
+- GLM-ad (UTIL=0.92): weights 18.05 GiB, KV 1.92 GiB = 38,016 tokens; decode 129.0 tok/s
+  at c=1, 56.6 per stream at c=16 (G1: 130.35, 56.56).
+- Lightning-ad (UTIL=0.85, eager, LoRA enabled): model load 18.7 GiB, KV 0.45 GiB = 50,517
+  tokens; decode 27.9 tok/s at c=1, 26.6 per stream at c=16.
+- Evals: ~9.5 min for GLM and ~42.5 min for Lightning, both modes.
+
+| Thinking | GLM-ad vs Lightning-ad | rows W/L/T | pooled items | P1 W/L | Holm losses |
+|---|---|---|---|---|---|
+| on (4096) | G1b | 2/5/15 | +58 / +98, p 0.0017 | 2/3 | 1: rocky_held_out |
+| on (4096) | G1 (no note, Lightning ref) | 1/5/16 | +51 / +128, p 0.0 | -- | 3 |
+| off (512) | G1b | 3/2/17 | +89 / +76, p 0.35 | 1/0 | 0 |
+| off (512) | G1 (no note, Lightning ref) | 1/5/16 | +53 / +106, p 0.0 | -- | 0 |
+
+The rows that decide it, thinking on, are still flag lookups (hit_and_grounded):
+
+| Set | GLM-ad | Lightning-ad | Items | p | P1 |
+|---|---|---|---|---|---|
+| held_out | 0.722 | 0.878 | +5/-19 | 0.007 | loss |
+| held_out2 | 0.657 | 0.843 | +3/-16 | 0.004 | loss |
+| rocky_held_out | 0.500 | 0.804 | +5/-22 | 0.002 | loss, survives Holm |
+
+GLM's two wins are over-triggers: no_tool, 0.000 vs 0.500, and general, 0.022 vs 0.289.
+Thinking off, its one P1 win is promql.correct, 0.611 vs 0.111.
+
+**What the note changed (reading 4, descriptive).**
+
+GLM gained on its own G1 run in both modes:
+- thinking on: +102 / +41 pooled, P1 3/0;
+- thinking off: +95 / +35, P1 4/0.
+
+Lightning-ad gained less:
+- against its G1 reference: +68 / +44, p 0.029, P1 0/0, thinking on; +49 / +55,
+  p 0.62, thinking off;
+- against N1's repeats (five sets, thinking on): r1 +46 / +23 (p 0.008; r1 is that same
+  reference run), r2 +33 / +25 (p 0.36), r3 +36 / +26 (p 0.25). The gain over r2 and r3
+  is not significant, so it is within Lightning's run-to-run spread on two of three
+  repeats.
+
+| Run | Refused items, v1 / rocky | Recovered | At the call limit |
+|---|---|---|---|
+| GLM thinking on, G1 | 44 / 48 | 36% / 21% | 26 / 41 |
+| GLM thinking on, G1b | 51 / 46 | 65% / 54% | 15 / 23 |
+| GLM thinking off, G1 | 62 / 45 | 13% / 9% | 45 / 41 |
+| GLM thinking off, G1b | 54 / 40 | 46% / 38% | 28 / 27 |
+| Lightning thinking on, G1 ref | 37 / 27 | 97% / 89% | 5 / 6 |
+| Lightning thinking on, G1b | 25 / 18 | 100% / 100% | 2 / 3 |
+| Lightning thinking off, G1 ref | 3 / 3 | 100% / 100% | 0 / 1 |
+| Lightning thinking off, G1b | 6 / 3 | 83% / 33% | 1 / 1 |
+
+The pre-run expectation (INFERENCE) that GLM's refused items would fall was wrong:
+- GLM still writes the refused pipe first as often as before (v1 44 -> 51, rocky
+  48 -> 46);
+- what moved is recovery, which roughly doubled.
+
+Over all seven sets, thinking on, GLM-ad stops at the call limit on 141 of 478 items
+(G1: 185), against Lightning-ad's 58 (reference: 74). That gap is the remaining loss.
+
+Token use per item, thinking on: GLM-ad 429 (4 of 478 truncated in think), Lightning-ad
+609. Thinking off: GLM-ad 152, Lightning-ad 279.
+
+The note is a new protocol for every model. G6q's runs predate it, so G6q against
+GLM-ad is not read here. Reading 5 asks for G6q under the new protocol only if GLM-ad
+had beaten Lightning-ad.
+
+Files:
+- `results/g1b-compare.json` and `.txt`;
+- `results/research-eval-*-s1-{glm47f-nvfp4,lightning}-ad-*`;
+- `results/s1/{glm47f-nvfp4-ad,lightning-ad}/`.

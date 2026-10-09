@@ -1,0 +1,1398 @@
+{
+ "label": "promqlcat-s1-lightning-ad-nothink",
+ "set": "promql",
+ "promql_catalog": true,
+ "allowlist_in_tool": true,
+ "model": "lightning-ad",
+ "base": "http://127.0.0.1:8304",
+ "tools": true,
+ "thinking": "off",
+ "max_tokens": 512,
+ "max_calls": 3,
+ "temperature": 0.0,
+ "top_p": null,
+ "sample_seed": null,
+ "window": 4000,
+ "seed": 20260923,
+ "limit": 0,
+ "started": "2026-10-09T14:57:21-0600",
+ "elapsed_s": 18.2,
+ "tool_versions": {},
+ "provenance": {
+  "harness_sha256": "0459791544b036714475d391bf09121235ea63f6399570710936468b4f74ac7b",
+  "server_version": "0.29.0",
+  "served": [
+   {
+    "id": "lightning-ad",
+    "root": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4",
+    "parent": null,
+    "max_model_len": 16384
+   }
+  ]
+ },
+ "summary": {
+  "promql": {
+   "n": 18,
+   "any_call": 0.722,
+   "answered": 0.556,
+   "mean_calls": 1.67,
+   "status": {
+    "answered": 10,
+    "call_limit": 8
+   },
+   "calls_refused": 17,
+   "calls_web": 1,
+   "correct": 0.111,
+   "used_promql": 0.389,
+   "invented_value": 0.0,
+   "correct_by_kind": {
+    "jobs": 0.0,
+    "nodata": 0.0,
+    "number": 0.154,
+    "yesno": 0.0
+   }
+  }
+ },
+ "results": [
+  {
+   "id": "promql-ac",
+   "split": "promql",
+   "question": "Is the laptop plugged into AC power right now?",
+   "truth_query": "gpulab_ac_online{node=\"laptop\"}",
+   "kind": "yesno",
+   "tol": null,
+   "run": {
+    "status": "answered",
+    "final": "I need to check the system's power status. Let me look at the available sensors and documentation.",
+    "calls": [],
+    "turns": [
+     {
+      "prompt_tokens": 1024,
+      "completion_tokens": 21,
+      "finish_reason": "stop",
+      "text": "I need to check the system's power status. Let me look at the available sensors and documentation."
+     }
+    ],
+    "truth": {
+     "result": [
+      {
+       "metric": {
+        "__name__": "gpulab_ac_online",
+        "arch": "sm_120",
+        "instance": "LINK:9835",
+        "job": "gpu",
+        "node": "laptop"
+       },
+       "value": [
+        1791579445.596,
+        "1"
+       ]
+      }
+     ],
+     "error": null,
+     "at": 1791579445.5974855
+    }
+   },
+   "score": {
+    "any_call": false,
+    "n_calls": 0,
+    "answered": true,
+    "used_promql": false,
+    "correct": false,
+    "invented_value": false
+   }
+  },
+  {
+   "id": "promql-battery",
+   "split": "promql",
+   "question": "What is the laptop's battery charge, in percent?",
+   "truth_query": "gpulab_battery_capacity_percent{node=\"laptop\"}",
+   "kind": "number",
+   "tol": 2,
+   "run": {
+    "status": "call_limit",
+    "final": null,
+    "calls": [
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "cat /sys/class/power_supply/BAT0/capacity"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "cat /sys/class/power_supply/BAT0/capacity || cat /sys/class/power_supply/BAT1/capacity"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "ls /sys/class/power_supply/"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 1025,
+      "completion_tokens": 37,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\ncat /sys/class/power_supply/BAT0/capacity\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1116,
+      "completion_tokens": 52,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\ncat /sys/class/power_supply/BAT0/capacity || cat /sys/class/power_supply/BAT1/capacity\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1222,
+      "completion_tokens": 31,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nls /sys/class/power_supply/\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1307,
+      "completion_tokens": 27,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nman power_supply\n</parameter>\n</function>\n</tool_call>\n"
+     }
+    ],
+    "truth": {
+     "result": [
+      {
+       "metric": {
+        "__name__": "gpulab_battery_capacity_percent",
+        "arch": "sm_120",
+        "instance": "LINK:9835",
+        "job": "gpu",
+        "node": "laptop"
+       },
+       "value": [
+        1791579454.861,
+        "80"
+       ]
+      }
+     ],
+     "error": null,
+     "at": 1791579454.8623633
+    }
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 3,
+    "answered": false,
+    "used_promql": false,
+    "correct": false,
+    "invented_value": false
+   }
+  },
+  {
+   "id": "promql-down-jobs",
+   "split": "promql",
+   "question": "Which of the lab's Prometheus scrape jobs have targets down right now?",
+   "truth_query": "up == 0",
+   "kind": "jobs",
+   "tol": null,
+   "run": {
+    "status": "call_limit",
+    "final": null,
+    "calls": [
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "curl -s http://localhost:9090/api/v1/targets 2>/dev/null || echo \"Prometheus not on localhost:9090\""
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "curl -s http://localhost:9090/api/v1/targets"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "web_unavailable",
+      "name": "web_search",
+      "args": {
+       "query": "Prometheus scrape jobs targets down status lab"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 1029,
+      "completion_tokens": 86,
+      "finish_reason": "stop",
+      "text": "I need to check the Prometheus scrape jobs and see which targets are down. Let me first explore what's available in Prometheus.</think>\n<tool_call>\n<function=bash>\n<parameter=command>\ncurl -s http://localhost:9090/api/v1/targets 2>/dev/null || echo \"Prometheus not on localhost:9090\"\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1141,
+      "completion_tokens": 40,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\ncurl -s http://localhost:9090/api/v1/targets\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1235,
+      "completion_tokens": 32,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=web_search>\n<parameter=query>\nPrometheus scrape jobs targets down status lab\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1291,
+      "completion_tokens": 35,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=promql>\n<parameter=query>\nup{gpulab=\"true\"} == 0\n</parameter>\n</function>\n</tool_call>\n"
+     }
+    ],
+    "truth": {
+     "result": [
+      {
+       "metric": {
+        "__name__": "up",
+        "arch": "sm_120",
+        "instance": "LINK:8102",
+        "job": "vllm",
+        "model": "qwen3-embed",
+        "node": "laptop"
+       },
+       "value": [
+        1791579456.645,
+        "0"
+       ]
+      },
+      {
+       "metric": {
+        "__name__": "up",
+        "arch": "sm_86+sm_120",
+        "instance": "LINK:8200",
+        "job": "vllm-pool",
+        "model": "pool",
+        "node": "pooled"
+       },
+       "value": [
+        1791579456.645,
+        "0"
+       ]
+      },
+      {
+       "metric": {
+        "__name__": "up",
+        "arch": "sm_86",
+        "instance": "localhost:8102",
+        "job": "vllm",
+        "model": "qwen3-embed",
+        "node": "desktop"
+       },
+       "value": [
+        1791579456.645,
+        "0"
+       ]
+      },
+      {
+       "metric": {
+        "__name__": "up",
+        "arch": "sm_120",
+        "instance": "LINK:8080",
+        "job": "llama-swap",
+        "node": "laptop"
+       },
+       "value": [
+        1791579456.645,
+        "0"
+       ]
+      },
+      {
+       "metric": {
+        "__name__": "up",
+        "arch": "sm_86",
+        "instance": "localhost:8101",
+        "job": "vllm",
+        "model": "qwen3-coder",
+        "node": "desktop"
+       },
+       "value": [
+        1791579456.645,
+        "0"
+       ]
+      }
+     ],
+     "error": null,
+     "at": 1791579456.6468606
+    }
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 3,
+    "answered": false,
+    "used_promql": false,
+    "correct": false,
+    "invented_value": false
+   }
+  },
+  {
+   "id": "promql-fan-laptop",
+   "split": "promql",
+   "question": "How fast is the laptop's fastest fan spinning right now, in RPM?",
+   "truth_query": "max(gpulab_fan_rpm{node=\"laptop\"})",
+   "kind": "number",
+   "tol": 0.1,
+   "run": {
+    "status": "answered",
+    "final": "I need to check the current fan speed from the lab's sensors. Let me query Prometheus for the gpulab_fan_rpm metric.",
+    "calls": [],
+    "turns": [
+     {
+      "prompt_tokens": 1029,
+      "completion_tokens": 31,
+      "finish_reason": "stop",
+      "text": "I need to check the current fan speed from the lab's sensors. Let me query Prometheus for the gpulab_fan_rpm metric."
+     }
+    ],
+    "truth": {
+     "result": [
+      {
+       "metric": {},
+       "value": [
+        1791579443.255,
+        "6500"
+       ]
+      }
+     ],
+     "error": null,
+     "at": 1791579443.2559068
+    }
+   },
+   "score": {
+    "any_call": false,
+    "n_calls": 0,
+    "answered": true,
+    "used_promql": false,
+    "correct": false,
+    "invented_value": false
+   }
+  },
+  {
+   "id": "promql-maxtemp-1h",
+   "split": "promql",
+   "question": "What was the highest desktop GPU temperature over the last hour?",
+   "truth_query": "max_over_time(gpulab_gpu_temperature_celsius{node=\"desktop\"}[1h])",
+   "kind": "number",
+   "tol": 1,
+   "run": {
+    "status": "answered",
+    "final": "The highest desktop GPU temperature over the last hour was **41\u202f\u00b0C** (reported for the desktop node).",
+    "calls": [
+     {
+      "outcome": "executed",
+      "argv": [
+       "promql"
+      ],
+      "chars": 143,
+      "name": "promql",
+      "args": {
+       "query": "max_over_time(gpulab_gpu_temperature_celsius[1h])"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 1026,
+      "completion_tokens": 71,
+      "finish_reason": "stop",
+      "text": "I need to check the GPU temperature metrics from the last hour. Let me query Prometheus for the gpulab_gpu_temperature_celsius metric.</think>\n<tool_call>\n<function=promql>\n<parameter=query>\nmax_over_time(gpulab_gpu_temperature_celsius[1h])\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1151,
+      "completion_tokens": 25,
+      "finish_reason": "stop",
+      "text": "The highest desktop GPU temperature over the last hour was **41\u202f\u00b0C** (reported for the desktop node)."
+     }
+    ],
+    "truth": {
+     "result": [
+      {
+       "metric": {
+        "arch": "sm_86",
+        "instance": "localhost:9835",
+        "job": "gpu",
+        "node": "desktop"
+       },
+       "value": [
+        1791579449.6,
+        "41"
+       ]
+      }
+     ],
+     "error": null,
+     "at": 1791579449.6015732
+    }
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 1,
+    "answered": true,
+    "used_promql": true,
+    "correct": true,
+    "invented_value": false
+   }
+  },
+  {
+   "id": "promql-mem-desktop-gib",
+   "split": "promql",
+   "question": "How many GiB of VRAM is the desktop GPU using right now?",
+   "truth_query": "gpulab_gpu_memory_used_mib{node=\"desktop\"} / 1024",
+   "kind": "number",
+   "tol": 0.05,
+   "run": {
+    "status": "call_limit",
+    "final": null,
+    "calls": [
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits 2>/dev/null || echo \"nvidia-smi not available\""
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits 2>/dev/null || echo \"nvidia-smi not available\""
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "executed",
+      "argv": [
+       "man",
+       "nvidia-smi"
+      ],
+      "chars": 181400,
+      "truncated": true,
+      "name": "bash",
+      "args": {
+       "command": "man nvidia-smi"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 1029,
+      "completion_tokens": 59,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nnvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits 2>/dev/null || echo \"nvidia-smi not available\"\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1142,
+      "completion_tokens": 59,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nnvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits 2>/dev/null || echo \"nvidia-smi not available\"\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1255,
+      "completion_tokens": 28,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nman nvidia-smi\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 2263,
+      "completion_tokens": 122,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nnvidia-smi --query-gpu=memory.used --format=json 2>/dev/null | python3 -c \"import sys,json; data=json.load(sys.stdin); print([(gpu['index'], gpu['memory.used']) for gpu in data['gpus']])\" 2>/dev/null || nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits 2>/dev/null\n</parameter>\n</function>\n</tool_call>\n"
+     }
+    ],
+    "truth": {
+     "result": [
+      {
+       "metric": {
+        "arch": "sm_86",
+        "instance": "localhost:9835",
+        "job": "gpu",
+        "node": "desktop"
+       },
+       "value": [
+        1791579459.452,
+        "0.0322265625"
+       ]
+      }
+     ],
+     "error": null,
+     "at": 1791579459.4538267
+    }
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 3,
+    "answered": false,
+    "used_promql": false,
+    "correct": false,
+    "invented_value": false
+   }
+  },
+  {
+   "id": "promql-mem-laptop",
+   "split": "promql",
+   "question": "How much GPU memory is in use on the laptop right now, in MiB?",
+   "truth_query": "gpulab_gpu_memory_used_mib{node=\"laptop\"}",
+   "kind": "number",
+   "tol": 0.05,
+   "run": {
+    "status": "answered",
+    "final": "The laptop currently has **22\u202f112\u202fMiB** of GPU memory in use.",
+    "calls": [
+     {
+      "outcome": "executed",
+      "argv": [
+       "promql"
+      ],
+      "chars": 224,
+      "name": "promql",
+      "args": {
+       "query": "gpulab_gpu_memory_used_mib"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 1031,
+      "completion_tokens": 56,
+      "finish_reason": "stop",
+      "text": "I need to query the GPU memory usage metric from the system. Let me check the available Prometheus metrics.</think>\n<tool_call>\n<function=promql>\n<parameter=query>\ngpulab_gpu_memory_used_mib\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1181,
+      "completion_tokens": 22,
+      "finish_reason": "stop",
+      "text": "The laptop currently has **22\u202f112\u202fMiB** of GPU memory in use."
+     }
+    ],
+    "truth": {
+     "result": [
+      {
+       "metric": {
+        "__name__": "gpulab_gpu_memory_used_mib",
+        "arch": "sm_120",
+        "instance": "LINK:9835",
+        "job": "gpu",
+        "node": "laptop"
+       },
+       "value": [
+        1791579448.385,
+        "22112"
+       ]
+      }
+     ],
+     "error": null,
+     "at": 1791579448.386236
+    }
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 1,
+    "answered": true,
+    "used_promql": true,
+    "correct": false,
+    "invented_value": false
+   }
+  },
+  {
+   "id": "promql-nvme-desktop",
+   "split": "promql",
+   "question": "What is the hottest NVMe drive temperature on the desktop right now?",
+   "truth_query": "max(gpulab_nvme_temperature_celsius{node=\"desktop\"})",
+   "kind": "number",
+   "tol": 2,
+   "run": {
+    "status": "answered",
+    "final": "I need to check the current NVMe temperatures on the desktop. Let me query Prometheus for the NVMe temperature metrics.",
+    "calls": [],
+    "turns": [
+     {
+      "prompt_tokens": 1030,
+      "completion_tokens": 26,
+      "finish_reason": "stop",
+      "text": "I need to check the current NVMe temperatures on the desktop. Let me query Prometheus for the NVMe temperature metrics."
+     }
+    ],
+    "truth": {
+     "result": [
+      {
+       "metric": {},
+       "value": [
+        1791579445.548,
+        "44.85"
+       ]
+      }
+     ],
+     "error": null,
+     "at": 1791579445.5491645
+    }
+   },
+   "score": {
+    "any_call": false,
+    "n_calls": 0,
+    "answered": true,
+    "used_promql": false,
+    "correct": false,
+    "invented_value": false
+   }
+  },
+  {
+   "id": "promql-power-desktop",
+   "split": "promql",
+   "question": "How many watts is the desktop GPU drawing right now?",
+   "truth_query": "gpulab_gpu_power_watts{node=\"desktop\"}",
+   "kind": "number",
+   "tol": 0.25,
+   "run": {
+    "status": "call_limit",
+    "final": null,
+    "calls": [
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "cat /sys/class/powercap/intel-rapl:0/energy_uws 2>/dev/null || echo \"no intel-rapl\""
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "cat /sys/class/powercap/intel-rapl:0/energy_uws 2>/dev/null || echo \"no intel-rapl\""
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "cat /sys/class/powercap/intel-rapl:0/energy_uws 2>/dev/null || echo \"no intel-rapl\""
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 1026,
+      "completion_tokens": 52,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\ncat /sys/class/powercap/intel-rapl:0/energy_uws 2>/dev/null || echo \"no intel-rapl\"\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1132,
+      "completion_tokens": 52,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\ncat /sys/class/powercap/intel-rapl:0/energy_uws 2>/dev/null || echo \"no intel-rapl\"\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1238,
+      "completion_tokens": 52,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\ncat /sys/class/powercap/intel-rapl:0/energy_uws 2>/dev/null || echo \"no intel-rapl\"\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1344,
+      "completion_tokens": 52,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\ncat /sys/class/powercap/intel-rapl:0/energy_uws 2>/dev/null || echo \"no intel-rapl\"\n</parameter>\n</function>\n</tool_call>\n"
+     }
+    ],
+    "truth": {
+     "result": [
+      {
+       "metric": {
+        "__name__": "gpulab_gpu_power_watts",
+        "arch": "sm_86",
+        "instance": "localhost:9835",
+        "job": "gpu",
+        "node": "desktop"
+       },
+       "value": [
+        1791579456.645,
+        "20.52"
+       ]
+      }
+     ],
+     "error": null,
+     "at": 1791579456.6466875
+    }
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 3,
+    "answered": false,
+    "used_promql": false,
+    "correct": false,
+    "invented_value": false
+   }
+  },
+  {
+   "id": "promql-powerlimit-laptop",
+   "split": "promql",
+   "question": "What power limit is the laptop GPU set to, in watts?",
+   "truth_query": "gpulab_gpu_power_limit_watts{node=\"laptop\"}",
+   "kind": "number",
+   "tol": 1,
+   "run": {
+    "status": "call_limit",
+    "final": null,
+    "calls": [
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "prometheus --help 2>&1 | head -20"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "man prometheus 2>&1 | head -30"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "man bash 2>&1 | head -30"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 1028,
+      "completion_tokens": 65,
+      "finish_reason": "stop",
+      "text": "I need to check the GPU power limit on the laptop. Let me first look at the available Prometheus metrics to find the relevant information.</think>\n<tool_call>\n<function=bash>\n<parameter=command>\nprometheus --help 2>&1 | head -20\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1118,
+      "completion_tokens": 35,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nman prometheus 2>&1 | head -30\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1207,
+      "completion_tokens": 34,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nman bash 2>&1 | head -30\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1295,
+      "completion_tokens": 26,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\necho \"test\"\n</parameter>\n</function>\n</tool_call>\n"
+     }
+    ],
+    "truth": {
+     "result": [
+      {
+       "metric": {
+        "__name__": "gpulab_gpu_power_limit_watts",
+        "arch": "sm_120",
+        "instance": "LINK:9835",
+        "job": "gpu",
+        "node": "laptop"
+       },
+       "value": [
+        1791579454.678,
+        "175"
+       ]
+      }
+     ],
+     "error": null,
+     "at": 1791579454.6792855
+    }
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 3,
+    "answered": false,
+    "used_promql": false,
+    "correct": false,
+    "invented_value": false
+   }
+  },
+  {
+   "id": "promql-temp-desktop",
+   "split": "promql",
+   "question": "What is the desktop GPU's temperature right now?",
+   "truth_query": "gpulab_gpu_temperature_celsius{node=\"desktop\"}",
+   "kind": "number",
+   "tol": 3,
+   "run": {
+    "status": "call_limit",
+    "final": null,
+    "calls": [
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "sensors"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "cat /sys/class/thermal/thermal_zone*/temp 2>/dev/null || echo \"no thermal zone\""
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "grep -r \"temperature\" /sys/class/thermal/ 2>/dev/null || echo \"no\""
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 1024,
+      "completion_tokens": 25,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\nsensors\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1103,
+      "completion_tokens": 45,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\ncat /sys/class/thermal/thermal_zone*/temp 2>/dev/null || echo \"no thermal zone\"\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1202,
+      "completion_tokens": 44,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\ngrep -r \"temperature\" /sys/class/thermal/ 2>/dev/null || echo \"no\"\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1300,
+      "completion_tokens": 46,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\ngrep -r \"gpu\" /sys/class/ 2>/dev/null | head -n 20\n</parameter>\n</function>\n</tool_call>\n"
+     }
+    ],
+    "truth": {
+     "result": [
+      {
+       "metric": {
+        "__name__": "gpulab_gpu_temperature_celsius",
+        "arch": "sm_86",
+        "instance": "localhost:9835",
+        "job": "gpu",
+        "node": "desktop"
+       },
+       "value": [
+        1791579455.551,
+        "41"
+       ]
+      }
+     ],
+     "error": null,
+     "at": 1791579455.5523608
+    }
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 3,
+    "answered": false,
+    "used_promql": false,
+    "correct": false,
+    "invented_value": false
+   }
+  },
+  {
+   "id": "promql-temp-laptop",
+   "split": "promql",
+   "question": "How hot is the laptop's GPU at the moment?",
+   "truth_query": "gpulab_gpu_temperature_celsius{node=\"laptop\"}",
+   "kind": "number",
+   "tol": 3,
+   "run": {
+    "status": "answered",
+    "final": "I need to check the current GPU temperature from the lab's Prometheus metrics. Let me query the relevant metric.",
+    "calls": [],
+    "turns": [
+     {
+      "prompt_tokens": 1025,
+      "completion_tokens": 24,
+      "finish_reason": "stop",
+      "text": "I need to check the current GPU temperature from the lab's Prometheus metrics. Let me query the relevant metric."
+     }
+    ],
+    "truth": {
+     "result": [
+      {
+       "metric": {
+        "__name__": "gpulab_gpu_temperature_celsius",
+        "arch": "sm_120",
+        "instance": "LINK:9835",
+        "job": "gpu",
+        "node": "laptop"
+       },
+       "value": [
+        1791579442.734,
+        "60"
+       ]
+      }
+     ],
+     "error": null,
+     "at": 1791579442.735641
+    }
+   },
+   "score": {
+    "any_call": false,
+    "n_calls": 0,
+    "answered": true,
+    "used_promql": false,
+    "correct": false,
+    "invented_value": false
+   }
+  },
+  {
+   "id": "promql-up-count",
+   "split": "promql",
+   "question": "How many of the lab's Prometheus scrape targets are up right now?",
+   "truth_query": "count(up == 1)",
+   "kind": "number",
+   "tol": 0,
+   "run": {
+    "status": "answered",
+    "final": "The `up` metric returned 3 series with a value of `1` (meaning those targets are currently up/healthy):\n\n- `gpu` job on `laptop` (instance `LINK:9835`)\n- `llama-swap` job on `desktop` (instance `localhost:8080`)\n- `prometheus` job on `localhost` (instance `localhost:9090`)\n\nAll other series have a value of `0`, meaning their targets are down. So **3** of the lab's Prometheus scrape targets are up right now.",
+    "calls": [
+     {
+      "outcome": "executed",
+      "argv": [
+       "promql"
+      ],
+      "chars": 856,
+      "name": "promql",
+      "args": {
+       "query": "up"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "refused",
+      "name": "bash",
+      "args": {
+       "command": "echo \"Total up targets: 3\""
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 1029,
+      "completion_tokens": 58,
+      "finish_reason": "stop",
+      "text": "I need to query Prometheus to find out how many scrape targets have the `up` metric equal to 1. Let me use the promql tool.</think>\n<tool_call>\n<function=promql>\n<parameter=query>\nup\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1457,
+      "completion_tokens": 31,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=bash>\n<parameter=command>\necho \"Total up targets: 3\"\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1542,
+      "completion_tokens": 132,
+      "finish_reason": "stop",
+      "text": "The `up` metric returned 3 series with a value of `1` (meaning those targets are currently up/healthy):\n\n- `gpu` job on `laptop` (instance `LINK:9835`)\n- `llama-swap` job on `desktop` (instance `localhost:8080`)\n- `prometheus` job on `localhost` (instance `localhost:9090`)\n\nAll other series have a value of `0`, meaning their targets are down. So **3** of the lab's Prometheus scrape targets are up right now."
+     }
+    ],
+    "truth": {
+     "result": [
+      {
+       "metric": {},
+       "value": [
+        1791579458.182,
+        "4"
+       ]
+      }
+     ],
+     "error": null,
+     "at": 1791579458.1833637
+    }
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 2,
+    "answered": true,
+    "used_promql": true,
+    "correct": false,
+    "invented_value": false
+   }
+  },
+  {
+   "id": "promql-util-laptop-10m",
+   "split": "promql",
+   "question": "What has the laptop GPU's average utilization been over the last 10 minutes, in percent?",
+   "truth_query": "avg_over_time(gpulab_gpu_utilization_percent{node=\"laptop\"}[10m])",
+   "kind": "number",
+   "tol": 5,
+   "run": {
+    "status": "answered",
+    "final": "The laptop GPU's average utilization over the last 10\u202fminutes is **\u2248\u202f33\u202f%**. (The result shows 33.04\u202f% for the laptop and 0\u202f% for the desktop.)",
+    "calls": [
+     {
+      "outcome": "executed",
+      "argv": [
+       "promql"
+      ],
+      "chars": 158,
+      "name": "promql",
+      "args": {
+       "query": "avg_over_time(gpulab_gpu_utilization_percent[10m])"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 1034,
+      "completion_tokens": 65,
+      "finish_reason": "stop",
+      "text": "I need to query the GPU utilization metric over the last 10 minutes. Let me use the Prometheus query interface.</think>\n<tool_call>\n<function=promql>\n<parameter=query>\navg_over_time(gpulab_gpu_utilization_percent[10m])\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1174,
+      "completion_tokens": 49,
+      "finish_reason": "stop",
+      "text": "The laptop GPU's average utilization over the last 10\u202fminutes is **\u2248\u202f33\u202f%**. (The result shows 33.04\u202f% for the laptop and 0\u202f% for the desktop.)"
+     }
+    ],
+    "truth": {
+     "result": [
+      {
+       "metric": {
+        "arch": "sm_120",
+        "instance": "LINK:9835",
+        "job": "gpu",
+        "node": "laptop"
+       },
+       "value": [
+        1791579451.681,
+        "33.208333333333336"
+       ]
+      }
+     ],
+     "error": null,
+     "at": 1791579451.6826906
+    }
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 1,
+    "answered": true,
+    "used_promql": true,
+    "correct": true,
+    "invented_value": false
+   }
+  },
+  {
+   "id": "promql-vllm-kv",
+   "split": "promql",
+   "question": "According to Prometheus, what is the vLLM server's KV cache usage?",
+   "truth_query": "vllm:kv_cache_usage_perc",
+   "kind": "nodata",
+   "tol": null,
+   "run": {
+    "status": "answered",
+    "final": "I need to query Prometheus for the vLLM KV cache usage metric. Let me use the promql tool to get this information.",
+    "calls": [],
+    "turns": [
+     {
+      "prompt_tokens": 1031,
+      "completion_tokens": 29,
+      "finish_reason": "stop",
+      "text": "I need to query Prometheus for the vLLM KV cache usage metric. Let me use the promql tool to get this information."
+     }
+    ],
+    "truth": {
+     "result": [],
+     "error": null,
+     "at": 1791579447.6326585
+    }
+   },
+   "score": {
+    "any_call": false,
+    "n_calls": 0,
+    "answered": true,
+    "used_promql": false,
+    "correct": false,
+    "invented_value": false
+   }
+  },
+  {
+   "id": "promql-vllm-running",
+   "split": "promql",
+   "question": "According to Prometheus, how many requests is the lab's vLLM server running right now?",
+   "truth_query": "vllm:num_requests_running",
+   "kind": "nodata",
+   "tol": null,
+   "run": {
+    "status": "call_limit",
+    "final": null,
+    "calls": [
+     {
+      "outcome": "executed",
+      "argv": [
+       "promql"
+      ],
+      "chars": 33,
+      "name": "promql",
+      "args": {
+       "query": "vllm:num_requests_running"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "executed",
+      "argv": [
+       "promql"
+      ],
+      "chars": 856,
+      "name": "promql",
+      "args": {
+       "query": "up"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "executed",
+      "argv": [
+       "promql"
+      ],
+      "chars": 33,
+      "name": "promql",
+      "args": {
+       "query": "vllm:num_requests_running{job=\"vllm\"}"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 1034,
+      "completion_tokens": 55,
+      "finish_reason": "stop",
+      "text": "I need to query Prometheus for the current number of running requests. Let me check the available metrics.</think>\n<tool_call>\n<function=promql>\n<parameter=query>\nvllm:num_requests_running\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1090,
+      "completion_tokens": 25,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=promql>\n<parameter=query>\nup\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1518,
+      "completion_tokens": 39,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=promql>\n<parameter=query>\nvllm:num_requests_running{job=\"vllm\"}\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1580,
+      "completion_tokens": 42,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=promql>\n<parameter=query>\nvllm:num_requests_running{job=~\"vllm.*\"}\n</parameter>\n</function>\n</tool_call>\n"
+     }
+    ],
+    "truth": {
+     "result": [],
+     "error": null,
+     "at": 1791579456.5685995
+    }
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 3,
+    "answered": false,
+    "used_promql": true,
+    "correct": false,
+    "invented_value": false
+   }
+  },
+  {
+   "id": "promql-vllm-waiting",
+   "split": "promql",
+   "question": "According to Prometheus, how many requests are waiting in the vLLM server's queue?",
+   "truth_query": "vllm:num_requests_waiting",
+   "kind": "nodata",
+   "tol": null,
+   "run": {
+    "status": "call_limit",
+    "final": null,
+    "calls": [
+     {
+      "outcome": "executed",
+      "argv": [
+       "promql"
+      ],
+      "chars": 33,
+      "name": "promql",
+      "args": {
+       "query": "vllm:num_requests_waiting"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "executed",
+      "argv": [
+       "promql"
+      ],
+      "chars": 33,
+      "name": "promql",
+      "args": {
+       "query": "vllm:num_requests_waiting_total"
+      },
+      "format": "xml_function"
+     },
+     {
+      "outcome": "executed",
+      "argv": [
+       "promql"
+      ],
+      "chars": 33,
+      "name": "promql",
+      "args": {
+       "query": "vllm:num_requests_waiting{job=\"vllm\"}"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 1033,
+      "completion_tokens": 56,
+      "finish_reason": "stop",
+      "text": "I need to query Prometheus for the vLLM waiting requests metric. Let me check the available metrics.</think>\n<tool_call>\n<function=promql>\n<parameter=query>\nvllm:num_requests_waiting\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1089,
+      "completion_tokens": 34,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=promql>\n<parameter=query>\nvllm:num_requests_waiting_total\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1146,
+      "completion_tokens": 39,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=promql>\n<parameter=query>\nvllm:num_requests_waiting{job=\"vllm\"}\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1208,
+      "completion_tokens": 35,
+      "finish_reason": "stop",
+      "text": "\n<tool_call>\n<function=web_search>\n<parameter=query>\nvllm num_requests_waiting Prometheus metric\n</parameter>\n</function>\n</tool_call>\n"
+     }
+    ],
+    "truth": {
+     "result": [],
+     "error": null,
+     "at": 1791579456.3802714
+    }
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 3,
+    "answered": false,
+    "used_promql": true,
+    "correct": false,
+    "invented_value": false
+   }
+  },
+  {
+   "id": "promql-vram-total-desktop",
+   "split": "promql",
+   "question": "How much total VRAM does the desktop GPU have, in MiB?",
+   "truth_query": "gpulab_gpu_memory_total_mib{node=\"desktop\"}",
+   "kind": "number",
+   "tol": 0,
+   "run": {
+    "status": "answered",
+    "final": "The desktop GPU has **24\u202f576\u202fMiB** of total VRAM.",
+    "calls": [
+     {
+      "outcome": "executed",
+      "argv": [
+       "promql"
+      ],
+      "chars": 229,
+      "name": "promql",
+      "args": {
+       "query": "gpulab_gpu_memory_total_mib"
+      },
+      "format": "xml_function"
+     }
+    ],
+    "turns": [
+     {
+      "prompt_tokens": 1029,
+      "completion_tokens": 55,
+      "finish_reason": "stop",
+      "text": "I need to check the GPU memory information. Let me query the Prometheus metrics for the GPU memory.</think>\n<tool_call>\n<function=promql>\n<parameter=query>\ngpulab_gpu_memory_total_mib\n</parameter>\n</function>\n</tool_call>\n"
+     },
+     {
+      "prompt_tokens": 1182,
+      "completion_tokens": 21,
+      "finish_reason": "stop",
+      "text": "The desktop GPU has **24\u202f576\u202fMiB** of total VRAM."
+     }
+    ],
+    "truth": {
+     "result": [
+      {
+       "metric": {
+        "__name__": "gpulab_gpu_memory_total_mib",
+        "arch": "sm_86",
+        "instance": "localhost:9835",
+        "job": "gpu",
+        "node": "desktop"
+       },
+       "value": [
+        1791579450.625,
+        "24576"
+       ]
+      }
+     ],
+     "error": null,
+     "at": 1791579450.6259882
+    }
+   },
+   "score": {
+    "any_call": true,
+    "n_calls": 1,
+    "answered": true,
+    "used_promql": true,
+    "correct": false,
+    "invented_value": false
+   }
+  }
+ ]
+}
