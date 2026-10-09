@@ -3,7 +3,10 @@ Two patches, both in the harness's reading of the model's text; the scorer is un
 
   parse_tool_call  also reads the Qwen3-Coder XML form Lightning's template asks for
                    (<tool_call><function=NAME><parameter=K>V</parameter></function>), after
-                   the harness's own Qwen-JSON and Llama forms have failed to match.
+                   the harness's own Qwen-JSON and Llama forms have failed to match,
+                   and GLM-4.5/4.7's form (<tool_call>NAME<arg_key>K</arg_key>
+                   <arg_value>V</arg_value></tool_call>) after that. Values stay strings,
+                   as the template writes them raw; every harness tool takes strings.
   split_think      with thinking on, Lightning's generation prompt ends in an open
                    "<think>\\n", so the completion carries "</think>" but never "<think>".
                    No "</think>" then means truncated mid-think, not an answer.
@@ -52,6 +55,8 @@ import research_eval as rev  # noqa: E402
 
 XML_CALL = re.compile(r"<tool_call>\s*<function=([^>\s]+)>(.*?)(?:</function>|$)", re.S)
 XML_PARAM = re.compile(r"<parameter=([^>\s]+)>\n?(.*?)\n?(?:</parameter>|(?=<parameter=)|$)", re.S)
+GLM_CALL = re.compile(r"<tool_call>\s*([^<>{}\s]+)\s*(.*?)(?:</tool_call>|$)", re.S)
+GLM_ARG = re.compile(r"<arg_key>(.*?)</arg_key>\s*<arg_value>(.*?)(?:</arg_value>|$)", re.S)
 _parse = rev.parse_tool_call
 _split = rev.split_think
 THINK_OPEN = [False]
@@ -65,6 +70,10 @@ def parse_tool_call(text):
     if m and m.group(1) in rev.TOOL_NAMES:
         args = {k: v for k, v in XML_PARAM.findall(m.group(2))}
         return m.group(1), args, text[: m.start()].strip(), "xml_function"
+    m = GLM_CALL.search(text)
+    if m and m.group(1) in rev.TOOL_NAMES:
+        args = {k.strip(): v for k, v in GLM_ARG.findall(m.group(2))}
+        return m.group(1), args, text[: m.start()].strip(), "glm_arg"
     return None
 
 
@@ -151,6 +160,15 @@ def selfcheck():
           ("web_search", {"query": "rsync flags"}, "", "xml_function"))
     check("xml unknown tool", parse_tool_call("<tool_call>\n<function=python>\n<parameter=code>\n1\n</parameter>\n</function>\n</tool_call>"), None)
     check("xml no call", parse_tool_call("The flag is --foo."), None)
+    check("glm call", parse_tool_call("I'll check.\n<tool_call>bash<arg_key>command</arg_key><arg_value>jq --help"
+                                      "</arg_value></tool_call>"), ("bash", {"command": "jq --help"}, "I'll check.", "glm_arg"))
+    check("glm newlines, multiline value", parse_tool_call("<tool_call>bash\n<arg_key>command</arg_key>\n"
+                                                         "<arg_value>man xz\nx</arg_value>\n</tool_call>"),
+          ("bash", {"command": "man xz\nx"}, "", "glm_arg"))
+    check("glm unclosed (stop token)", parse_tool_call("<tool_call>web_search<arg_key>query</arg_key><arg_value>rsync flags"),
+          ("web_search", {"query": "rsync flags"}, "", "glm_arg"))
+    check("glm unknown tool", parse_tool_call("<tool_call>python<arg_key>code</arg_key><arg_value>1</arg_value></tool_call>"), None)
+    check("glm does not take qwen json", parse_tool_call('<tool_call>{"name": "python", "arguments": {}}</tool_call>'), None)
     qwen = '<tool_call>\n{"name": "bash", "arguments": {"command": "jq --help"}}\n</tool_call>'
     check("qwen json unchanged", parse_tool_call(qwen), _parse(qwen))
     llama = '{"name": "bash", "parameters": {"command": "jq --help"}}'
