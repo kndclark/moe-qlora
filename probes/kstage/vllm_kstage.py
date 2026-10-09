@@ -43,12 +43,14 @@ KSTAGE (unset = plugin off, vLLM untouched):
            whether K6 slots are worth filling a layer or two ahead. Logs every KSTAGE_STATS s.
 KSTAGE_PFFIX=1 (with or without KSTAGE) fixes a race in vLLM's own --offload-backend prefetch
 that gives wrong logits when the offloaded layer count is not a multiple of the step (_pf_fix).
+KSTAGE_UVA_THP=1 (with or without KSTAGE) puts vLLM's UVA-offloaded parameters on 2 MiB pages
+once their repack re-offloads them (_uva_thp).
 
 Mount the directory and put it on PYTHONPATH; vLLM finds the plugin through the dist-info
 entry point (vllm.general_plugins):
   docker run ... -v $PWD/probes/kstage:/k:ro -e PYTHONPATH=/k -e KSTAGE=gather ...
 """
-import ctypes, json, os, re, sys, time
+import ctypes, json, mmap, os, re, sys, time
 
 import torch
 
@@ -230,6 +232,10 @@ BLOCK = int(os.environ.get("KSTAGE_BLOCK", "512"))  # small blocks, many warps: 
 WARPS = int(os.environ.get("KSTAGE_WARPS", "16"))
 COPY_N = int(os.environ.get("KSTAGE_COPY", "0"))  # 0: _copy_rows_kernel's grid; N: _copy_rows_few
 COPY_LIVE = int(os.environ.get("KSTAGE_COPY_LIVE", "0"))  # N: _copy_rows_live on N programs (overrides COPY)
+# Misses copied from a mirror of the host rows on 2 MiB pages (_thp_mirror), not K6's VMM host
+# pages, which a kernel reads like 4 KiB pinned memory: 37 vs 51 GB/s gathering 6-22 rows on the
+# laptop (results/ktransformers/hybrid/laptop-h2d_thp2.jsonl). Doubles the host rows' RAM.
+THP = os.environ.get("KSTAGE_THP", "0") == "1"
 
 
 def plan(ids, E):
@@ -412,6 +418,50 @@ def _copy_rows_live(t_ptr, cps_ptr, cpd_ptr, row_words, BS: tl.constexpr, BLOCK:
             tl.store(t_ptr + d.to(tl.int64) * row_words + o, x, mask=m)
 
 
+@triton.jit
+def _copy_rows_live_src(t_ptr, s_ptr, cps_ptr, cpd_ptr, row_words, D, BS: tl.constexpr, BLOCK: tl.constexpr):
+    """_copy_rows_live reading host rows (cps >= D) from s, their mirror: t row r is s row r - D."""
+    n = tl.sum((tl.load(cps_ptr + tl.arange(0, BS)) >= 0).to(tl.int32), axis=0)
+    for p in range(n):
+        r = tl.load(cps_ptr + p)
+        d = tl.load(cpd_ptr + p)
+        for o0 in range(tl.program_id(0) * BLOCK, row_words, tl.num_programs(0) * BLOCK):
+            o = o0 + tl.arange(0, BLOCK)
+            m = o < row_words
+            if r >= D:
+                x = tl.load(s_ptr + (r - D).to(tl.int64) * row_words + o, mask=m)
+            else:
+                x = tl.load(t_ptr + r.to(tl.int64) * row_words + o, mask=m)
+            tl.store(t_ptr + d.to(tl.int64) * row_words + o, x, mask=m)
+
+
+def _thp_mirror(rows):
+    """A copy of rows (a [n, words] CUDA view) on 2 MiB pages registered with CUDA, as a CUDA
+    view of the same shape: anonymous mmap, 2 MiB aligned, MADV_HUGEPAGE, touched, then
+    cudaHostRegister. Returns (view, keep-alive objects, bytes on huge pages)."""
+    nb = rows.numel() * rows.element_size()
+    span = -(-nb // (2 * MiB)) * 2 * MiB
+    m = mmap.mmap(-1, span + 2 * MiB, flags=mmap.MAP_PRIVATE | mmap.MAP_ANONYMOUS)
+    base = ctypes.addressof(ctypes.c_char.from_buffer(m))
+    off = (-base) % (2 * MiB)
+    m.madvise(mmap.MADV_HUGEPAGE, off, span)
+    h = torch.frombuffer(m, dtype=torch.uint8, count=nb, offset=off)
+    a0 = _anon_huge()
+    h.fill_(0)
+    huge = _anon_huge() - a0
+    assert int(torch.cuda.cudart().cudaHostRegister(h.data_ptr(), nb, 0)) == 0
+    v = torch.as_tensor(_Arr(h.data_ptr(), nb), device="cuda").view(rows.dtype).view(rows.shape)
+    v.copy_(rows)
+    return v, (m, h), huge
+
+
+def _anon_huge():
+    for l in open("/proc/self/smaps_rollup"):
+        if l.startswith("AnonHugePages:"):
+            return int(l.split()[1]) * 1024
+    return 0
+
+
 def _rows(t):
     """t as [rows, units] of the widest of int32/int16/uint8 that divides a row."""
     u = t.reshape(t.shape[0], -1).view(torch.uint8)
@@ -442,6 +492,8 @@ class _Cache:
         self.pf, self.ah = torch.zeros(self.BE, dtype=torch.int32, device=device), 0  # B5 (_cache_kernel)
         self.stale = 0  # KSTAGE_AHEAD_STALE's count threshold (_cache_kernel's TH)
         self.rows = []
+        self.src = {}  # KSTAGE_THP: a row tensor's data_ptr -> the mirror of its host rows
+        self.D = lay["D"]
 
     def _assign(self, ids, S, stats, ah=0):
         out = torch.empty_like(ids)
@@ -467,7 +519,11 @@ class _Cache:
 
     def _copy(self, rows, P):
         for r in rows if P else ():
-            if COPY_LIVE:
+            s = self.src.get(r.data_ptr())
+            if s is not None:
+                _copy_rows_live_src[(COPY_LIVE,)](r, s, self.cps, self.cpd, r.shape[1], self.D, BS=self.BS,
+                                                  BLOCK=BLOCK, num_warps=WARPS)
+            elif COPY_LIVE:
                 _copy_rows_live[(COPY_LIVE,)](r, self.cps, self.cpd, r.shape[1], BS=self.BS, BLOCK=BLOCK,
                                               num_warps=WARPS)
             elif COPY_N:
@@ -1225,7 +1281,8 @@ def _install_cache(layers, model=None):
     cold_n, counts, src, pol, n_cold = _cold_split(layers, groups, E)
     period = float(os.environ.get("KSTAGE_STATS", "0"))
     hstats, dstats = _stats_buffer(len(layers), 6 if AHEAD else 3) if period else (None, None)
-    dev_bytes = host_bytes = 0
+    dev_bytes = host_bytes = thp_bytes = thp_huge = 0
+    assert not THP or (COPY_LIVE and not AHEAD), "KSTAGE_THP mirrors _copy_rows_live's sources only"
     shape = []
     on_host = {idx: any(big(g) and is_host(g[0][1]) for _, g in groups[idx]) for idx, _, _ in layers}
     X = max(cold_n.values()) if DMA_M else 0  # staging rows: the most experts any layer has at home
@@ -1273,6 +1330,11 @@ def _install_cache(layers, model=None):
             _set_rows(grp, new)
             c.rows.append(_rows(new))
             (bigv if isbig else smallv).append(c.rows[-1])
+            if THP and isbig:
+                v, k, huge = _thp_mirror(c.rows[-1][D:R])
+                c.src[c.rows[-1].data_ptr()] = v
+                _keep.append(k)
+                thp_bytes += v.numel() * v.element_size(); thp_huge += huge
             del old
         torch.cuda.synchronize()
         torch.cuda.empty_cache()
@@ -1302,6 +1364,7 @@ def _install_cache(layers, model=None):
         f"slots {SLOTS}: pinned/slots per layer {[f'{h}/{s}' for _, h, s in shape]}; "
         f"evict {EVICT}{SHIFT if EVICT == 'lfu' else ''}; frozen from {FREEZE_M or 'never'} tokens"
         + (f"; DMA from {DMA_M} tokens: {X} staging rows, {nbuf} buffers, {bank_bytes / 2**30:.2f} GiB" if X else "")
+        + (f"; THP mirror {thp_bytes / 2**30:.2f} GiB, {thp_huge / 2**30:.2f} on huge pages" if THP else "")
         + (f"; ahead {f'from {AHEAD_MIN} ' if AHEAD_MIN > 1 else ''}below {AHEAD_M} tokens, top {AHEAD_K}"
            f"{f', fused to {AHEAD_FUSE_M}' if AHEAD_FUSE else ''}"
            f"{', DRY (no copies)' if AHEAD_DRY else ''}{', waits timed' if AHEAD_TICK else ''}"
@@ -1456,6 +1519,35 @@ def _install(model):
     torch.cuda.synchronize()
     log(f"installed in {time.perf_counter() - t0:.1f}s; device memory free "
         f"{torch.cuda.mem_get_info()[0] / 2**30:.2f} GiB")
+
+
+def _uva_thp(mlu):
+    """KSTAGE_UVA_THP=1: vLLM's UVA offload (--cpu-offload-gb) keeps each offloaded parameter in
+    torch's pinned memory, which a kernel reads like 4 KiB pages: 28 vs 46 GB/s on the laptop, 7.2
+    vs 11.5 on the desktop (results/ktransformers/hybrid/*-h2d_thp2.jsonl). Parameters of 2 MiB or
+    more go on a _thp_mirror instead. The views the offloader makes when it wraps the modules do
+    not last: a repack (Marlin) replaces each parameter with a new device tensor, and
+    device_loading_context re-offloads that through model_loader.utils' own import of
+    get_accelerator_view_from_cpu_tensor, so that import is the one patched here; patching the
+    offloader's copy left the mirrors holding pre-repack weights no kernel read. Set
+    VLLM_WEIGHT_OFFLOADING_DISABLE_PIN_MEMORY=1 with it, or torch's host cache keeps the pinned
+    copy each mirror replaces."""
+    orig, tot = mlu.get_accelerator_view_from_cpu_tensor, [0, 0, 0]
+
+    def view(cpu):
+        nb = cpu.numel() * cpu.element_size()
+        if nb < 2 * MiB or not cpu.is_contiguous():
+            tot[2] += nb
+            return orig(cpu if cpu.is_pinned() else cpu.pin_memory())
+        v, k, huge = _thp_mirror(cpu)
+        _keep.append(k)
+        if (tot[0] + nb) // 2**30 > tot[0] // 2**30:
+            log(f"UVA THP: {(tot[0] + nb) / 2**30:.2f} GiB re-offloaded on mirrors so far, "
+                f"{(tot[1] + huge) / 2**30:.2f} on huge pages; {tot[2] / 2**30:.3f} GiB pinned")
+        tot[0] += nb; tot[1] += huge
+        return v
+
+    mlu.get_accelerator_view_from_cpu_tensor = view
 
 
 def _pf_fix(cls):
@@ -1675,6 +1767,9 @@ def register():
     if os.environ.get("KSTAGE_PFFIX") == "1":
         from vllm.model_executor.offloader import prefetch
         _pf_fix(prefetch.PrefetchOffloader)
+    if os.environ.get("KSTAGE_UVA_THP") == "1":
+        from vllm.model_executor.model_loader import utils as mlu
+        _uva_thp(mlu)
     if os.environ.get("KSTAGE_UNJAM"):
         from vllm.v1.core.sched import scheduler
         _unjam(scheduler.Scheduler, os.environ["KSTAGE_UNJAM"])
