@@ -1689,3 +1689,54 @@ it beat Nemotron 3.5 Lightning?
    choice unless GLM beats it by reading 1's rule.
 4. **Air** is run only if Flash at least reaches Lightning. A bigger sibling of a model
    that is behind is a long eval for an unlikely flip.
+
+### G1 result (MEASURED, 2026-10-09)
+
+**Verdict, by the pre-registered rule: GLM-4.7-Flash is behind base Lightning, in both
+modes.** Air was not run (reading 4). G6q stays the serving choice.
+
+Serving on the laptop (NVFP4, UTIL=0.92, 16k context): weights 18.05 GiB, KV 1.92 GiB =
+38,016 tokens (2.32 sequences at 16k); decode 130.35 tok/s at c=1, 56.56 tok/s per stream
+at c=16. The seven eval sets took ~13 minutes for both modes.
+
+| Thinking | vs | rows W/L/T | pooled items | P1 Holm losses | N1 repeats |
+|---|---|---|---|---|---|
+| on (4096) | Lightning | 1/5/16 | +51 / +128, p 0.0 | 3 of 20 | 28/81, 29/97, 28/94, all p 0.0 |
+| on (4096) | G6q | 0/8/14 | +14 / +201, p 0.0 | 7 of 20 | 13/127, 17/127, 16/129 |
+| off (512) | Lightning | 1/5/16 | +53 / +106, p 0.0 | 0 of 20 | -- |
+| off (512) | G6q | 0/10/12 | +8 / +245, p 0.0 | 7 of 20 | 8/245, 11/242, 11/250 |
+| off (512) | qwen3-8b-v3 | 1/9/12 | +18 / +232, p 0.0 | 6 of 20 | -- |
+
+Thinking on used 480 tokens per item (12 of 478 truncated in think); thinking off, 144.
+
+GLM is not weaker at reasoning. On the reasoning rows, thinking on, it matches or edges
+Lightning's N1 mean (range): task 15 vs 13 (12-14), rocky_task 12 vs 12.67 (12-13),
+promql 14 vs 12, alert 8 vs 6 (5-7), trap3 5 vs 3.67 (3-4). Every loss is a
+hit_and_grounded row: flag lookups.
+
+**The losses are behaviour, not a parsing artifact.** All 2,281 GLM tool-call strings
+parsed (`glm_arg`), none failed. On held_out GLM hit the call limit on 26 of 90 items
+(Lightning 5), on rocky_held_out 41 of 56 (Lightning 7), and every one of those items
+contains a refused call. The refusals are pipes: GLM writes `<tool> --help | grep ...`,
+the allowlist refuses it, and the refusal text names the permitted forms. Lightning pipes
+too, then retries plain `--help`; GLM mostly pipes again:
+
+| run | items with a refusal | recovered to an allowed call |
+|---|---|---|
+| GLM thinking on, v1 / rocky | 44 / 48 | 36% / 21% |
+| GLM thinking off, v1 / rocky | 62 / 45 | 13% / 9% |
+| Lightning thinking on, v1 / rocky | 37 / 27 | 97% / 89% |
+| Lightning thinking off, v1 / rocky | 3 / 3 | 100% / 100% |
+
+The protocol was the same for every model: the bash tool's description does not state the
+allowlist, only the refusal does. What this measures is whether a model reads tool
+feedback and changes course; GLM does not. Whether GLM would reach Lightning with the
+allowlist in the tool description is unknown -- that arm was not run, and it would be a
+new protocol for every model, not a retest of this one.
+
+**Air.** Not run, and not recommended: the bigger sibling of a model that is behind, at a
+cost the pre-registration already priced (>= 19 GiB of experts offloaded, 188,416 B of KV
+per token, ~0.37 s per decode step, ~43 tok/s aggregate). The weights are downloaded
+(cyankiwi/GLM-4.5-Air-AWQ-4bit, rev a22f274d, on the desktop) and verified against the
+manifest -- 23 of 23 files, 63,425,665,893 bytes, all world-readable -- if a later
+question needs them.
