@@ -52,6 +52,12 @@ def metrics(base):
     return out
 
 
+def tokenize(base, model, text):
+    """vLLM reads the text from "prompt"; llama-server reads "content" and answers "prompt" with no tokens."""
+    ids = post(base, "/tokenize", {"model": model, "prompt": text, "add_special_tokens": False})["tokens"]
+    return ids or post(base, "/tokenize", {"content": text, "add_special": False})["tokens"]
+
+
 def corpus_tokens(base, model, need):
     """Token ids of real text, at least `need` of them, deterministic."""
     files = sorted(glob.glob("/usr/lib/python3*/**/*.py", recursive=True))
@@ -62,12 +68,12 @@ def corpus_tokens(base, model, need):
         except OSError:
             continue
         if sum(map(len, chunk)) > 400_000:
-            ids += post(base, "/tokenize", {"model": model, "prompt": "".join(chunk), "add_special_tokens": False})["tokens"]
+            ids += tokenize(base, model, "".join(chunk))
             chunk = []
             if len(ids) >= need:
                 return ids
     if chunk:
-        ids += post(base, "/tokenize", {"model": model, "prompt": "".join(chunk), "add_special_tokens": False})["tokens"]
+        ids += tokenize(base, model, "".join(chunk))
     if len(ids) < need:
         sys.exit(f"corpus has {len(ids)} tokens, need {need}")
     return ids

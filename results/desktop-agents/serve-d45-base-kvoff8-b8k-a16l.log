@@ -1,0 +1,829 @@
+WARNING 10-08 20:31:05 [argparse_utils.py:276] With `vllm serve`, you should provide the model as a positional argument or in a config file instead of via the `--model` option. The `--model` option will be removed in a future version.
+(APIServer pid=1) INFO 10-08 20:31:05 [api_utils.py:347] 
+(APIServer pid=1) INFO 10-08 20:31:05 [api_utils.py:347]        █     █     █▄   ▄█
+(APIServer pid=1) INFO 10-08 20:31:05 [api_utils.py:347]  ▄▄ ▄█ █     █     █ ▀▄▀ █  version 0.29.0
+(APIServer pid=1) INFO 10-08 20:31:05 [api_utils.py:347]   █▄█▀ █     █     █     █  model   nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4
+(APIServer pid=1) INFO 10-08 20:31:05 [api_utils.py:347]    ▀▀  ▀▀▀▀▀ ▀▀▀▀▀ ▀     ▀
+(APIServer pid=1) INFO 10-08 20:31:05 [api_utils.py:347] 
+(APIServer pid=1) INFO 10-08 20:31:05 [api_utils.py:286] non-default args: {'model_tag': 'nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4', 'lora_modules': [LoRAModulePath(name='g6q', path='/adapter', base_model_name=None, is_3d_lora_weight=False)], 'enable_prompt_tokens_details': True, 'model': 'nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4', 'revision': 'bee7596271d1495f6992ae224aefde4410e816b8', 'max_model_len': 131072, 'served_model_name': ['lightning-nvfp4'], 'kv_cache_dtype': 'fp8', 'mamba_cache_mode': 'align', 'kv_offloading_size': 8.0, 'enable_lora': True, 'lora_target_modules': ['q_proj', 'k_proj', 'v_proj', 'o_proj', 'in_proj', 'up_proj', 'down_proj'], 'max_num_batched_tokens': 8192, 'max_num_seqs': 16, 'moe_backend': 'marlin', 'linear_backend': 'marlin'}
+(APIServer pid=1) INFO 10-08 20:31:05 [arg_utils.py:866] HF_HUB_OFFLINE is True, replace model_id [nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4] to model_path [/hf/hub/models--nvidia--NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4/snapshots/bee7596271d1495f6992ae224aefde4410e816b8]
+(APIServer pid=1) INFO 10-08 20:31:17 [model.py:684] Resolved architecture: NemotronHForCausalLM
+(APIServer pid=1) INFO 10-08 20:31:17 [model.py:2021] Using max model len 131072
+(APIServer pid=1) INFO 10-08 20:31:19 [cache.py:335] Using fp8 data type to store kv cache. It reduces the GPU memory footprint and boosts the performance. Meanwhile, it may cause accuracy drop without a proper scaling factor
+(APIServer pid=1) INFO 10-08 20:31:19 [scheduler.py:277] Chunked prefill is enabled with max_num_batched_tokens=8192.
+(APIServer pid=1) INFO 10-08 20:31:19 [config.py:676] Updating mamba_ssm_cache_dtype to 'float32' for NemotronH model
+(APIServer pid=1) WARNING 10-08 20:31:19 [modelopt.py:379] Detected ModelOpt fp8 checkpoint (quant_algo=FP8). Please note that the format is experimental and could change.
+(APIServer pid=1) WARNING 10-08 20:31:19 [modelopt.py:1029] Detected ModelOpt NVFP4 checkpoint (quant_algo=NVFP4). Please note that the format is experimental and could change in future.
+(APIServer pid=1) WARNING 10-08 20:31:19 [modelopt.py:1029] Detected ModelOpt NVFP4 checkpoint (quant_algo=W4A16_NVFP4). Please note that the format is experimental and could change in future.
+(APIServer pid=1) WARNING 10-08 20:31:19 [modelopt.py:1711] Detected ModelOpt MXFP8 checkpoint. Please note that the format is experimental and could change in future.
+(APIServer pid=1) INFO 10-08 20:31:19 [kernel.py:369] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+(EngineCore pid=195) INFO 10-08 20:31:29 [core.py:123] Initializing a V1 LLM engine (v0.29.0) with config: model='/hf/hub/models--nvidia--NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4/snapshots/bee7596271d1495f6992ae224aefde4410e816b8', speculative_config=None, tokenizer='/hf/hub/models--nvidia--NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4/snapshots/bee7596271d1495f6992ae224aefde4410e816b8', skip_tokenizer_init=False, tokenizer_mode=auto, revision=bee7596271d1495f6992ae224aefde4410e816b8, tokenizer_revision=bee7596271d1495f6992ae224aefde4410e816b8, trust_remote_code=False, dtype=torch.bfloat16, max_seq_len=131072, download_dir=None, load_format=auto, tensor_parallel_size=1, pipeline_parallel_size=1, data_parallel_size=1, decode_context_parallel_size=1, dcp_comm_backend=ag_rs, disable_custom_all_reduce=False, quantization=modelopt_mixed, quantization_config=None, enforce_eager=False, enable_return_routed_experts=False, kv_cache_dtype=fp8, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser='', reasoning_parser_plugin='', enable_in_reasoning=False), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, per_request_spec_decode_metrics='none', kv_cache_metrics=False, kv_cache_metrics_sample=0.01, cudagraph_metrics=False, enable_layerwise_nvtx_tracing=False, enable_mfu_metrics=False, enable_mm_processor_stats=False, enable_logging_iteration_details=False, jit_monitor_mode='warn', jit_monitor_verbose=False), seed=0, served_model_name=lightning-nvfp4, enable_prefix_caching=True, enable_chunked_prefill=True, pooler_config=None, compilation_config={'mode': <CompilationMode.VLLM_COMPILE: 3>, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'inductor', 'custom_ops': ['none'], 'ir_enable_torch_wrap': True, 'splitting_ops': ['vllm::unified_attention_with_output', 'vllm::unified_mla_attention_with_output', 'vllm::mamba_mixer2', 'vllm::mamba_mixer', 'vllm::short_conv', 'vllm::qwen4_exp_compute_ple_ngram_ids', 'vllm::qwen4_exp_ple_short_conv', 'vllm::qwen4_exp_qsa_with_output', 'vllm::linear_attention', 'vllm::qwen_gdn_attention_core', 'vllm::qwen_gdn_attention_core_fused_norm_packed', 'vllm::gdn_attention_core_xpu', 'vllm::olmo_hybrid_gdn_full_forward', 'vllm::sparse_attn_indexer', 'vllm::rocm_aiter_sparse_attn_indexer', 'vllm::deepseek_v4_attention', 'vllm::hpc_rope_norm_forward', 'vllm::unified_kv_cache_update', 'vllm::unified_mla_kv_cache_update'], 'compile_mm_encoder': False, 'cudagraph_mm_encoder': False, 'encoder_cudagraph_token_budgets': [], 'encoder_cudagraph_max_vision_items_per_batch': 0, 'encoder_cudagraph_max_frames_per_batch': None, 'compile_sizes': [], 'compile_ranges_endpoints': [8192], 'inductor_compile_config': {'enable_auto_functionalized_v2': False, 'combo_kernels': True, 'benchmark_combo_kernel': True}, 'inductor_passes': {}, 'cudagraph_mode': <CUDAGraphMode.FULL_AND_PIECEWISE: (2, 1)>, 'cudagraph_num_of_warmups': 1, 'cudagraph_capture_sizes': [1, 2, 4, 8, 16, 24, 32], 'cudagraph_copy_inputs': False, 'cudagraph_specialize_lora': True, 'use_inductor_graph_partition': False, 'pass_config': {'fuse_norm_quant': False, 'fuse_act_quant': False, 'fuse_attn_quant': False, 'enable_sp': False, 'fuse_gemm_comms': False, 'fuse_allreduce_rms': False, 'enable_qk_norm_rope_fusion': False, 'fuse_rope_kvcache_cat_mla': False, 'fuse_act_padding': False, 'fuse_qk_norm_rope_kvcache': False}, 'max_cudagraph_capture_size': 32, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': False}, 'local_cache_dir': None, 'fast_moe_cold_start': False, 'static_all_moe_layers': []}, kernel_config=KernelConfig(ir_op_priority=IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native']), enable_flashinfer_autotune=True, enable_cutedsl_warmup=True, enable_jit_warmup=True, enable_bf16x3_router_gemm=False, moe_backend='marlin', linear_backend='marlin')
+(EngineCore pid=195) INFO 10-08 20:31:29 [parallel_state.py:1775] world_size=1 rank=0 local_rank=0 distributed_init_method=file:///tmp/vllm_dist_44e044f1fb0241aba5880cbddc68d2a2 backend=nccl
+(EngineCore pid=195) INFO 10-08 20:31:29 [parallel_state.py:2119] rank 0 in world size 1 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, EP rank 0, EPLB rank N/A
+(EngineCore pid=195) INFO 10-08 20:31:29 [gpu_worker.py:429] Using V2 Model Runner
+(EngineCore pid=195) INFO 10-08 20:31:29 [model_runner.py:382] Loading model from scratch...
+(EngineCore pid=195) INFO 10-08 20:31:29 [__init__.py:726] Selected MarlinFP8ScaledMMLinearKernel for ModelOptFp8LinearMethod
+(EngineCore pid=195) INFO 10-08 20:31:29 [__init__.py:1106] Using MarlinNvFp4LinearKernel for NVFP4 GEMM
+(EngineCore pid=195) INFO 10-08 20:31:30 [nvfp4.py:261] Using 'MARLIN' NvFp4 MoE backend out of potential backends: ['FLASHINFER_TRTLLM', 'FLASHINFER_CUTEDSL', 'FLASHINFER_CUTEDSL_BATCHED', 'FLASHINFER_CUTLASS', 'VLLM_CUTLASS', 'MARLIN', 'HUMMING', 'EMULATION'].
+(EngineCore pid=195) INFO 10-08 20:31:30 [cuda.py:492] Using FLASHINFER attention backend out of potential backends: ['FLASHINFER', 'TRITON_ATTN'].
+(EngineCore pid=195) INFO 10-08 20:31:30 [weight_utils.py:863] Filesystem type for checkpoints: EXT4. Checkpoint size: 20.08 GiB. Available RAM: 26.16 GiB.
+(EngineCore pid=195) INFO 10-08 20:31:30 [weight_utils.py:886] Auto-prefetch is disabled because the filesystem (EXT4) is not a recognized network FS (NFS/Lustre). If you want to force prefetching, start vLLM with --safetensors-load-strategy=prefetch.
+(EngineCore pid=195) Loading safetensors checkpoint shards:   0% Completed | 0/52 [00:00<?, ?it/s]
+(EngineCore pid=195) Loading safetensors checkpoint shards:   2% Completed | 1/52 [00:00<00:26,  1.94it/s]
+(EngineCore pid=195) WARNING 10-08 20:31:30 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=195) Loading safetensors checkpoint shards:   4% Completed | 2/52 [00:01<00:27,  1.82it/s]
+(EngineCore pid=195) WARNING 10-08 20:31:31 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=195) Loading safetensors checkpoint shards:   8% Completed | 4/52 [00:01<00:18,  2.55it/s]
+(EngineCore pid=195) WARNING 10-08 20:31:32 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=195) Loading safetensors checkpoint shards:  13% Completed | 7/52 [00:02<00:12,  3.46it/s]
+(EngineCore pid=195) WARNING 10-08 20:31:32 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=195) Loading safetensors checkpoint shards:  17% Completed | 9/52 [00:02<00:12,  3.43it/s]
+(EngineCore pid=195) WARNING 10-08 20:31:33 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=195) Loading safetensors checkpoint shards:  21% Completed | 11/52 [00:03<00:12,  3.39it/s]
+(EngineCore pid=195) WARNING 10-08 20:31:33 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=195) Loading safetensors checkpoint shards:  27% Completed | 14/52 [00:04<00:09,  3.89it/s]
+(EngineCore pid=195) WARNING 10-08 20:31:34 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=195) Loading safetensors checkpoint shards:  31% Completed | 16/52 [00:04<00:09,  3.71it/s]
+(EngineCore pid=195) WARNING 10-08 20:31:35 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=195) Loading safetensors checkpoint shards:  35% Completed | 18/52 [00:05<00:09,  3.63it/s]
+(EngineCore pid=195) WARNING 10-08 20:31:35 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=195) Loading safetensors checkpoint shards:  40% Completed | 21/52 [00:05<00:07,  4.03it/s]
+(EngineCore pid=195) WARNING 10-08 20:31:36 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=195) Loading safetensors checkpoint shards:  44% Completed | 23/52 [00:06<00:07,  3.81it/s]
+(EngineCore pid=195) WARNING 10-08 20:31:36 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=195) Loading safetensors checkpoint shards:  48% Completed | 25/52 [00:07<00:07,  3.67it/s]
+(EngineCore pid=195) WARNING 10-08 20:31:37 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=195) Loading safetensors checkpoint shards:  54% Completed | 28/52 [00:07<00:05,  4.00it/s]
+(EngineCore pid=195) WARNING 10-08 20:31:38 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=195) Loading safetensors checkpoint shards:  58% Completed | 30/52 [00:08<00:05,  3.85it/s]
+(EngineCore pid=195) WARNING 10-08 20:31:38 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=195) Loading safetensors checkpoint shards:  62% Completed | 32/52 [00:08<00:05,  3.71it/s]
+(EngineCore pid=195) WARNING 10-08 20:31:39 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=195) Loading safetensors checkpoint shards:  67% Completed | 35/52 [00:09<00:04,  4.02it/s]
+(EngineCore pid=195) WARNING 10-08 20:31:39 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=195) Loading safetensors checkpoint shards:  71% Completed | 37/52 [00:10<00:03,  3.83it/s]
+(EngineCore pid=195) WARNING 10-08 20:31:40 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=195) Loading safetensors checkpoint shards:  75% Completed | 39/52 [00:10<00:03,  3.72it/s]
+(EngineCore pid=195) WARNING 10-08 20:31:41 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=195) Loading safetensors checkpoint shards:  79% Completed | 41/52 [00:11<00:03,  3.61it/s]
+(EngineCore pid=195) WARNING 10-08 20:31:41 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=195) Loading safetensors checkpoint shards:  85% Completed | 44/52 [00:11<00:02,  3.99it/s]
+(EngineCore pid=195) WARNING 10-08 20:31:42 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=195) Loading safetensors checkpoint shards:  88% Completed | 46/52 [00:12<00:01,  3.81it/s]
+(EngineCore pid=195) WARNING 10-08 20:31:42 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=195) Loading safetensors checkpoint shards:  92% Completed | 48/52 [00:13<00:01,  3.69it/s]
+(EngineCore pid=195) WARNING 10-08 20:31:43 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=195) Loading safetensors checkpoint shards:  96% Completed | 50/52 [00:13<00:00,  3.57it/s]
+(EngineCore pid=195) WARNING 10-08 20:31:44 [routed_experts.py:1102] Unexpected gate/up projection names: up_proj, . Fused gate/up mapping will be skipped.
+(EngineCore pid=195) Loading safetensors checkpoint shards: 100% Completed | 52/52 [00:14<00:00,  3.17it/s]
+(EngineCore pid=195) Loading safetensors checkpoint shards: 100% Completed | 52/52 [00:14<00:00,  3.57it/s]
+(EngineCore pid=195) 
+(EngineCore pid=195) INFO 10-08 20:31:44 [default_loader.py:430] Loading weights took 14.55 seconds
+(EngineCore pid=195) WARNING 10-08 20:31:44 [marlin_utils_fp8.py:112] Your GPU does not have native support for FP8 computation but FP8 quantization is being used. Weight-only FP8 compression will be used leveraging the Marlin kernel. This may degrade performance for compute-heavy workloads.
+(EngineCore pid=195) WARNING 10-08 20:31:45 [marlin.py:34] Your GPU does not have native support for FP4 computation but FP4 quantization is being used. Weight-only FP4 compression will be used leveraging the Marlin kernel. This may degrade performance for compute-heavy workloads.
+(EngineCore pid=195) WARNING 10-08 20:31:45 [marlin_utils_fp4.py:354] Your GPU does not have native support for FP4 computation but FP4 quantization is being used. Weight-only FP4 compression will be used leveraging the Marlin kernel. This may degrade performance for compute-heavy workloads.
+(EngineCore pid=195) INFO 10-08 20:31:45 [nvfp4.py:613] Using MoEPrepareAndFinalizeNoDPEPModular
+(EngineCore pid=195) WARNING 10-08 20:31:45 [kv_cache.py:130] Checkpoint does not provide a q scaling factor. Setting it to k_scale. This only matters for FP8 Attention backends (flash-attn or flashinfer).
+(EngineCore pid=195) WARNING 10-08 20:31:45 [kv_cache.py:185] Using uncalibrated q_scale 1.0 and/or prob_scale 1.0 with fp8 attention. This may cause accuracy issues. Please make sure q/prob scaling factors are available in the fp8 checkpoint.
+(EngineCore pid=195) INFO 10-08 20:31:47 [utils.py:102] MoE model detected. Using fused MoE LoRA implementation.
+(EngineCore pid=195) INFO 10-08 20:31:47 [punica_selector.py:20] Using PunicaWrapperGPU.
+(EngineCore pid=195) INFO 10-08 20:31:47 [model_runner.py:404] Model loading took 17.84 GiB memory and 18.151124 seconds
+(EngineCore pid=195) INFO 10-08 20:31:47 [topk_topp_sampler.py:62] Using FlashInfer for top-p & top-k sampling.
+(EngineCore pid=195) INFO 10-08 20:31:47 [interface.py:918] Setting attention block size to 4176 tokens to ensure that attention page size is >= mamba page size.
+(EngineCore pid=195) INFO 10-08 20:31:47 [interface.py:942] Padding mamba page size by 0.19% to ensure that mamba page size and attention page size are exactly equal.
+(EngineCore pid=195) INFO 10-08 20:31:47 [utils.py:306] Using LBHNC KV cache layout.
+(EngineCore pid=195) INFO 10-08 20:31:54 [backends.py:1094] Using cache directory: /root/.cache/vllm/torch_compile_cache/15b5686690/rank_0_0/backbone for vLLM's torch.compile
+(EngineCore pid=195) INFO 10-08 20:31:54 [backends.py:1155] Dynamo bytecode transform time: 5.25 s
+(EngineCore pid=195) /usr/local/lib/python3.12/dist-packages/torch/_inductor/compile_fx.py:321: UserWarning: TensorFloat32 tensor cores for float32 matrix multiplication available but not enabled. Consider setting `torch.set_float32_matmul_precision('high')` for better performance.
+(EngineCore pid=195)   warnings.warn(
+(EngineCore pid=195) INFO 10-08 20:32:00 [backends.py:393] Compiling a graph for compile range (1, 8192) takes 5.61 s
+(EngineCore pid=195) INFO 10-08 20:32:03 [backends.py:920] collected artifacts: 30 entries, 5 artifacts, 4954760 bytes total
+(EngineCore pid=195) INFO 10-08 20:32:03 [decorators.py:719] saved AOT compiled function to /root/.cache/vllm/torch_compile_cache/torch_aot_compile/028776961d7e0f3b831c733a8b060511e8877e9e6b021f1d6b02671cfa5f3793/rank_0_0/model
+(EngineCore pid=195) INFO 10-08 20:32:03 [monitor.py:53] torch.compile took 13.45 s in total
+(EngineCore pid=195) WARNING 10-08 20:32:03 [utils.py:279] Using default LoRA kernel configs
+(EngineCore pid=195) INFO 10-08 20:32:03 [mamba_mixer2.py:597] Warming up Mamba2 SSD Triton kernels...
+(EngineCore pid=195) INFO 10-08 20:32:52 [monitor.py:81] Initial profiling/warmup run took 49.27 s
+(EngineCore pid=195) WARNING 10-08 20:32:53 [kv_cache_utils.py:1326] Add 1 padding layers, may waste at most 4.35% KV cache memory
+(EngineCore pid=195) INFO 10-08 20:32:53 [flashinfer.py:910] FlashInfer resolved query dtypes: prefill=torch.bfloat16, decode=torch.bfloat16, decode_backend=flashinfer-native, kv_cache_dtype=torch.float8_e4m3fn, arch=sm86
+(EngineCore pid=195) INFO 10-08 20:32:53 [ssu_dispatch.py:310] Using triton Mamba SSU backend.
+(EngineCore pid=195) WARNING 10-08 20:32:55 [mamba_ssm.py:108] Using default Mamba SSU config. Performance might be sub-optimal! Config file not found at /usr/local/lib/python3.12/dist-packages/vllm/model_executor/layers/mamba/ops/configs/selective_state_update/headdim=64,dstate=128,device_name=NVIDIA_GeForce_RTX_3090,cache_dtype=float32.json
+(EngineCore pid=195) Capturing CUDA graphs (PIECEWISE):   0%|          | 0/14 [00:00<?, ?it/s]Capturing CUDA graphs (PIECEWISE):   7%|▋         | 1/14 [00:00<00:05,  2.18it/s]Capturing CUDA graphs (PIECEWISE):  14%|█▍        | 2/14 [00:01<00:09,  1.26it/s]Capturing CUDA graphs (PIECEWISE):  21%|██▏       | 3/14 [00:01<00:06,  1.64it/s]Capturing CUDA graphs (PIECEWISE):  29%|██▊       | 4/14 [00:03<00:11,  1.13s/it]Capturing CUDA graphs (PIECEWISE):  36%|███▌      | 5/14 [00:04<00:07,  1.25it/s]Capturing CUDA graphs (PIECEWISE):  43%|████▎     | 6/14 [00:04<00:04,  1.77it/s]Capturing CUDA graphs (PIECEWISE):  57%|█████▋    | 8/14 [00:04<00:02,  2.98it/s]Capturing CUDA graphs (PIECEWISE):  71%|███████▏  | 10/14 [00:04<00:00,  4.17it/s]Capturing CUDA graphs (PIECEWISE):  86%|████████▌ | 12/14 [00:04<00:00,  5.30it/s]Capturing CUDA graphs (PIECEWISE):  93%|█████████▎| 13/14 [00:05<00:00,  3.56it/s]Capturing CUDA graphs (PIECEWISE): 100%|██████████| 14/14 [00:07<00:00,  1.59it/s]Capturing CUDA graphs (PIECEWISE): 100%|██████████| 14/14 [00:07<00:00,  1.96it/s]
+(EngineCore pid=195) Capturing CUDA graphs (FULL):   0%|          | 0/2 [00:00<?, ?it/s]Capturing CUDA graphs (FULL): 100%|██████████| 2/2 [00:00<00:00, 10.66it/s]Capturing CUDA graphs (FULL): 100%|██████████| 2/2 [00:00<00:00, 10.65it/s]
+(EngineCore pid=195) INFO 10-08 20:33:01 [model_runner.py:960] Graph capturing finished in 8 secs, took 0.26 GiB
+(EngineCore pid=195) INFO 10-08 20:33:01 [gpu_worker.py:625] Available KV cache memory: 2.3 GiB
+(EngineCore pid=195) INFO 10-08 20:33:01 [gpu_worker.py:640] CUDA graph memory profiling is enabled (default since v0.21.0). The current --gpu-memory-utilization=0.9200 is equivalent to --gpu-memory-utilization=0.9070 without CUDA graph memory profiling. To maintain the same effective KV cache size as before, increase --gpu-memory-utilization to 0.9330. To disable, set VLLM_MEMORY_PROFILER_ESTIMATE_CUDAGRAPHS=0.
+(EngineCore pid=195) WARNING 10-08 20:33:01 [kv_cache_utils.py:1326] Add 1 padding layers, may waste at most 4.35% KV cache memory
+(EngineCore pid=195) INFO 10-08 20:33:01 [kv_cache_utils.py:2032] GPU KV cache size: 629,145 tokens, Maximum concurrency for 131,072 tokens per request: 4.80x
+(EngineCore pid=195) INFO 10-08 20:33:01 [factory.py:62] Creating v1 connector with name: OffloadingConnector and engine_id: ff02fb5b-7f2a-4220-8c33-b5d067fa6435
+(EngineCore pid=195) WARNING 10-08 20:33:01 [base.py:203] Initializing KVConnectorBase_V1. This API is experimental and subject to change in the future as we iterate the design.
+(EngineCore pid=195) INFO 10-08 20:33:01 [factory.py:57] Creating offloading spec with name: CPUOffloadingSpec
+(EngineCore pid=195) INFO 10-08 20:33:01 [shared_offload_region.py:134] Created mmap file /dev/shm/vllm_offload_ff02fb5b-7f2a-4220-8c33-b5d067fa6435.mmap (8.58 GB)
+(EngineCore pid=195) INFO 10-08 20:33:01 [shared_offload_region.py:180] Unlinked mmap file /dev/shm/vllm_offload_ff02fb5b-7f2a-4220-8c33-b5d067fa6435.mmap
+(EngineCore pid=195) INFO 10-08 20:33:03 [gpu_worker.py:764] Allocating 6 CPU tensors...
+(EngineCore pid=195) INFO 10-08 20:33:03 [kernel_warmup.py:124] JIT kernel warmup starting.
+(EngineCore pid=195) INFO 10-08 20:33:03 [kernel_warmup.py:134] JIT kernel warmup finished in 0.00s.
+(EngineCore pid=195) Capturing CUDA graphs (PIECEWISE):   0%|          | 0/14 [00:00<?, ?it/s]Capturing CUDA graphs (PIECEWISE):   7%|▋         | 1/14 [00:00<00:02,  5.67it/s]Capturing CUDA graphs (PIECEWISE):  14%|█▍        | 2/14 [00:00<00:02,  5.52it/s]Capturing CUDA graphs (PIECEWISE):  21%|██▏       | 3/14 [00:00<00:01,  6.21it/s]Capturing CUDA graphs (PIECEWISE):  29%|██▊       | 4/14 [00:00<00:01,  6.34it/s]Capturing CUDA graphs (PIECEWISE):  43%|████▎     | 6/14 [00:00<00:01,  7.94it/s]Capturing CUDA graphs (PIECEWISE):  57%|█████▋    | 8/14 [00:01<00:00,  8.80it/s]Capturing CUDA graphs (PIECEWISE):  71%|███████▏  | 10/14 [00:01<00:00,  9.28it/s]Capturing CUDA graphs (PIECEWISE):  86%|████████▌ | 12/14 [00:01<00:00,  9.62it/s]Capturing CUDA graphs (PIECEWISE): 100%|██████████| 14/14 [00:01<00:00,  9.81it/s]Capturing CUDA graphs (PIECEWISE): 100%|██████████| 14/14 [00:01<00:00,  8.60it/s]
+(EngineCore pid=195) Capturing CUDA graphs (FULL):   0%|          | 0/10 [00:00<?, ?it/s]Capturing CUDA graphs (FULL):  20%|██        | 2/10 [00:00<00:00, 10.62it/s]Capturing CUDA graphs (FULL):  40%|████      | 4/10 [00:00<00:00, 10.69it/s]Capturing CUDA graphs (FULL):  60%|██████    | 6/10 [00:00<00:00, 10.74it/s]Capturing CUDA graphs (FULL):  80%|████████  | 8/10 [00:00<00:00, 10.74it/s]Capturing CUDA graphs (FULL): 100%|██████████| 10/10 [00:00<00:00, 10.70it/s]Capturing CUDA graphs (FULL): 100%|██████████| 10/10 [00:00<00:00, 10.70it/s]
+(EngineCore pid=195) INFO 10-08 20:33:07 [model_runner.py:960] Graph capturing finished in 3 secs, took 0.17 GiB
+(EngineCore pid=195) INFO 10-08 20:33:07 [gpu_worker.py:797] CUDA graph pool memory: 0.17 GiB (actual), 0.31 GiB (estimated), difference: 0.14 GiB (79.9%).
+(EngineCore pid=195) INFO 10-08 20:33:07 [gpu_worker.py:860] Free memory on device (23.27/23.56 GiB) on startup. Desired GPU memory utilization is (0.92, 21.67 GiB). Actual usage is 18.54 GiB for consumed memory (weights + non-torch), 0.83 GiB for peak activation, and 0.17 GiB for CUDAGraph memory. Replace gpu_memory_utilization config with `--kv-cache-memory=2134198764` (1.99 GiB) to fit into requested memory, or `--kv-cache-memory=3846240256` (3.58 GiB) to fully utilize gpu memory. Current kv cache memory in use is 2.3 GiB.
+(EngineCore pid=195) INFO 10-08 20:33:10 [jit_monitor.py:85] Kernel JIT monitor activated; monitored JIT compilations during inference will use mode=warn.
+(EngineCore pid=195) INFO 10-08 20:33:10 [torch_utils.py:277] Reducing Torch threads from 10 to 1 for serving. Set OMP_NUM_THREADS in the external environment to override.
+(EngineCore pid=195) INFO 10-08 20:33:10 [core.py:361] init engine (profile, create kv cache, warmup model) took 83.06 s (compilation: 13.45 s)
+(EngineCore pid=195) INFO 10-08 20:33:12 [factory.py:62] Creating v1 connector with name: OffloadingConnector and engine_id: ff02fb5b-7f2a-4220-8c33-b5d067fa6435
+(EngineCore pid=195) WARNING 10-08 20:33:12 [base.py:203] Initializing KVConnectorBase_V1. This API is experimental and subject to change in the future as we iterate the design.
+(EngineCore pid=195) INFO 10-08 20:33:12 [factory.py:57] Creating offloading spec with name: CPUOffloadingSpec
+(EngineCore pid=195) INFO 10-08 20:33:12 [kernel.py:369] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'])
+(APIServer pid=1) INFO 10-08 20:33:12 [entry.py:135] Supported tasks: ['generate']
+(APIServer pid=1) INFO 10-08 20:33:12 [serving.py:216] Loaded new LoRA adapter: name 'g6q', path '/adapter'
+(APIServer pid=1) INFO 10-08 20:33:13 [hf.py:547] Detected the chat template content format to be 'string'. You can set `--chat-template-content-format` to override this.
+(APIServer pid=1) WARNING 10-08 20:33:13 [model.py:1759] Default vLLM sampling parameters have been overridden by the model's `generation_config.json`: `{'temperature': 1.0, 'top_p': 0.95}`. If this is not intended, please relaunch vLLM instance with `--generation-config vllm`.
+(APIServer pid=1) INFO 10-08 20:33:14 [entry.py:139] Starting vLLM server on http://0.0.0.0:8000
+(APIServer pid=1) INFO 10-08 20:33:14 [launcher.py:61] Available routes are:
+(APIServer pid=1) INFO 10-08 20:33:14 [launcher.py:70] Route: /openapi.json, Methods: HEAD, GET
+(APIServer pid=1) INFO 10-08 20:33:14 [launcher.py:70] Route: /docs, Methods: HEAD, GET
+(APIServer pid=1) INFO 10-08 20:33:14 [launcher.py:70] Route: /docs/oauth2-redirect, Methods: HEAD, GET
+(APIServer pid=1) INFO 10-08 20:33:14 [launcher.py:70] Route: /redoc, Methods: HEAD, GET
+(APIServer pid=1) INFO 10-08 20:33:14 [launcher.py:70] Route: /load, Methods: GET
+(APIServer pid=1) INFO 10-08 20:33:14 [launcher.py:70] Route: /version, Methods: GET
+(APIServer pid=1) INFO 10-08 20:33:14 [launcher.py:70] Route: /health, Methods: GET
+(APIServer pid=1) INFO 10-08 20:33:14 [launcher.py:70] Route: /metrics, Methods: GET
+(APIServer pid=1) INFO 10-08 20:33:14 [launcher.py:70] Route: /tokenize, Methods: POST
+(APIServer pid=1) INFO 10-08 20:33:14 [launcher.py:70] Route: /detokenize, Methods: POST
+(APIServer pid=1) INFO 10-08 20:33:14 [launcher.py:70] Route: /v1/models, Methods: GET
+(APIServer pid=1) INFO 10-08 20:33:14 [launcher.py:70] Route: /ping, Methods: GET
+(APIServer pid=1) INFO 10-08 20:33:14 [launcher.py:70] Route: /ping, Methods: POST
+(APIServer pid=1) INFO 10-08 20:33:14 [launcher.py:70] Route: /invocations, Methods: POST
+(APIServer pid=1) INFO 10-08 20:33:14 [launcher.py:70] Route: /v1/chat/completions, Methods: POST
+(APIServer pid=1) INFO 10-08 20:33:14 [launcher.py:70] Route: /v1/chat/completions/batch, Methods: POST
+(APIServer pid=1) INFO 10-08 20:33:14 [launcher.py:70] Route: /v1/responses, Methods: POST
+(APIServer pid=1) INFO 10-08 20:33:14 [launcher.py:70] Route: /v1/responses/{response_id}, Methods: GET
+(APIServer pid=1) INFO 10-08 20:33:14 [launcher.py:70] Route: /v1/responses/{response_id}/cancel, Methods: POST
+(APIServer pid=1) INFO 10-08 20:33:14 [launcher.py:70] Route: /v1/completions, Methods: POST
+(APIServer pid=1) INFO 10-08 20:33:14 [launcher.py:70] Route: /v1/messages, Methods: POST
+(APIServer pid=1) INFO 10-08 20:33:14 [launcher.py:70] Route: /v1/messages/count_tokens, Methods: POST
+(APIServer pid=1) INFO 10-08 20:33:14 [launcher.py:70] Route: /generative_scoring, Methods: POST
+(APIServer pid=1) INFO 10-08 20:33:14 [launcher.py:70] Route: /scale_elastic_ep, Methods: POST
+(APIServer pid=1) INFO 10-08 20:33:14 [launcher.py:70] Route: /is_scaling_elastic_ep, Methods: POST
+(APIServer pid=1) INFO 10-08 20:33:14 [launcher.py:70] Route: /v1/chat/completions/render, Methods: POST
+(APIServer pid=1) INFO 10-08 20:33:14 [launcher.py:70] Route: /v1/messages/render, Methods: POST
+(APIServer pid=1) INFO 10-08 20:33:14 [launcher.py:70] Route: /v1/completions/render, Methods: POST
+(APIServer pid=1) INFO 10-08 20:33:14 [launcher.py:70] Route: /v1/chat/completions/derender, Methods: POST
+(APIServer pid=1) INFO 10-08 20:33:14 [launcher.py:70] Route: /v1/completions/derender, Methods: POST
+(APIServer pid=1) INFO 10-08 20:33:14 [launcher.py:70] Route: /inference/v1/generate, Methods: POST
+(APIServer pid=1) INFO:     Started server process [1]
+(APIServer pid=1) INFO:     Waiting for application startup.
+(APIServer pid=1) INFO:     Application startup complete.
+(APIServer pid=1) INFO:     172.17.0.1:34326 - "GET /health HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34330 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34338 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34348 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34364 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34372 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34374 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34390 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34396 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34404 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34418 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34426 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:33986 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:33998 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34008 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34024 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34040 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34046 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34062 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34068 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34080 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34086 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34088 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34094 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34108 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34122 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34126 - "GET /metrics HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34128 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) WARNING 10-08 20:33:23 [input_processor.py:196] vLLM has deprecated support for supporting different tokenizers for different LoRAs. By default, vLLM uses base model's tokenizer. If you are using a LoRA with its own tokenizer, consider specifying `--tokenizer [lora_path]` to use the LoRA tokenizer.
+(APIServer pid=1) INFO:     172.17.0.1:34140 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34160 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34154 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34176 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34182 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34196 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34206 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34210 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34220 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34230 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34244 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34260 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34282 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34270 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34292 - "POST /v1/completions HTTP/1.1" 200 OK
+(EngineCore pid=195) WARNING 10-08 20:33:25 [jit_monitor.py:141] Triton kernel JIT compilation during inference: _lora_shrink_kernel. This causes a latency spike; consider extending warmup to cover this shape/config.
+(EngineCore pid=195) WARNING 10-08 20:33:25 [jit_monitor.py:141] Triton kernel JIT compilation during inference: _causal_conv1d_fwd_kernel. This causes a latency spike; consider extending warmup to cover this shape/config.
+(APIServer pid=1) INFO 10-08 20:33:34 [loggers.py:310] Engine 000: Avg prompt throughput: 7373.0 tokens/s, Avg generation throughput: 8.0 tokens/s, Running: 10 reqs, Waiting: 6 reqs, GPU KV cache usage: 33.0%, Prefix cache hit rate: 0.0%, External prefix cache hit rate: 0.0%
+(APIServer pid=1) INFO 10-08 20:33:34 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=24, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.00014946801820769906, vllm:kv_offload_store_bytes=557199360, vllm:kv_offload_store_time=0.05181647998094559, vllm:kv_offload_store_size_count=45, vllm:kv_offload_store_size_sum=557199360, vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_cpu_allocation_size_count=40, vllm:kv_offload_cpu_allocation_size_sum=40
+(APIServer pid=1) INFO 10-08 20:33:44 [loggers.py:310] Engine 000: Avg prompt throughput: 5733.8 tokens/s, Avg generation throughput: 265.5 tokens/s, Running: 16 reqs, Waiting: 0 reqs, GPU KV cache usage: 59.2%, Prefix cache hit rate: 0.0%, External prefix cache hit rate: 0.0%
+(APIServer pid=1) INFO 10-08 20:33:44 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=17, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.00010863493662327528, vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=433377280, vllm:kv_offload_store_time=0.0392131838798523, vllm:kv_offload_store_size_count=35, vllm:kv_offload_store_size_sum=433377280, vllm:kv_offload_cpu_allocation_size_count=30, vllm:kv_offload_cpu_allocation_size_sum=30
+(APIServer pid=1) INFO:     172.17.0.1:57274 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57280 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57286 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57302 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57314 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57320 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57326 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:48116 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:48120 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:48128 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:33:54 [loggers.py:310] Engine 000: Avg prompt throughput: 5020.9 tokens/s, Avg generation throughput: 137.3 tokens/s, Running: 14 reqs, Waiting: 1 reqs, Deferred: 1 reqs, GPU KV cache usage: 63.4%, Prefix cache hit rate: 5.1%, External prefix cache hit rate: 10.8%
+(APIServer pid=1) INFO 10-08 20:33:54 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_cpu_cache_usage_perc=0.016442451420029897, vllm:kv_offload_cpu_cache_write_usage_perc=0.008968609865470852, vllm:kv_offload_cpu_cache_read_usage_perc=0.007473841554559045, vllm:kv_offload_lookup_sync_delay_seconds_count=11, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.000185703975148499, vllm:kv_offload_cpu_allocation_size_count=55, vllm:kv_offload_cpu_allocation_size_sum=55, vllm:kv_offload_store_bytes=608514048, vllm:kv_offload_store_time=0.05518639981746673, vllm:kv_offload_store_size_count=49, vllm:kv_offload_store_size_sum=608514048, vllm:kv_offload_load_bytes=309555200, vllm:kv_offload_load_time=0.025784928321838377, vllm:kv_offload_load_size_count=5, vllm:kv_offload_load_size_sum=309555200
+(APIServer pid=1) INFO:     172.17.0.1:48132 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:48144 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:48150 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:48164 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:48180 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:50792 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:34:04 [loggers.py:310] Engine 000: Avg prompt throughput: 6694.1 tokens/s, Avg generation throughput: 20.4 tokens/s, Running: 16 reqs, Waiting: 0 reqs, GPU KV cache usage: 72.3%, Prefix cache hit rate: 3.8%, External prefix cache hit rate: 17.0%
+(APIServer pid=1) INFO 10-08 20:34:04 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=7, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0001564120757393539, vllm:kv_offload_load_bytes=495288320, vllm:kv_offload_load_time=0.040459168434143065, vllm:kv_offload_load_size_count=8, vllm:kv_offload_load_size_sum=495288320, vllm:kv_offload_store_bytes=597917696, vllm:kv_offload_store_time=0.05470393592119216, vllm:kv_offload_store_size_count=48, vllm:kv_offload_store_size_sum=597917696, vllm:kv_offload_cpu_cache_usage_perc=0.008968609865470852, vllm:kv_offload_cpu_allocation_size_count=48, vllm:kv_offload_cpu_allocation_size_sum=48, vllm:kv_offload_cpu_cache_write_usage_perc=0.008968609865470852, vllm:kv_offload_cpu_cache_read_usage_perc=0.0
+(APIServer pid=1) INFO:     172.17.0.1:50808 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:50814 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:50830 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:50838 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:52892 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:52902 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:52916 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:52922 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:52938 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:52952 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:34:14 [loggers.py:310] Engine 000: Avg prompt throughput: 4731.3 tokens/s, Avg generation throughput: 389.5 tokens/s, Running: 14 reqs, Waiting: 1 reqs, Deferred: 1 reqs, GPU KV cache usage: 70.2%, Prefix cache hit rate: 2.6%, External prefix cache hit rate: 35.4%
+(APIServer pid=1) INFO 10-08 20:34:14 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_store_bytes=570028032, vllm:kv_offload_store_time=0.051741504132747654, vllm:kv_offload_store_size_count=46, vllm:kv_offload_store_size_sum=570028032, vllm:kv_offload_cpu_cache_usage_perc=0.017937219730941704, vllm:kv_offload_cpu_allocation_size_count=45, vllm:kv_offload_cpu_allocation_size_sum=45, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.01046337817638266, vllm:kv_offload_lookup_sync_delay_seconds_count=9, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.00021703599486500025, vllm:kv_offload_load_bytes=700547072, vllm:kv_offload_load_time=0.060385215282440195, vllm:kv_offload_load_size_count=8, vllm:kv_offload_load_size_sum=700547072
+(APIServer pid=1) INFO:     172.17.0.1:52958 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:52968 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:52970 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:52978 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:52992 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:53006 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:42522 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:42528 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:42536 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:34:24 [loggers.py:310] Engine 000: Avg prompt throughput: 3931.0 tokens/s, Avg generation throughput: 391.0 tokens/s, Running: 14 reqs, Waiting: 2 reqs, Deferred: 2 reqs, GPU KV cache usage: 76.4%, Prefix cache hit rate: 1.9%, External prefix cache hit rate: 46.7%
+(APIServer pid=1) INFO 10-08 20:34:24 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=10, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0002470840117894113, vllm:kv_offload_load_bytes=800944128, vllm:kv_offload_load_time=0.07066864013671875, vllm:kv_offload_load_size_count=9, vllm:kv_offload_load_size_sum=800944128, vllm:kv_offload_cpu_cache_usage_perc=0.03139013452914798, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.02391629297458894, vllm:kv_offload_store_bytes=557199360, vllm:kv_offload_store_time=0.050634687781333926, vllm:kv_offload_store_size_count=45, vllm:kv_offload_store_size_sum=557199360, vllm:kv_offload_cpu_allocation_size_count=45, vllm:kv_offload_cpu_allocation_size_sum=45
+(APIServer pid=1) INFO:     172.17.0.1:42548 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:42554 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:42566 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:42576 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:42588 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:42592 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:42604 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:42612 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:47970 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:47984 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:47990 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:48002 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:48006 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:34:34 [loggers.py:310] Engine 000: Avg prompt throughput: 5907.2 tokens/s, Avg generation throughput: 33.6 tokens/s, Running: 14 reqs, Waiting: 1 reqs, Deferred: 1 reqs, GPU KV cache usage: 81.2%, Prefix cache hit rate: 1.4%, External prefix cache hit rate: 55.6%
+(APIServer pid=1) INFO 10-08 20:34:34 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_load_bytes=1305161728, vllm:kv_offload_load_time=0.11033142375946045, vllm:kv_offload_load_size_count=13, vllm:kv_offload_load_size_sum=1305161728, vllm:kv_offload_cpu_cache_usage_perc=0.01943198804185351, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.011958146487294468, vllm:kv_offload_store_bytes=804843520, vllm:kv_offload_store_time=0.07343494415283203, vllm:kv_offload_store_size_count=65, vllm:kv_offload_store_size_sum=804843520, vllm:kv_offload_cpu_allocation_size_count=65, vllm:kv_offload_cpu_allocation_size_sum=65, vllm:kv_offload_lookup_sync_delay_seconds_count=12, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.00030642590718343854
+(APIServer pid=1) INFO:     172.17.0.1:48016 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:55950 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:55960 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:55976 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:55988 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:55992 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:56000 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:56006 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:56022 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:34:44 [loggers.py:310] Engine 000: Avg prompt throughput: 3251.1 tokens/s, Avg generation throughput: 389.8 tokens/s, Running: 12 reqs, Waiting: 3 reqs, Deferred: 2 reqs, GPU KV cache usage: 78.5%, Prefix cache hit rate: 1.1%, External prefix cache hit rate: 60.3%
+(APIServer pid=1) INFO 10-08 20:34:44 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=8, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0002074259682558477, vllm:kv_offload_load_bytes=993374208, vllm:kv_offload_load_time=0.08587859249114992, vllm:kv_offload_load_size_count=9, vllm:kv_offload_load_size_sum=993374208, vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=433377280, vllm:kv_offload_store_time=0.0392936961054802, vllm:kv_offload_store_size_count=35, vllm:kv_offload_store_size_sum=433377280, vllm:kv_offload_cpu_allocation_size_count=35, vllm:kv_offload_cpu_allocation_size_sum=35
+(APIServer pid=1) INFO:     172.17.0.1:56036 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:56048 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:56064 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:56074 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:56078 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:56094 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:54558 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:34:54 [loggers.py:310] Engine 000: Avg prompt throughput: 5664.0 tokens/s, Avg generation throughput: 97.9 tokens/s, Running: 16 reqs, Waiting: 0 reqs, GPU KV cache usage: 92.1%, Prefix cache hit rate: 0.9%, External prefix cache hit rate: 63.9%
+(APIServer pid=1) INFO 10-08 20:34:54 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_allocation_size_count=55, vllm:kv_offload_cpu_allocation_size_sum=55, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_lookup_sync_delay_seconds_count=9, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.00022692891070619226, vllm:kv_offload_store_bytes=742932480, vllm:kv_offload_store_time=0.06755465614795685, vllm:kv_offload_store_size_count=60, vllm:kv_offload_store_size_sum=742932480, vllm:kv_offload_load_bytes=1019031552, vllm:kv_offload_load_time=0.08393792057037353, vllm:kv_offload_load_size_count=9, vllm:kv_offload_load_size_sum=1019031552
+(APIServer pid=1) INFO:     172.17.0.1:54566 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:54580 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:54588 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:54600 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:54608 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:54616 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:54632 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:33058 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:33066 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:33080 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:33088 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:33100 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:35:04 [loggers.py:310] Engine 000: Avg prompt throughput: 3427.1 tokens/s, Avg generation throughput: 318.0 tokens/s, Running: 12 reqs, Waiting: 3 reqs, Deferred: 2 reqs, GPU KV cache usage: 87.4%, Prefix cache hit rate: 0.8%, External prefix cache hit rate: 67.5%
+(APIServer pid=1) INFO 10-08 20:35:04 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_cpu_cache_usage_perc=0.02242152466367713, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.014947683109118086, vllm:kv_offload_lookup_sync_delay_seconds_count=17, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.00043592217843979597, vllm:kv_offload_load_bytes=1134489600, vllm:kv_offload_load_time=0.09941766452789307, vllm:kv_offload_load_size_count=9, vllm:kv_offload_load_size_sum=1134489600, vllm:kv_offload_cpu_allocation_size_count=40, vllm:kv_offload_cpu_allocation_size_sum=40, vllm:kv_offload_store_bytes=433377280, vllm:kv_offload_store_time=0.03974518376588822, vllm:kv_offload_store_size_count=35, vllm:kv_offload_store_size_sum=433377280
+(APIServer pid=1) INFO:     172.17.0.1:33114 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:33120 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:33132 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:33140 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:35:14 [loggers.py:310] Engine 000: Avg prompt throughput: 3916.7 tokens/s, Avg generation throughput: 315.4 tokens/s, Running: 15 reqs, Waiting: 1 reqs, GPU KV cache usage: 94.2%, Prefix cache hit rate: 0.7%, External prefix cache hit rate: 68.9%
+(APIServer pid=1) INFO 10-08 20:35:14 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=215, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.003917250724043697, vllm:kv_offload_load_bytes=756326400, vllm:kv_offload_load_time=0.065552095413208, vllm:kv_offload_load_size_count=6, vllm:kv_offload_load_size_sum=756326400, vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_allocation_size_count=35, vllm:kv_offload_cpu_allocation_size_sum=35, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=495288320, vllm:kv_offload_store_time=0.04484140831232071, vllm:kv_offload_store_size_count=40, vllm:kv_offload_store_size_sum=495288320
+(APIServer pid=1) INFO:     172.17.0.1:35500 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:35504 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:35510 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:35524 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:35528 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:35538 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:35550 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:35566 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:35578 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37244 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37260 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37264 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37278 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37292 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37298 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:35:24 [loggers.py:310] Engine 000: Avg prompt throughput: 4546.1 tokens/s, Avg generation throughput: 77.6 tokens/s, Running: 11 reqs, Waiting: 4 reqs, Deferred: 1 reqs, GPU KV cache usage: 85.9%, Prefix cache hit rate: 0.6%, External prefix cache hit rate: 71.9%
+(APIServer pid=1) INFO 10-08 20:35:24 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=61, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0013375121634453535, vllm:kv_offload_cpu_cache_usage_perc=0.014947683109118086, vllm:kv_offload_cpu_cache_write_usage_perc=0.014947683109118086, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=1653768192, vllm:kv_offload_load_time=0.1498068151473999, vllm:kv_offload_load_size_count=12, vllm:kv_offload_load_size_sum=1653768192, vllm:kv_offload_cpu_allocation_size_count=55, vllm:kv_offload_cpu_allocation_size_sum=55, vllm:kv_offload_store_bytes=557199360, vllm:kv_offload_store_time=0.05078300780057907, vllm:kv_offload_store_size_count=45, vllm:kv_offload_store_size_sum=557199360
+(APIServer pid=1) INFO:     172.17.0.1:40536 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:40548 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:40564 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:40576 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:40578 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:40584 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:35:34 [loggers.py:310] Engine 000: Avg prompt throughput: 3550.1 tokens/s, Avg generation throughput: 338.9 tokens/s, Running: 11 reqs, Waiting: 4 reqs, Deferred: 2 reqs, GPU KV cache usage: 89.0%, Prefix cache hit rate: 0.5%, External prefix cache hit rate: 73.3%
+(APIServer pid=1) INFO 10-08 20:35:34 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=251, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.004763404547702521, vllm:kv_offload_store_bytes=433377280, vllm:kv_offload_store_time=0.03953606396913528, vllm:kv_offload_store_size_count=35, vllm:kv_offload_store_size_sum=433377280, vllm:kv_offload_cpu_cache_usage_perc=0.043348281016442454, vllm:kv_offload_cpu_allocation_size_count=30, vllm:kv_offload_cpu_allocation_size_sum=30, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.035874439461883414, vllm:kv_offload_load_bytes=694415360, vllm:kv_offload_load_time=0.061346719741821286, vllm:kv_offload_load_size_count=5, vllm:kv_offload_load_size_sum=694415360
+(APIServer pid=1) INFO:     172.17.0.1:40598 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:40614 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:40628 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:40634 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:40636 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:40640 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:40656 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:50464 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:35:44 [loggers.py:310] Engine 000: Avg prompt throughput: 4705.5 tokens/s, Avg generation throughput: 25.4 tokens/s, Running: 13 reqs, Waiting: 3 reqs, GPU KV cache usage: 99.5%, Prefix cache hit rate: 0.5%, External prefix cache hit rate: 74.8%
+(APIServer pid=1) INFO 10-08 20:35:44 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=31, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0008041841210797429, vllm:kv_offload_load_bytes=1517117440, vllm:kv_offload_load_time=0.1396673288345337, vllm:kv_offload_load_size_count=10, vllm:kv_offload_load_size_sum=1517117440, vllm:kv_offload_cpu_cache_usage_perc=0.014947683109118086, vllm:kv_offload_cpu_cache_write_usage_perc=0.014947683109118086, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=557199360, vllm:kv_offload_store_time=0.05100249618291856, vllm:kv_offload_store_size_count=45, vllm:kv_offload_store_size_sum=557199360, vllm:kv_offload_cpu_allocation_size_count=50, vllm:kv_offload_cpu_allocation_size_sum=50
+(APIServer pid=1) INFO:     172.17.0.1:50468 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:50484 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:50492 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:52216 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:52224 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:52230 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:52246 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:52254 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:35:54 [loggers.py:310] Engine 000: Avg prompt throughput: 3673.5 tokens/s, Avg generation throughput: 315.7 tokens/s, Running: 10 reqs, Waiting: 5 reqs, Deferred: 3 reqs, GPU KV cache usage: 93.2%, Prefix cache hit rate: 0.4%, External prefix cache hit rate: 76.0%
+(APIServer pid=1) INFO 10-08 20:35:54 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=252, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.004908929578959942, vllm:kv_offload_store_bytes=433377280, vllm:kv_offload_store_time=0.03970348781347275, vllm:kv_offload_store_size_count=35, vllm:kv_offload_store_size_sum=433377280, vllm:kv_offload_cpu_cache_usage_perc=0.03886397608370702, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.03886397608370702, vllm:kv_offload_load_bytes=910270464, vllm:kv_offload_load_time=0.08183372783660889, vllm:kv_offload_load_size_count=6, vllm:kv_offload_load_size_sum=910270464, vllm:kv_offload_cpu_allocation_size_count=25, vllm:kv_offload_cpu_allocation_size_sum=25
+(APIServer pid=1) INFO:     172.17.0.1:52264 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:52268 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:52278 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:52288 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:52294 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:36:04 [loggers.py:310] Engine 000: Avg prompt throughput: 3778.9 tokens/s, Avg generation throughput: 196.0 tokens/s, Running: 12 reqs, Waiting: 4 reqs, Deferred: 1 reqs, GPU KV cache usage: 97.9%, Prefix cache hit rate: 0.4%, External prefix cache hit rate: 76.7%
+(APIServer pid=1) INFO 10-08 20:36:04 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=25, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0006732509355060756, vllm:kv_offload_load_bytes=1151782912, vllm:kv_offload_load_time=0.10617971134185793, vllm:kv_offload_load_size_count=7, vllm:kv_offload_load_size_sum=1151782912, vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_allocation_size_count=35, vllm:kv_offload_cpu_allocation_size_sum=35, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=433377280, vllm:kv_offload_store_time=0.03946345573663712, vllm:kv_offload_store_size_count=35, vllm:kv_offload_store_size_sum=433377280
+(APIServer pid=1) INFO:     172.17.0.1:58106 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:58110 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:58126 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:58142 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:58148 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:49964 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:49970 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:49978 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:49980 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:49996 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:36:14 [loggers.py:310] Engine 000: Avg prompt throughput: 3796.6 tokens/s, Avg generation throughput: 117.7 tokens/s, Running: 10 reqs, Waiting: 5 reqs, Deferred: 2 reqs, GPU KV cache usage: 96.3%, Prefix cache hit rate: 0.3%, External prefix cache hit rate: 77.9%
+(APIServer pid=1) INFO 10-08 20:36:14 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_cpu_cache_usage_perc=0.04633781763826607, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.03886397608370702, vllm:kv_offload_lookup_sync_delay_seconds_count=33, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0008532881620340049, vllm:kv_offload_cpu_allocation_size_count=40, vllm:kv_offload_cpu_allocation_size_sum=40, vllm:kv_offload_store_bytes=433377280, vllm:kv_offload_store_time=0.039640543937683105, vllm:kv_offload_store_size_count=35, vllm:kv_offload_store_size_sum=433377280, vllm:kv_offload_load_bytes=1151782912, vllm:kv_offload_load_time=0.10340732765197755, vllm:kv_offload_load_size_count=7, vllm:kv_offload_load_size_sum=1151782912
+(APIServer pid=1) INFO:     172.17.0.1:50012 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:50020 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:43426 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:43432 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:36:24 [loggers.py:310] Engine 000: Avg prompt throughput: 3307.1 tokens/s, Avg generation throughput: 287.3 tokens/s, Running: 11 reqs, Waiting: 5 reqs, Deferred: 1 reqs, GPU KV cache usage: 95.3%, Prefix cache hit rate: 0.3%, External prefix cache hit rate: 78.4%
+(APIServer pid=1) INFO 10-08 20:36:24 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=245, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.004791499231941998, vllm:kv_offload_load_bytes=1038557184, vllm:kv_offload_load_time=0.09252070522308349, vllm:kv_offload_load_size_count=6, vllm:kv_offload_load_size_sum=1038557184, vllm:kv_offload_store_bytes=371466240, vllm:kv_offload_store_time=0.03360617595911026, vllm:kv_offload_store_size_count=30, vllm:kv_offload_store_size_sum=371466240, vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_cpu_allocation_size_count=25, vllm:kv_offload_cpu_allocation_size_sum=25
+(APIServer pid=1) INFO:     172.17.0.1:43446 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:43450 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:43456 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:43464 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:43474 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:43476 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:43480 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:35654 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:35670 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:35686 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:36:34 [loggers.py:310] Engine 000: Avg prompt throughput: 4479.9 tokens/s, Avg generation throughput: 27.6 tokens/s, Running: 10 reqs, Waiting: 6 reqs, Deferred: 1 reqs, GPU KV cache usage: 92.7%, Prefix cache hit rate: 0.3%, External prefix cache hit rate: 79.3%
+(APIServer pid=1) INFO 10-08 20:36:34 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=38, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0010789991356432438, vllm:kv_offload_cpu_cache_usage_perc=0.028400597907324365, vllm:kv_offload_cpu_allocation_size_count=45, vllm:kv_offload_cpu_allocation_size_sum=45, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.02092675635276532, vllm:kv_offload_store_bytes=495288320, vllm:kv_offload_store_time=0.045803647935390476, vllm:kv_offload_store_size_count=40, vllm:kv_offload_store_size_sum=495288320, vllm:kv_offload_load_bytes=1418952704, vllm:kv_offload_load_time=0.12895187187194823, vllm:kv_offload_load_size_count=8, vllm:kv_offload_load_size_sum=1418952704
+(APIServer pid=1) INFO:     172.17.0.1:35694 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:55126 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:55130 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:55140 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:55150 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:36:44 [loggers.py:310] Engine 000: Avg prompt throughput: 2799.4 tokens/s, Avg generation throughput: 263.3 tokens/s, Running: 10 reqs, Waiting: 5 reqs, GPU KV cache usage: 90.6%, Prefix cache hit rate: 0.3%, External prefix cache hit rate: 79.7%
+(APIServer pid=1) INFO 10-08 20:36:44 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=246, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0048592223902232945, vllm:kv_offload_load_bytes=899674112, vllm:kv_offload_load_time=0.08237376117706299, vllm:kv_offload_load_size_count=5, vllm:kv_offload_load_size_sum=899674112, vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=309555200, vllm:kv_offload_store_time=0.028481536030769347, vllm:kv_offload_store_size_count=25, vllm:kv_offload_store_size_sum=309555200, vllm:kv_offload_cpu_allocation_size_count=25, vllm:kv_offload_cpu_allocation_size_sum=25
+(APIServer pid=1) INFO:     172.17.0.1:55166 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:55176 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:55180 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:55194 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:36984 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:36988 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:36:54 [loggers.py:310] Engine 000: Avg prompt throughput: 4042.9 tokens/s, Avg generation throughput: 104.4 tokens/s, Running: 10 reqs, Waiting: 6 reqs, Deferred: 2 reqs, GPU KV cache usage: 95.3%, Prefix cache hit rate: 0.3%, External prefix cache hit rate: 80.5%
+(APIServer pid=1) INFO 10-08 20:36:54 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=112, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.002378110191784799, vllm:kv_offload_store_bytes=495288320, vllm:kv_offload_store_time=0.04574243152141571, vllm:kv_offload_store_size_count=40, vllm:kv_offload_store_size_sum=495288320, vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=1521582080, vllm:kv_offload_load_time=0.13516166400909424, vllm:kv_offload_load_size_count=8, vllm:kv_offload_load_size_sum=1521582080, vllm:kv_offload_cpu_allocation_size_count=35, vllm:kv_offload_cpu_allocation_size_sum=35
+(APIServer pid=1) INFO:     172.17.0.1:37002 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37012 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37016 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37032 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:42914 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:42922 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:42938 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:42940 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:42950 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:37:04 [loggers.py:310] Engine 000: Avg prompt throughput: 3465.6 tokens/s, Avg generation throughput: 161.6 tokens/s, Running: 8 reqs, Waiting: 7 reqs, Deferred: 2 reqs, GPU KV cache usage: 93.2%, Prefix cache hit rate: 0.2%, External prefix cache hit rate: 81.1%
+(APIServer pid=1) INFO 10-08 20:37:04 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=173, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0035355236614122987, vllm:kv_offload_cpu_cache_usage_perc=0.029895366218236172, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.02242152466367713, vllm:kv_offload_cpu_allocation_size_count=30, vllm:kv_offload_cpu_allocation_size_sum=30, vllm:kv_offload_store_bytes=309555200, vllm:kv_offload_store_time=0.03263619202375412, vllm:kv_offload_store_size_count=25, vllm:kv_offload_store_size_sum=309555200, vllm:kv_offload_load_bytes=1750265856, vllm:kv_offload_load_time=0.16146832180023193, vllm:kv_offload_load_size_count=9, vllm:kv_offload_load_size_sum=1750265856
+(APIServer pid=1) INFO:     172.17.0.1:42960 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:48062 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:48068 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:37:14 [loggers.py:310] Engine 000: Avg prompt throughput: 2923.0 tokens/s, Avg generation throughput: 239.3 tokens/s, Running: 10 reqs, Waiting: 6 reqs, GPU KV cache usage: 92.1%, Prefix cache hit rate: 0.2%, External prefix cache hit rate: 81.3%
+(APIServer pid=1) INFO 10-08 20:37:14 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=31, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0008736500749364495, vllm:kv_offload_store_bytes=309555200, vllm:kv_offload_store_time=0.028472544193267824, vllm:kv_offload_store_size_count=25, vllm:kv_offload_store_size_sum=309555200, vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_allocation_size_count=25, vllm:kv_offload_cpu_allocation_size_sum=25, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=1015132160, vllm:kv_offload_load_time=0.09022880172729492, vllm:kv_offload_load_size_count=5, vllm:kv_offload_load_size_sum=1015132160
+(APIServer pid=1) INFO:     172.17.0.1:48084 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:48098 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:48112 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:48120 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:48130 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:48144 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:48152 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:36190 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:37:24 [loggers.py:310] Engine 000: Avg prompt throughput: 4761.1 tokens/s, Avg generation throughput: 28.5 tokens/s, Running: 10 reqs, Waiting: 6 reqs, GPU KV cache usage: 95.8%, Prefix cache hit rate: 0.2%, External prefix cache hit rate: 81.9%
+(APIServer pid=1) INFO 10-08 20:37:24 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=41, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0011998428381048143, vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=495288320, vllm:kv_offload_store_time=0.04547382384538651, vllm:kv_offload_store_size_count=40, vllm:kv_offload_store_size_sum=495288320, vllm:kv_offload_load_bytes=1624211456, vllm:kv_offload_load_time=0.14547008132934572, vllm:kv_offload_load_size_count=8, vllm:kv_offload_load_size_sum=1624211456, vllm:kv_offload_cpu_allocation_size_count=40, vllm:kv_offload_cpu_allocation_size_sum=40
+(APIServer pid=1) INFO:     172.17.0.1:36198 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:58050 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:58062 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:58076 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:58086 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:37:34 [loggers.py:310] Engine 000: Avg prompt throughput: 2380.6 tokens/s, Avg generation throughput: 235.8 tokens/s, Running: 9 reqs, Waiting: 7 reqs, Deferred: 1 reqs, GPU KV cache usage: 97.4%, Prefix cache hit rate: 0.2%, External prefix cache hit rate: 82.3%
+(APIServer pid=1) INFO 10-08 20:37:34 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=243, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0050566826248541474, vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=247644160, vllm:kv_offload_store_time=0.022844896078109744, vllm:kv_offload_store_size_count=20, vllm:kv_offload_store_size_sum=247644160, vllm:kv_offload_load_bytes=1015132160, vllm:kv_offload_load_time=0.0917658863067627, vllm:kv_offload_load_size_count=5, vllm:kv_offload_load_size_sum=1015132160, vllm:kv_offload_cpu_allocation_size_count=20, vllm:kv_offload_cpu_allocation_size_sum=20
+(APIServer pid=1) INFO:     172.17.0.1:58094 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:58108 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:58112 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:58120 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:58132 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:37:44 [loggers.py:310] Engine 000: Avg prompt throughput: 3641.3 tokens/s, Avg generation throughput: 131.8 tokens/s, Running: 9 reqs, Waiting: 7 reqs, Deferred: 2 reqs, GPU KV cache usage: 95.8%, Prefix cache hit rate: 0.2%, External prefix cache hit rate: 82.7%
+(APIServer pid=1) INFO 10-08 20:37:44 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=150, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0031592597370035946, vllm:kv_offload_store_bytes=433377280, vllm:kv_offload_store_time=0.04038422411680222, vllm:kv_offload_store_size_count=35, vllm:kv_offload_store_size_sum=433377280, vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_allocation_size_count=30, vllm:kv_offload_cpu_allocation_size_sum=30, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=1295130624, vllm:kv_offload_load_time=0.11563715171813965, vllm:kv_offload_load_size_count=6, vllm:kv_offload_load_size_sum=1295130624
+(APIServer pid=1) INFO:     172.17.0.1:57232 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57246 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57262 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57264 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57266 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:45926 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:45940 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:45956 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:37:54 [loggers.py:310] Engine 000: Avg prompt throughput: 3676.4 tokens/s, Avg generation throughput: 107.9 tokens/s, Running: 8 reqs, Waiting: 8 reqs, Deferred: 1 reqs, GPU KV cache usage: 92.1%, Prefix cache hit rate: 0.2%, External prefix cache hit rate: 83.1%
+(APIServer pid=1) INFO 10-08 20:37:54 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=131, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0028887048247270286, vllm:kv_offload_cpu_cache_usage_perc=0.03288490284005979, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.02541106128550075, vllm:kv_offload_cpu_allocation_size_count=30, vllm:kv_offload_cpu_allocation_size_sum=30, vllm:kv_offload_store_bytes=309555200, vllm:kv_offload_store_time=0.034706528484821315, vllm:kv_offload_store_size_count=25, vllm:kv_offload_store_size_sum=309555200, vllm:kv_offload_load_bytes=1994010624, vllm:kv_offload_load_time=0.18638230323791508, vllm:kv_offload_load_size_count=9, vllm:kv_offload_load_size_sum=1994010624
+(APIServer pid=1) INFO:     172.17.0.1:45972 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:47456 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:47460 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:47476 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:38:04 [loggers.py:310] Engine 000: Avg prompt throughput: 3063.8 tokens/s, Avg generation throughput: 218.0 tokens/s, Running: 8 reqs, Waiting: 7 reqs, Deferred: 1 reqs, GPU KV cache usage: 88.5%, Prefix cache hit rate: 0.2%, External prefix cache hit rate: 83.3%
+(APIServer pid=1) INFO 10-08 20:38:04 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=37, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0010383168119005859, vllm:kv_offload_load_bytes=1079275520, vllm:kv_offload_load_time=0.09800259208679199, vllm:kv_offload_load_size_count=5, vllm:kv_offload_load_size_sum=1079275520, vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=309555200, vllm:kv_offload_store_time=0.0285595201253891, vllm:kv_offload_store_size_count=25, vllm:kv_offload_store_size_sum=309555200, vllm:kv_offload_cpu_allocation_size_count=20, vllm:kv_offload_cpu_allocation_size_sum=20
+(APIServer pid=1) INFO:     172.17.0.1:47492 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:47508 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:47514 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:47520 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:47530 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:53320 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:38:14 [loggers.py:310] Engine 000: Avg prompt throughput: 3764.7 tokens/s, Avg generation throughput: 22.6 tokens/s, Running: 9 reqs, Waiting: 7 reqs, GPU KV cache usage: 96.9%, Prefix cache hit rate: 0.2%, External prefix cache hit rate: 83.7%
+(APIServer pid=1) INFO 10-08 20:38:14 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=35, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0010063830413855612, vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_allocation_size_count=35, vllm:kv_offload_cpu_allocation_size_sum=35, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=371466240, vllm:kv_offload_store_time=0.03464784014225006, vllm:kv_offload_store_size_count=30, vllm:kv_offload_store_size_sum=371466240, vllm:kv_offload_load_bytes=1372102656, vllm:kv_offload_load_time=0.12546598434448242, vllm:kv_offload_load_size_count=6, vllm:kv_offload_load_size_sum=1372102656
+(APIServer pid=1) INFO:     172.17.0.1:53332 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:53348 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:48072 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:48082 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:48086 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:38:24 [loggers.py:310] Engine 000: Avg prompt throughput: 3151.8 tokens/s, Avg generation throughput: 215.3 tokens/s, Running: 9 reqs, Waiting: 7 reqs, GPU KV cache usage: 97.9%, Prefix cache hit rate: 0.2%, External prefix cache hit rate: 83.9%
+(APIServer pid=1) INFO 10-08 20:38:24 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=248, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.00522199715487659, vllm:kv_offload_store_bytes=309555200, vllm:kv_offload_store_time=0.02845459192991257, vllm:kv_offload_store_size_count=25, vllm:kv_offload_store_size_sum=309555200, vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=1143418880, vllm:kv_offload_load_time=0.10742566680908203, vllm:kv_offload_load_size_count=5, vllm:kv_offload_load_size_sum=1143418880, vllm:kv_offload_cpu_allocation_size_count=25, vllm:kv_offload_cpu_allocation_size_sum=25
+(APIServer pid=1) INFO:     172.17.0.1:48092 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:48100 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:48104 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:48110 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:38:34 [loggers.py:310] Engine 000: Avg prompt throughput: 3152.0 tokens/s, Avg generation throughput: 177.0 tokens/s, Running: 9 reqs, Waiting: 7 reqs, GPU KV cache usage: 94.2%, Prefix cache hit rate: 0.2%, External prefix cache hit rate: 84.1%
+(APIServer pid=1) INFO 10-08 20:38:34 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=202, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.004262593167368323, vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=309555200, vllm:kv_offload_store_time=0.029032191753387452, vllm:kv_offload_store_size_count=25, vllm:kv_offload_store_size_sum=309555200, vllm:kv_offload_load_bytes=914735104, vllm:kv_offload_load_time=0.0841933765411377, vllm:kv_offload_load_size_count=4, vllm:kv_offload_load_size_sum=914735104, vllm:kv_offload_cpu_allocation_size_count=20, vllm:kv_offload_cpu_allocation_size_sum=20
+(APIServer pid=1) INFO:     172.17.0.1:44764 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:44778 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:44790 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:44792 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:44794 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:44886 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:44902 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:44908 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:38:44 [loggers.py:310] Engine 000: Avg prompt throughput: 3222.3 tokens/s, Avg generation throughput: 59.4 tokens/s, Running: 7 reqs, Waiting: 9 reqs, Deferred: 1 reqs, GPU KV cache usage: 90.1%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 84.5%
+(APIServer pid=1) INFO 10-08 20:38:44 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=78, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0020275042043067515, vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=1677758464, vllm:kv_offload_load_time=0.15768236923217774, vllm:kv_offload_load_size_count=7, vllm:kv_offload_load_size_sum=1677758464, vllm:kv_offload_cpu_allocation_size_count=30, vllm:kv_offload_cpu_allocation_size_sum=30, vllm:kv_offload_store_bytes=309555200, vllm:kv_offload_store_time=0.02910191994905472, vllm:kv_offload_store_size_count=25, vllm:kv_offload_store_size_sum=309555200
+(APIServer pid=1) INFO:     172.17.0.1:44916 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:46748 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:46760 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:46768 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:38:54 [loggers.py:310] Engine 000: Avg prompt throughput: 3239.7 tokens/s, Avg generation throughput: 190.7 tokens/s, Running: 8 reqs, Waiting: 7 reqs, GPU KV cache usage: 89.5%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 84.7%
+(APIServer pid=1) INFO 10-08 20:38:54 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=37, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0011055782088078558, vllm:kv_offload_store_bytes=309555200, vllm:kv_offload_store_time=0.028830208003520964, vllm:kv_offload_store_size_count=25, vllm:kv_offload_store_size_sum=309555200, vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_allocation_size_count=25, vllm:kv_offload_cpu_allocation_size_sum=25, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=1220390912, vllm:kv_offload_load_time=0.11349324607849122, vllm:kv_offload_load_size_count=5, vllm:kv_offload_load_size_sum=1220390912
+(APIServer pid=1) INFO:     172.17.0.1:46780 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:46786 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:46798 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:46800 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:53486 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:39:04 [loggers.py:310] Engine 000: Avg prompt throughput: 3887.8 tokens/s, Avg generation throughput: 30.6 tokens/s, Running: 8 reqs, Waiting: 8 reqs, Deferred: 1 reqs, GPU KV cache usage: 98.4%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 85.0%
+(APIServer pid=1) INFO 10-08 20:39:04 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=45, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0012963677290827036, vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=433377280, vllm:kv_offload_store_time=0.04013577616214752, vllm:kv_offload_store_size_count=35, vllm:kv_offload_store_size_sum=433377280, vllm:kv_offload_load_bytes=1957756928, vllm:kv_offload_load_time=0.17251961517333983, vllm:kv_offload_load_size_count=8, vllm:kv_offload_load_size_sum=1957756928, vllm:kv_offload_cpu_allocation_size_count=30, vllm:kv_offload_cpu_allocation_size_sum=30
+(APIServer pid=1) INFO:     172.17.0.1:53502 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:53516 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:53528 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:47830 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:47840 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:47846 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:47852 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:39:14 [loggers.py:310] Engine 000: Avg prompt throughput: 2644.8 tokens/s, Avg generation throughput: 188.6 tokens/s, Running: 6 reqs, Waiting: 10 reqs, Deferred: 2 reqs, GPU KV cache usage: 93.2%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 85.2%
+(APIServer pid=1) INFO 10-08 20:39:14 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_cpu_cache_usage_perc=0.03736920777279522, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.029895366218236175, vllm:kv_offload_lookup_sync_delay_seconds_count=45, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0013153399340808392, vllm:kv_offload_load_bytes=1271705600, vllm:kv_offload_load_time=0.11850371360778808, vllm:kv_offload_load_size_count=5, vllm:kv_offload_load_size_sum=1271705600, vllm:kv_offload_cpu_allocation_size_count=20, vllm:kv_offload_cpu_allocation_size_sum=20, vllm:kv_offload_store_bytes=185733120, vllm:kv_offload_store_time=0.01720259219408035, vllm:kv_offload_store_size_count=15, vllm:kv_offload_store_size_sum=185733120
+(APIServer pid=1) INFO:     172.17.0.1:47860 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:45360 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:45372 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:39:24 [loggers.py:310] Engine 000: Avg prompt throughput: 3327.9 tokens/s, Avg generation throughput: 183.1 tokens/s, Running: 8 reqs, Waiting: 8 reqs, GPU KV cache usage: 93.7%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 85.4%
+(APIServer pid=1) INFO 10-08 20:39:24 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=235, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.005049518949817866, vllm:kv_offload_load_bytes=1017364480, vllm:kv_offload_load_time=0.0893990077972412, vllm:kv_offload_load_size_count=4, vllm:kv_offload_load_size_sum=1017364480, vllm:kv_offload_store_bytes=309555200, vllm:kv_offload_store_time=0.0284117437005043, vllm:kv_offload_store_size_count=25, vllm:kv_offload_store_size_sum=309555200, vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_allocation_size_count=25, vllm:kv_offload_cpu_allocation_size_sum=25, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0
+(APIServer pid=1) INFO:     172.17.0.1:45386 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:45392 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:45400 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:45408 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:45414 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:60554 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:39:34 [loggers.py:310] Engine 000: Avg prompt throughput: 3993.5 tokens/s, Avg generation throughput: 31.8 tokens/s, Running: 8 reqs, Waiting: 8 reqs, GPU KV cache usage: 93.7%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 85.6%
+(APIServer pid=1) INFO 10-08 20:39:34 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=50, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0014691701508127153, vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=371466240, vllm:kv_offload_store_time=0.034263648092746735, vllm:kv_offload_store_size_count=30, vllm:kv_offload_store_size_sum=371466240, vllm:kv_offload_load_bytes=1526046720, vllm:kv_offload_load_time=0.1383332805633545, vllm:kv_offload_load_size_count=6, vllm:kv_offload_load_size_sum=1526046720, vllm:kv_offload_cpu_allocation_size_count=30, vllm:kv_offload_cpu_allocation_size_sum=30
+(APIServer pid=1) INFO:     172.17.0.1:60570 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:60576 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:33274 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:33284 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:39:44 [loggers.py:310] Engine 000: Avg prompt throughput: 2697.4 tokens/s, Avg generation throughput: 190.0 tokens/s, Running: 8 reqs, Waiting: 8 reqs, GPU KV cache usage: 95.3%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 85.8%
+(APIServer pid=1) INFO 10-08 20:39:44 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=245, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.005365570425055921, vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=247644160, vllm:kv_offload_store_time=0.023160511910915373, vllm:kv_offload_store_size_count=20, vllm:kv_offload_store_size_sum=247644160, vllm:kv_offload_load_bytes=1055850496, vllm:kv_offload_load_time=0.09575062561035157, vllm:kv_offload_load_size_count=4, vllm:kv_offload_load_size_sum=1055850496, vllm:kv_offload_cpu_allocation_size_count=20, vllm:kv_offload_cpu_allocation_size_sum=20
+(APIServer pid=1) INFO:     172.17.0.1:33300 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:33314 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:33324 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:33964 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:39:54 [loggers.py:310] Engine 000: Avg prompt throughput: 3416.1 tokens/s, Avg generation throughput: 129.8 tokens/s, Running: 8 reqs, Waiting: 8 reqs, GPU KV cache usage: 95.8%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 85.9%
+(APIServer pid=1) INFO 10-08 20:39:54 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=168, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0037791128852404654, vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=309555200, vllm:kv_offload_store_time=0.028817568123340603, vllm:kv_offload_store_size_count=25, vllm:kv_offload_store_size_sum=309555200, vllm:kv_offload_load_bytes=1068679168, vllm:kv_offload_load_time=0.09610300827026368, vllm:kv_offload_load_size_count=4, vllm:kv_offload_load_size_sum=1068679168, vllm:kv_offload_cpu_allocation_size_count=20, vllm:kv_offload_cpu_allocation_size_sum=20
+(APIServer pid=1) INFO:     172.17.0.1:33976 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:33990 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:33998 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:34012 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:47694 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:47708 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:47710 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:40:04 [loggers.py:310] Engine 000: Avg prompt throughput: 2732.7 tokens/s, Avg generation throughput: 78.4 tokens/s, Running: 6 reqs, Waiting: 10 reqs, Deferred: 2 reqs, GPU KV cache usage: 98.4%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 86.2%
+(APIServer pid=1) INFO 10-08 20:40:04 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=111, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0027442179271019995, vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=2430185472, vllm:kv_offload_load_time=0.21712112045288084, vllm:kv_offload_load_size_count=9, vllm:kv_offload_load_size_sum=2430185472, vllm:kv_offload_cpu_allocation_size_count=25, vllm:kv_offload_cpu_allocation_size_sum=25, vllm:kv_offload_store_bytes=247644160, vllm:kv_offload_store_time=0.022518047928810122, vllm:kv_offload_store_size_count=20, vllm:kv_offload_store_size_sum=247644160
+(APIServer pid=1) INFO:     172.17.0.1:47724 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:52608 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:52616 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:40:14 [loggers.py:310] Engine 000: Avg prompt throughput: 3416.1 tokens/s, Avg generation throughput: 182.2 tokens/s, Running: 8 reqs, Waiting: 8 reqs, GPU KV cache usage: 98.4%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 86.3%
+(APIServer pid=1) INFO 10-08 20:40:14 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_store_bytes=309555200, vllm:kv_offload_store_time=0.02870988816022873, vllm:kv_offload_store_size_count=25, vllm:kv_offload_store_size_sum=309555200, vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_allocation_size_count=25, vllm:kv_offload_cpu_allocation_size_sum=25, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_lookup_sync_delay_seconds_count=230, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.005045925849117339, vllm:kv_offload_load_bytes=1094336512, vllm:kv_offload_load_time=0.098381441116333, vllm:kv_offload_load_size_count=4, vllm:kv_offload_load_size_sum=1094336512
+(APIServer pid=1) INFO:     172.17.0.1:52630 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:52640 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:52656 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:52670 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:47446 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:47458 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:40:24 [loggers.py:310] Engine 000: Avg prompt throughput: 3503.8 tokens/s, Avg generation throughput: 27.5 tokens/s, Running: 7 reqs, Waiting: 9 reqs, GPU KV cache usage: 89.0%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 86.4%
+(APIServer pid=1) INFO 10-08 20:40:24 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_lookup_sync_delay_seconds_count=49, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0014203522587195039, vllm:kv_offload_store_bytes=309555200, vllm:kv_offload_store_time=0.03298195201158523, vllm:kv_offload_store_size_count=25, vllm:kv_offload_store_size_sum=309555200, vllm:kv_offload_load_bytes=2278473728, vllm:kv_offload_load_time=0.21159075355529786, vllm:kv_offload_load_size_count=8, vllm:kv_offload_load_size_sum=2278473728, vllm:kv_offload_cpu_allocation_size_count=25, vllm:kv_offload_cpu_allocation_size_sum=25
+(APIServer pid=1) INFO:     172.17.0.1:47462 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:47476 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:51268 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:51280 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:51294 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:40:34 [loggers.py:310] Engine 000: Avg prompt throughput: 2803.0 tokens/s, Avg generation throughput: 169.0 tokens/s, Running: 6 reqs, Waiting: 10 reqs, Deferred: 1 reqs, GPU KV cache usage: 90.6%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 86.6%
+(APIServer pid=1) INFO 10-08 20:40:34 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=47, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0012967658694833517, vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=247644160, vllm:kv_offload_store_time=0.02288815999031067, vllm:kv_offload_store_size_count=20, vllm:kv_offload_store_size_sum=247644160, vllm:kv_offload_load_bytes=1399992320, vllm:kv_offload_load_time=0.12709657859802245, vllm:kv_offload_load_size_count=5, vllm:kv_offload_load_size_sum=1399992320, vllm:kv_offload_cpu_allocation_size_count=20, vllm:kv_offload_cpu_allocation_size_sum=20
+(APIServer pid=1) INFO:     172.17.0.1:51306 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:51314 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:54194 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:40:44 [loggers.py:310] Engine 000: Avg prompt throughput: 2803.2 tokens/s, Avg generation throughput: 158.0 tokens/s, Running: 7 reqs, Waiting: 9 reqs, GPU KV cache usage: 89.5%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 86.7%
+(APIServer pid=1) INFO 10-08 20:40:44 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=232, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.00514142046449706, vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_allocation_size_count=20, vllm:kv_offload_cpu_allocation_size_sum=20, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=247644160, vllm:kv_offload_store_time=0.022876223862171172, vllm:kv_offload_store_size_count=20, vllm:kv_offload_store_size_sum=247644160, vllm:kv_offload_load_bytes=839995392, vllm:kv_offload_load_time=0.07641180801391602, vllm:kv_offload_load_size_count=3, vllm:kv_offload_load_size_sum=839995392
+(APIServer pid=1) INFO:     172.17.0.1:54210 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:54226 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:54242 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:54246 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:32982 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:40:54 [loggers.py:310] Engine 000: Avg prompt throughput: 3539.3 tokens/s, Avg generation throughput: 28.6 tokens/s, Running: 6 reqs, Waiting: 9 reqs, GPU KV cache usage: 81.2%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 86.9%
+(APIServer pid=1) INFO 10-08 20:40:54 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=50, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0014482340193353593, vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=309555200, vllm:kv_offload_store_time=0.02885187184810639, vllm:kv_offload_store_size_count=25, vllm:kv_offload_store_size_sum=309555200, vllm:kv_offload_load_bytes=1438478336, vllm:kv_offload_load_time=0.1299228801727295, vllm:kv_offload_load_size_count=5, vllm:kv_offload_load_size_sum=1438478336, vllm:kv_offload_cpu_allocation_size_count=25, vllm:kv_offload_cpu_allocation_size_sum=25
+(APIServer pid=1) INFO:     172.17.0.1:32996 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:33002 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57550 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57566 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57568 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57584 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:41:04 [loggers.py:310] Engine 000: Avg prompt throughput: 2873.6 tokens/s, Avg generation throughput: 170.9 tokens/s, Running: 5 reqs, Waiting: 9 reqs, Deferred: 2 reqs, GPU KV cache usage: 91.1%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 87.0%
+(APIServer pid=1) INFO 10-08 20:41:04 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=255, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.005784771288745105, vllm:kv_offload_store_bytes=247644160, vllm:kv_offload_store_time=0.022419328212738038, vllm:kv_offload_store_size_count=20, vllm:kv_offload_store_size_sum=247644160, vllm:kv_offload_cpu_cache_usage_perc=0.07623318385650224, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0687593423019432, vllm:kv_offload_load_bytes=1171308544, vllm:kv_offload_load_time=0.10558457565307618, vllm:kv_offload_load_size_count=4, vllm:kv_offload_load_size_sum=1171308544, vllm:kv_offload_cpu_allocation_size_count=20, vllm:kv_offload_cpu_allocation_size_sum=20
+(APIServer pid=1) INFO:     172.17.0.1:57594 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:32798 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:41:14 [loggers.py:310] Engine 000: Avg prompt throughput: 3592.0 tokens/s, Avg generation throughput: 64.3 tokens/s, Running: 7 reqs, Waiting: 9 reqs, GPU KV cache usage: 91.6%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 87.1%
+(APIServer pid=1) INFO 10-08 20:41:14 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=96, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.002302242908626795, vllm:kv_offload_load_bytes=1171308544, vllm:kv_offload_load_time=0.10571779251098634, vllm:kv_offload_load_size_count=4, vllm:kv_offload_load_size_sum=1171308544, vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=309555200, vllm:kv_offload_store_time=0.028677951872348784, vllm:kv_offload_store_size_count=25, vllm:kv_offload_store_size_sum=309555200, vllm:kv_offload_cpu_allocation_size_count=20, vllm:kv_offload_cpu_allocation_size_sum=20
+(APIServer pid=1) INFO:     172.17.0.1:32808 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:32820 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:32826 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:32834 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:32846 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:41:24 [loggers.py:310] Engine 000: Avg prompt throughput: 2155.2 tokens/s, Avg generation throughput: 116.3 tokens/s, Running: 7 reqs, Waiting: 9 reqs, GPU KV cache usage: 97.4%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 87.2%
+(APIServer pid=1) INFO 10-08 20:41:24 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=175, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.004005185910500586, vllm:kv_offload_cpu_cache_usage_perc=0.014947683109118086, vllm:kv_offload_cpu_cache_write_usage_perc=0.014947683109118086, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=1464135680, vllm:kv_offload_load_time=0.13134256172180175, vllm:kv_offload_load_size_count=5, vllm:kv_offload_load_size_sum=1464135680, vllm:kv_offload_cpu_allocation_size_count=25, vllm:kv_offload_cpu_allocation_size_sum=25, vllm:kv_offload_store_bytes=185733120, vllm:kv_offload_store_time=0.017318463981151583, vllm:kv_offload_store_size_count=15, vllm:kv_offload_store_size_sum=185733120
+(APIServer pid=1) INFO:     172.17.0.1:44602 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:44612 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:51386 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:41:34 [loggers.py:310] Engine 000: Avg prompt throughput: 2908.7 tokens/s, Avg generation throughput: 158.1 tokens/s, Running: 7 reqs, Waiting: 9 reqs, GPU KV cache usage: 97.4%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 87.3%
+(APIServer pid=1) INFO 10-08 20:41:34 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=232, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.005341129843145609, vllm:kv_offload_store_bytes=247644160, vllm:kv_offload_store_time=0.023154431939125062, vllm:kv_offload_store_size_count=20, vllm:kv_offload_store_size_sum=247644160, vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=916967424, vllm:kv_offload_load_time=0.08301872062683105, vllm:kv_offload_load_size_count=3, vllm:kv_offload_load_size_sum=916967424, vllm:kv_offload_cpu_allocation_size_count=15, vllm:kv_offload_cpu_allocation_size_sum=15
+(APIServer pid=1) INFO:     172.17.0.1:51388 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:51398 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:51402 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:51414 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:55098 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:55106 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:41:44 [loggers.py:310] Engine 000: Avg prompt throughput: 3679.9 tokens/s, Avg generation throughput: 27.6 tokens/s, Running: 6 reqs, Waiting: 9 reqs, GPU KV cache usage: 85.9%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 87.5%
+(APIServer pid=1) INFO 10-08 20:41:44 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=48, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0014256162685342133, vllm:kv_offload_store_bytes=309555200, vllm:kv_offload_store_time=0.029046335995197296, vllm:kv_offload_store_size_count=25, vllm:kv_offload_store_size_sum=309555200, vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=1528279040, vllm:kv_offload_load_time=0.13845586967468262, vllm:kv_offload_load_size_count=5, vllm:kv_offload_load_size_sum=1528279040, vllm:kv_offload_cpu_allocation_size_count=25, vllm:kv_offload_cpu_allocation_size_sum=25
+(APIServer pid=1) INFO:     172.17.0.1:55108 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:53810 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:53816 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:53830 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:53840 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:41:54 [loggers.py:310] Engine 000: Avg prompt throughput: 2943.7 tokens/s, Avg generation throughput: 171.7 tokens/s, Running: 5 reqs, Waiting: 8 reqs, Deferred: 2 reqs, GPU KV cache usage: 94.8%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 87.6%
+(APIServer pid=1) INFO 10-08 20:41:54 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=256, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.005909464613068849, vllm:kv_offload_store_bytes=247644160, vllm:kv_offload_store_time=0.022868544101715092, vllm:kv_offload_store_size_count=20, vllm:kv_offload_store_size_sum=247644160, vllm:kv_offload_cpu_cache_usage_perc=0.07922272047832586, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.07174887892376682, vllm:kv_offload_load_bytes=1222623232, vllm:kv_offload_load_time=0.1104350414276123, vllm:kv_offload_load_size_count=4, vllm:kv_offload_load_size_sum=1222623232, vllm:kv_offload_cpu_allocation_size_count=20, vllm:kv_offload_cpu_allocation_size_sum=20
+(APIServer pid=1) INFO:     172.17.0.1:53842 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57140 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:42:04 [loggers.py:310] Engine 000: Avg prompt throughput: 3679.7 tokens/s, Avg generation throughput: 38.3 tokens/s, Running: 7 reqs, Waiting: 9 reqs, GPU KV cache usage: 95.3%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 87.7%
+(APIServer pid=1) INFO 10-08 20:42:04 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=58, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0015475789550691843, vllm:kv_offload_load_bytes=1222623232, vllm:kv_offload_load_time=0.11140668678283691, vllm:kv_offload_load_size_count=4, vllm:kv_offload_load_size_sum=1222623232, vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=309555200, vllm:kv_offload_store_time=0.02871049588918686, vllm:kv_offload_store_size_count=25, vllm:kv_offload_store_size_sum=309555200, vllm:kv_offload_cpu_allocation_size_count=20, vllm:kv_offload_cpu_allocation_size_sum=20
+(APIServer pid=1) INFO:     172.17.0.1:57152 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57166 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57168 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57182 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57198 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:42:14 [loggers.py:310] Engine 000: Avg prompt throughput: 1507.2 tokens/s, Avg generation throughput: 140.9 tokens/s, Running: 6 reqs, Waiting: 10 reqs, GPU KV cache usage: 89.5%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 87.8%
+(APIServer pid=1) INFO 10-08 20:42:14 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=211, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.00502086995402351, vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=1605251072, vllm:kv_offload_load_time=0.1427070713043213, vllm:kv_offload_load_size_count=5, vllm:kv_offload_load_size_sum=1605251072, vllm:kv_offload_cpu_allocation_size_count=20, vllm:kv_offload_cpu_allocation_size_sum=20, vllm:kv_offload_store_bytes=185733120, vllm:kv_offload_store_time=0.01773171192407608, vllm:kv_offload_store_size_count=15, vllm:kv_offload_store_size_sum=185733120
+(APIServer pid=1) INFO:     172.17.0.1:35166 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:35180 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:53378 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:42:24 [loggers.py:310] Engine 000: Avg prompt throughput: 3767.9 tokens/s, Avg generation throughput: 140.6 tokens/s, Running: 6 reqs, Waiting: 10 reqs, Deferred: 1 reqs, GPU KV cache usage: 97.9%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 87.9%
+(APIServer pid=1) INFO 10-08 20:42:24 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=32, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0010989390430040658, vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=247644160, vllm:kv_offload_store_time=0.022972000181674956, vllm:kv_offload_store_size_count=20, vllm:kv_offload_store_size_sum=247644160, vllm:kv_offload_load_bytes=1605251072, vllm:kv_offload_load_time=0.1458786563873291, vllm:kv_offload_load_size_count=5, vllm:kv_offload_load_size_sum=1605251072, vllm:kv_offload_cpu_allocation_size_count=15, vllm:kv_offload_cpu_allocation_size_sum=15
+(APIServer pid=1) INFO:     172.17.0.1:53386 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:53402 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:53406 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:53412 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:53546 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:42:34 [loggers.py:310] Engine 000: Avg prompt throughput: 3013.9 tokens/s, Avg generation throughput: 33.8 tokens/s, Running: 5 reqs, Waiting: 11 reqs, Deferred: 2 reqs, GPU KV cache usage: 83.8%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 88.0%
+(APIServer pid=1) INFO 10-08 20:42:34 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_lookup_sync_delay_seconds_count=52, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.001555366674438119, vllm:kv_offload_cpu_allocation_size_count=25, vllm:kv_offload_cpu_allocation_size_sum=25, vllm:kv_offload_store_bytes=309555200, vllm:kv_offload_store_time=0.02854579228162766, vllm:kv_offload_store_size_count=25, vllm:kv_offload_store_size_sum=309555200, vllm:kv_offload_load_bytes=1592422400, vllm:kv_offload_load_time=0.14243763160705566, vllm:kv_offload_load_size_count=5, vllm:kv_offload_load_size_sum=1592422400
+(APIServer pid=1) INFO:     172.17.0.1:53560 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:53566 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:50804 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:50814 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:42:44 [loggers.py:310] Engine 000: Avg prompt throughput: 2260.7 tokens/s, Avg generation throughput: 113.1 tokens/s, Running: 5 reqs, Waiting: 10 reqs, Deferred: 1 reqs, GPU KV cache usage: 88.0%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 88.1%
+(APIServer pid=1) INFO 10-08 20:42:44 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=202, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.004693375842180103, vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_cpu_allocation_size_count=15, vllm:kv_offload_cpu_allocation_size_sum=15, vllm:kv_offload_load_bytes=1286766592, vllm:kv_offload_load_time=0.11358252906799318, vllm:kv_offload_load_size_count=4, vllm:kv_offload_load_size_sum=1286766592, vllm:kv_offload_store_bytes=123822080, vllm:kv_offload_store_time=0.011424768030643462, vllm:kv_offload_store_size_count=10, vllm:kv_offload_store_size_sum=123822080
+(APIServer pid=1) INFO:     172.17.0.1:50824 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57428 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57432 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:42:54 [loggers.py:310] Engine 000: Avg prompt throughput: 3049.2 tokens/s, Avg generation throughput: 133.1 tokens/s, Running: 6 reqs, Waiting: 10 reqs, GPU KV cache usage: 88.0%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 88.1%
+(APIServer pid=1) INFO 10-08 20:42:54 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=30, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0010514132445678115, vllm:kv_offload_store_bytes=247644160, vllm:kv_offload_store_time=0.02277923208475113, vllm:kv_offload_store_size_count=20, vllm:kv_offload_store_size_sum=247644160, vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_allocation_size_count=20, vllm:kv_offload_cpu_allocation_size_sum=20, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=993939456, vllm:kv_offload_load_time=0.08996035194396973, vllm:kv_offload_load_size_count=3, vllm:kv_offload_load_size_sum=993939456
+(APIServer pid=1) INFO:     172.17.0.1:57440 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57446 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57448 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:49398 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:43:04 [loggers.py:310] Engine 000: Avg prompt throughput: 3084.6 tokens/s, Avg generation throughput: 27.3 tokens/s, Running: 6 reqs, Waiting: 10 reqs, GPU KV cache usage: 92.1%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 88.2%
+(APIServer pid=1) INFO 10-08 20:43:04 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=55, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0016940797795541584, vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=247644160, vllm:kv_offload_store_time=0.022823808133602144, vllm:kv_offload_store_size_count=20, vllm:kv_offload_store_size_sum=247644160, vllm:kv_offload_load_bytes=1325252608, vllm:kv_offload_load_time=0.12095148849487304, vllm:kv_offload_load_size_count=4, vllm:kv_offload_load_size_sum=1325252608, vllm:kv_offload_cpu_allocation_size_count=20, vllm:kv_offload_cpu_allocation_size_sum=20
+(APIServer pid=1) INFO:     172.17.0.1:49406 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:49408 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:54736 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:54744 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:54750 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:43:14 [loggers.py:310] Engine 000: Avg prompt throughput: 3085.0 tokens/s, Avg generation throughput: 147.6 tokens/s, Running: 5 reqs, Waiting: 10 reqs, Deferred: 1 reqs, GPU KV cache usage: 88.5%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 88.3%
+(APIServer pid=1) INFO 10-08 20:43:14 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=257, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.006154973292723298, vllm:kv_offload_store_bytes=247644160, vllm:kv_offload_store_time=0.02277836787700653, vllm:kv_offload_store_size_count=20, vllm:kv_offload_store_size_sum=247644160, vllm:kv_offload_cpu_cache_usage_perc=0.04633781763826607, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.03886397608370702, vllm:kv_offload_load_bytes=1325252608, vllm:kv_offload_load_time=0.11982534408569336, vllm:kv_offload_load_size_count=4, vllm:kv_offload_load_size_sum=1325252608, vllm:kv_offload_cpu_allocation_size_count=20, vllm:kv_offload_cpu_allocation_size_sum=20
+(APIServer pid=1) INFO:     172.17.0.1:54766 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:41924 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:43:24 [loggers.py:310] Engine 000: Avg prompt throughput: 2313.5 tokens/s, Avg generation throughput: 128.3 tokens/s, Running: 6 reqs, Waiting: 10 reqs, GPU KV cache usage: 89.5%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 88.4%
+(APIServer pid=1) INFO 10-08 20:43:24 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=219, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.005068436439614743, vllm:kv_offload_load_bytes=993939456, vllm:kv_offload_load_time=0.09107846450805665, vllm:kv_offload_load_size_count=3, vllm:kv_offload_load_size_sum=993939456, vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=185733120, vllm:kv_offload_store_time=0.017181695878505706, vllm:kv_offload_store_size_count=15, vllm:kv_offload_store_size_sum=185733120, vllm:kv_offload_cpu_allocation_size_count=15, vllm:kv_offload_cpu_allocation_size_sum=15
+(APIServer pid=1) INFO:     172.17.0.1:41940 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:41946 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:41950 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:41964 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:43:34 [loggers.py:310] Engine 000: Avg prompt throughput: 3102.3 tokens/s, Avg generation throughput: 26.7 tokens/s, Running: 6 reqs, Waiting: 10 reqs, GPU KV cache usage: 93.2%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 88.4%
+(APIServer pid=1) INFO 10-08 20:43:34 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=54, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0015716762864030898, vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=247644160, vllm:kv_offload_store_time=0.0229359039068222, vllm:kv_offload_store_size_count=20, vllm:kv_offload_store_size_sum=247644160, vllm:kv_offload_load_bytes=1350909952, vllm:kv_offload_load_time=0.12379091072082521, vllm:kv_offload_load_size_count=4, vllm:kv_offload_load_size_sum=1350909952, vllm:kv_offload_cpu_allocation_size_count=20, vllm:kv_offload_cpu_allocation_size_sum=20
+(APIServer pid=1) INFO:     172.17.0.1:46982 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:46986 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:47238 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:43:44 [loggers.py:310] Engine 000: Avg prompt throughput: 3154.9 tokens/s, Avg generation throughput: 143.4 tokens/s, Running: 6 reqs, Waiting: 10 reqs, GPU KV cache usage: 90.6%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 88.5%
+(APIServer pid=1) INFO 10-08 20:43:44 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=246, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.005861503246705979, vllm:kv_offload_store_bytes=247644160, vllm:kv_offload_store_time=0.022419615983963012, vllm:kv_offload_store_size_count=20, vllm:kv_offload_store_size_sum=247644160, vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=1032425472, vllm:kv_offload_load_time=0.09376409530639648, vllm:kv_offload_load_size_count=3, vllm:kv_offload_load_size_sum=1032425472, vllm:kv_offload_cpu_allocation_size_count=15, vllm:kv_offload_cpu_allocation_size_sum=15
+(APIServer pid=1) INFO:     172.17.0.1:47244 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:47258 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:47264 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:45588 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:43:54 [loggers.py:310] Engine 000: Avg prompt throughput: 3155.0 tokens/s, Avg generation throughput: 51.4 tokens/s, Running: 6 reqs, Waiting: 10 reqs, GPU KV cache usage: 91.1%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 88.6%
+(APIServer pid=1) INFO 10-08 20:43:54 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=95, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.002480077964719385, vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=1376567296, vllm:kv_offload_load_time=0.12474230384826661, vllm:kv_offload_load_size_count=4, vllm:kv_offload_load_size_sum=1376567296, vllm:kv_offload_cpu_allocation_size_count=20, vllm:kv_offload_cpu_allocation_size_sum=20, vllm:kv_offload_store_bytes=247644160, vllm:kv_offload_store_time=0.022485824048519135, vllm:kv_offload_store_size_count=20, vllm:kv_offload_store_size_sum=247644160
+(APIServer pid=1) INFO:     172.17.0.1:45592 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:45594 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:45600 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:45606 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:45610 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:44:04 [loggers.py:310] Engine 000: Avg prompt throughput: 2366.4 tokens/s, Avg generation throughput: 111.0 tokens/s, Running: 5 reqs, Waiting: 10 reqs, Deferred: 1 reqs, GPU KV cache usage: 91.6%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 88.7%
+(APIServer pid=1) INFO 10-08 20:44:04 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=196, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.004770446510519832, vllm:kv_offload_cpu_cache_usage_perc=0.04783258594917788, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.04035874439461884, vllm:kv_offload_load_bytes=1376567296, vllm:kv_offload_load_time=0.12401788711547854, vllm:kv_offload_load_size_count=4, vllm:kv_offload_load_size_sum=1376567296, vllm:kv_offload_cpu_allocation_size_count=20, vllm:kv_offload_cpu_allocation_size_sum=20, vllm:kv_offload_store_bytes=185733120, vllm:kv_offload_store_time=0.016883424043655396, vllm:kv_offload_store_size_count=15, vllm:kv_offload_store_size_sum=185733120
+(APIServer pid=1) INFO:     172.17.0.1:45622 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:42228 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:44:14 [loggers.py:310] Engine 000: Avg prompt throughput: 2366.3 tokens/s, Avg generation throughput: 128.3 tokens/s, Running: 6 reqs, Waiting: 10 reqs, GPU KV cache usage: 92.7%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 88.7%
+(APIServer pid=1) INFO 10-08 20:44:14 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=219, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.005159724853001535, vllm:kv_offload_load_bytes=1032425472, vllm:kv_offload_load_time=0.09444828796386719, vllm:kv_offload_load_size_count=3, vllm:kv_offload_load_size_sum=1032425472, vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=185733120, vllm:kv_offload_store_time=0.016719647884368895, vllm:kv_offload_store_size_count=15, vllm:kv_offload_store_size_sum=185733120, vllm:kv_offload_cpu_allocation_size_count=15, vllm:kv_offload_cpu_allocation_size_sum=15
+(APIServer pid=1) INFO:     172.17.0.1:42242 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:42252 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:42256 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:42272 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:44:24 [loggers.py:310] Engine 000: Avg prompt throughput: 3207.9 tokens/s, Avg generation throughput: 26.7 tokens/s, Running: 6 reqs, Waiting: 10 reqs, GPU KV cache usage: 97.4%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 88.8%
+(APIServer pid=1) INFO 10-08 20:44:24 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=54, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.001618686132133007, vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=247644160, vllm:kv_offload_store_time=0.022655488014221195, vllm:kv_offload_store_size_count=20, vllm:kv_offload_store_size_sum=247644160, vllm:kv_offload_load_bytes=1427881984, vllm:kv_offload_load_time=0.13039744186401367, vllm:kv_offload_load_size_count=4, vllm:kv_offload_load_size_sum=1427881984, vllm:kv_offload_cpu_allocation_size_count=20, vllm:kv_offload_cpu_allocation_size_sum=20
+(APIServer pid=1) INFO:     172.17.0.1:37520 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:37536 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:48594 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:44:34 [loggers.py:310] Engine 000: Avg prompt throughput: 2419.0 tokens/s, Avg generation throughput: 131.4 tokens/s, Running: 6 reqs, Waiting: 10 reqs, GPU KV cache usage: 98.4%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 88.9%
+(APIServer pid=1) INFO 10-08 20:44:34 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=226, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.00550711021060124, vllm:kv_offload_store_bytes=185733120, vllm:kv_offload_store_time=0.01692748808860779, vllm:kv_offload_store_size_count=15, vllm:kv_offload_store_size_sum=185733120, vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=1070911488, vllm:kv_offload_load_time=0.09789574432373047, vllm:kv_offload_load_size_count=3, vllm:kv_offload_load_size_sum=1070911488, vllm:kv_offload_cpu_allocation_size_count=15, vllm:kv_offload_cpu_allocation_size_sum=15
+(APIServer pid=1) INFO:     172.17.0.1:48606 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:48608 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:48616 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:48508 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:44:44 [loggers.py:310] Engine 000: Avg prompt throughput: 3225.3 tokens/s, Avg generation throughput: 26.8 tokens/s, Running: 6 reqs, Waiting: 10 reqs, GPU KV cache usage: 98.4%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 88.9%
+(APIServer pid=1) INFO 10-08 20:44:44 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=54, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.00165732076857239, vllm:kv_offload_store_bytes=247644160, vllm:kv_offload_store_time=0.022553791940212252, vllm:kv_offload_store_size_count=20, vllm:kv_offload_store_size_sum=247644160, vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=1427881984, vllm:kv_offload_load_time=0.12934310150146486, vllm:kv_offload_load_size_count=4, vllm:kv_offload_load_size_sum=1427881984, vllm:kv_offload_cpu_allocation_size_count=20, vllm:kv_offload_cpu_allocation_size_sum=20
+(APIServer pid=1) INFO:     172.17.0.1:48510 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:48524 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:49832 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:49842 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:44:54 [loggers.py:310] Engine 000: Avg prompt throughput: 2419.0 tokens/s, Avg generation throughput: 144.6 tokens/s, Running: 5 reqs, Waiting: 10 reqs, GPU KV cache usage: 82.7%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 89.0%
+(APIServer pid=1) INFO 10-08 20:44:54 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=248, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.005995817657094449, vllm:kv_offload_store_bytes=185733120, vllm:kv_offload_store_time=0.016907967865467072, vllm:kv_offload_store_size_count=15, vllm:kv_offload_store_size_sum=185733120, vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=1070911488, vllm:kv_offload_load_time=0.09591340637207033, vllm:kv_offload_load_size_count=3, vllm:kv_offload_load_size_sum=1070911488, vllm:kv_offload_cpu_allocation_size_count=15, vllm:kv_offload_cpu_allocation_size_sum=15
+(APIServer pid=1) INFO:     172.17.0.1:49856 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:49866 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:45:04 [loggers.py:310] Engine 000: Avg prompt throughput: 3242.9 tokens/s, Avg generation throughput: 118.8 tokens/s, Running: 6 reqs, Waiting: 10 reqs, GPU KV cache usage: 95.3%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 89.0%
+(APIServer pid=1) INFO 10-08 20:45:04 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=205, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.005060041265096515, vllm:kv_offload_store_bytes=247644160, vllm:kv_offload_store_time=0.022588736116886138, vllm:kv_offload_store_size_count=20, vllm:kv_offload_store_size_sum=247644160, vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=1083740160, vllm:kv_offload_load_time=0.09957917022705079, vllm:kv_offload_load_size_count=3, vllm:kv_offload_load_size_sum=1083740160, vllm:kv_offload_cpu_allocation_size_count=15, vllm:kv_offload_cpu_allocation_size_sum=15
+(APIServer pid=1) INFO:     172.17.0.1:38442 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:38458 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:38460 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:43944 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:43946 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:45:14 [loggers.py:310] Engine 000: Avg prompt throughput: 2472.0 tokens/s, Avg generation throughput: 34.9 tokens/s, Running: 5 reqs, Waiting: 11 reqs, Deferred: 1 reqs, GPU KV cache usage: 99.0%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 89.1%
+(APIServer pid=1) INFO 10-08 20:45:14 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=76, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0021647998364642262, vllm:kv_offload_cpu_cache_usage_perc=0.052316890881913304, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.044843049327354265, vllm:kv_offload_load_bytes=2614251520, vllm:kv_offload_load_time=0.23831276702880863, vllm:kv_offload_load_size_count=7, vllm:kv_offload_load_size_sum=2614251520, vllm:kv_offload_cpu_allocation_size_count=25, vllm:kv_offload_cpu_allocation_size_sum=25, vllm:kv_offload_store_bytes=247644160, vllm:kv_offload_store_time=0.026621375977993012, vllm:kv_offload_store_size_count=20, vllm:kv_offload_store_size_sum=247644160
+(APIServer pid=1) INFO:     172.17.0.1:43954 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:45:24 [loggers.py:310] Engine 000: Avg prompt throughput: 3295.7 tokens/s, Avg generation throughput: 86.6 tokens/s, Running: 5 reqs, Waiting: 11 reqs, Deferred: 1 reqs, GPU KV cache usage: 98.4%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 89.2%
+(APIServer pid=1) INFO 10-08 20:45:24 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_lookup_sync_delay_seconds_count=132, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0033871378982439637, vllm:kv_offload_store_bytes=185733120, vllm:kv_offload_store_time=0.02102582389116287, vllm:kv_offload_store_size_count=15, vllm:kv_offload_store_size_sum=185733120, vllm:kv_offload_load_bytes=2270109696, vllm:kv_offload_load_time=0.2053229446411133, vllm:kv_offload_load_size_count=6, vllm:kv_offload_load_size_sum=2270109696, vllm:kv_offload_cpu_allocation_size_count=10, vllm:kv_offload_cpu_allocation_size_sum=10
+(APIServer pid=1) INFO:     172.17.0.1:58118 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:58126 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:45912 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:45:34 [loggers.py:310] Engine 000: Avg prompt throughput: 823.9 tokens/s, Avg generation throughput: 56.1 tokens/s, Running: 5 reqs, Waiting: 11 reqs, Deferred: 1 reqs, GPU KV cache usage: 98.4%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 89.2%
+(APIServer pid=1) INFO 10-08 20:45:34 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_lookup_sync_delay_seconds_count=50, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0016435732250101864, vllm:kv_offload_load_bytes=2270109696, vllm:kv_offload_load_time=0.21651692962646482, vllm:kv_offload_load_size_count=6, vllm:kv_offload_load_size_sum=2270109696, vllm:kv_offload_cpu_allocation_size_count=5, vllm:kv_offload_cpu_allocation_size_sum=5, vllm:kv_offload_store_bytes=61911040, vllm:kv_offload_store_time=0.005581120073795319, vllm:kv_offload_store_size_count=5, vllm:kv_offload_store_size_sum=61911040
+(APIServer pid=1) INFO:     172.17.0.1:45922 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:45936 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:45942 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:39532 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:45:44 [loggers.py:310] Engine 000: Avg prompt throughput: 2471.9 tokens/s, Avg generation throughput: 46.6 tokens/s, Running: 5 reqs, Waiting: 11 reqs, GPU KV cache usage: 85.9%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 89.3%
+(APIServer pid=1) INFO 10-08 20:45:44 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_lookup_sync_delay_seconds_count=20, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0006853217491880059, vllm:kv_offload_cpu_allocation_size_count=20, vllm:kv_offload_cpu_allocation_size_sum=20, vllm:kv_offload_store_bytes=185733120, vllm:kv_offload_store_time=0.01690307193994522, vllm:kv_offload_store_size_count=15, vllm:kv_offload_store_size_sum=185733120, vllm:kv_offload_load_bytes=1109397504, vllm:kv_offload_load_time=0.09636799812316894, vllm:kv_offload_load_size_count=3, vllm:kv_offload_load_size_sum=1109397504
+(APIServer pid=1) INFO:     172.17.0.1:52594 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:45:54 [loggers.py:310] Engine 000: Avg prompt throughput: 2471.9 tokens/s, Avg generation throughput: 111.7 tokens/s, Running: 2 reqs, Waiting: 14 reqs, Deferred: 1 reqs, GPU KV cache usage: 49.2%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 89.3%
+(APIServer pid=1) INFO 10-08 20:45:54 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=133, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0034021047758869827, vllm:kv_offload_store_bytes=185733120, vllm:kv_offload_store_time=0.0168710720539093, vllm:kv_offload_store_size_count=15, vllm:kv_offload_store_size_sum=185733120, vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=1887481856, vllm:kv_offload_load_time=0.1767168025970459, vllm:kv_offload_load_size_count=5, vllm:kv_offload_load_size_sum=1887481856, vllm:kv_offload_cpu_allocation_size_count=10, vllm:kv_offload_cpu_allocation_size_sum=10
+(APIServer pid=1) INFO:     172.17.0.1:52596 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:52604 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57194 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:46:04 [loggers.py:310] Engine 000: Avg prompt throughput: 824.0 tokens/s, Avg generation throughput: 33.4 tokens/s, Running: 5 reqs, Waiting: 11 reqs, GPU KV cache usage: 87.4%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 89.3%
+(APIServer pid=1) INFO 10-08 20:46:04 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=80, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0023866539704613388, vllm:kv_offload_cpu_cache_usage_perc=0.008968609865470852, vllm:kv_offload_cpu_cache_write_usage_perc=0.008968609865470852, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=1900310528, vllm:kv_offload_load_time=0.1781643180847168, vllm:kv_offload_load_size_count=5, vllm:kv_offload_load_size_sum=1900310528, vllm:kv_offload_cpu_allocation_size_count=11, vllm:kv_offload_cpu_allocation_size_sum=11, vllm:kv_offload_store_bytes=61911040, vllm:kv_offload_store_time=0.0055710399746894835, vllm:kv_offload_store_size_count=5, vllm:kv_offload_store_size_sum=61911040
+(APIServer pid=1) INFO:     172.17.0.1:57204 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57220 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57236 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:46:14 [loggers.py:310] Engine 000: Avg prompt throughput: 3366.0 tokens/s, Avg generation throughput: 72.2 tokens/s, Running: 5 reqs, Waiting: 11 reqs, GPU KV cache usage: 85.9%, Prefix cache hit rate: 0.1%, External prefix cache hit rate: 89.4%
+(APIServer pid=1) INFO 10-08 20:46:14 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=151, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0038049412542022765, vllm:kv_offload_store_bytes=298958848, vllm:kv_offload_store_time=0.02727631962299347, vllm:kv_offload_store_size_count=24, vllm:kv_offload_store_size_sum=298958848, vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=1147883520, vllm:kv_offload_load_time=0.10494780540466309, vllm:kv_offload_load_size_count=3, vllm:kv_offload_load_size_sum=1147883520, vllm:kv_offload_cpu_allocation_size_count=18, vllm:kv_offload_cpu_allocation_size_sum=18
+(APIServer pid=1) INFO:     172.17.0.1:57214 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:57218 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:42120 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:42134 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:42136 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:46:24 [loggers.py:310] Engine 000: Avg prompt throughput: 1683.2 tokens/s, Avg generation throughput: 94.4 tokens/s, Running: 3 reqs, Waiting: 13 reqs, Deferred: 2 reqs, GPU KV cache usage: 86.9%, Prefix cache hit rate: 0.0%, External prefix cache hit rate: 89.4%
+(APIServer pid=1) INFO 10-08 20:46:24 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=202, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.005146084062289447, vllm:kv_offload_cpu_cache_usage_perc=0.008968609865470852, vllm:kv_offload_cpu_cache_write_usage_perc=0.008968609865470852, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=1913139200, vllm:kv_offload_load_time=0.1781786231994629, vllm:kv_offload_load_size_count=5, vllm:kv_offload_load_size_sum=1913139200, vllm:kv_offload_cpu_allocation_size_count=18, vllm:kv_offload_cpu_allocation_size_sum=18, vllm:kv_offload_store_bytes=149479424, vllm:kv_offload_store_time=0.013601984083652496, vllm:kv_offload_store_size_count=12, vllm:kv_offload_store_size_sum=149479424
+(APIServer pid=1) INFO:     172.17.0.1:43034 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:43040 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:46:34 [loggers.py:310] Engine 000: Avg prompt throughput: 3366.3 tokens/s, Avg generation throughput: 88.9 tokens/s, Running: 4 reqs, Waiting: 12 reqs, Deferred: 1 reqs, GPU KV cache usage: 84.8%, Prefix cache hit rate: 0.0%, External prefix cache hit rate: 89.5%
+(APIServer pid=1) INFO 10-08 20:46:34 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_store_bytes=298958848, vllm:kv_offload_store_time=0.02725865596532822, vllm:kv_offload_store_size_count=24, vllm:kv_offload_store_size_sum=298958848, vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_allocation_size_count=18, vllm:kv_offload_cpu_allocation_size_sum=18, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_lookup_sync_delay_seconds_count=183, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.004549064382445067, vllm:kv_offload_load_bytes=765255680, vllm:kv_offload_load_time=0.07318976211547851, vllm:kv_offload_load_size_count=2, vllm:kv_offload_load_size_sum=765255680
+(APIServer pid=1) INFO:     172.17.0.1:43054 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:43064 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:43076 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:46:44 [loggers.py:310] Engine 000: Avg prompt throughput: 2524.6 tokens/s, Avg generation throughput: 40.1 tokens/s, Running: 5 reqs, Waiting: 11 reqs, GPU KV cache usage: 92.1%, Prefix cache hit rate: 0.0%, External prefix cache hit rate: 89.5%
+(APIServer pid=1) INFO 10-08 20:46:44 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=87, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.0022861009347252548, vllm:kv_offload_cpu_cache_usage_perc=0.008968609865470852, vllm:kv_offload_cpu_allocation_size_count=24, vllm:kv_offload_cpu_allocation_size_sum=24, vllm:kv_offload_cpu_cache_write_usage_perc=0.008968609865470852, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=224219136, vllm:kv_offload_store_time=0.02038143986463547, vllm:kv_offload_store_size_count=18, vllm:kv_offload_store_size_sum=224219136, vllm:kv_offload_load_bytes=1147883520, vllm:kv_offload_load_time=0.10404573059082031, vllm:kv_offload_load_size_count=3, vllm:kv_offload_load_size_sum=1147883520
+(APIServer pid=1) INFO:     172.17.0.1:45540 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:45556 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:51860 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:51876 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:51878 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:46:54 [loggers.py:310] Engine 000: Avg prompt throughput: 2524.7 tokens/s, Avg generation throughput: 126.6 tokens/s, Running: 3 reqs, Waiting: 13 reqs, Deferred: 2 reqs, GPU KV cache usage: 87.4%, Prefix cache hit rate: 0.0%, External prefix cache hit rate: 89.6%
+(APIServer pid=1) INFO 10-08 20:46:54 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=266, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.006859597866423428, vllm:kv_offload_store_bytes=224219136, vllm:kv_offload_store_time=0.020495104134082794, vllm:kv_offload_store_size_count=18, vllm:kv_offload_store_size_sum=224219136, vllm:kv_offload_cpu_cache_usage_perc=0.1031390134529148, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.09566517189835576, vllm:kv_offload_load_bytes=1173540864, vllm:kv_offload_load_time=0.11394953536987305, vllm:kv_offload_load_size_count=3, vllm:kv_offload_load_size_sum=1173540864, vllm:kv_offload_cpu_allocation_size_count=17, vllm:kv_offload_cpu_allocation_size_sum=17
+(APIServer pid=1) INFO:     172.17.0.1:51890 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:58662 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:58668 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:58670 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:58686 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:47:04 [loggers.py:310] Engine 000: Avg prompt throughput: 2207.8 tokens/s, Avg generation throughput: 128.2 tokens/s, Running: 3 reqs, Waiting: 13 reqs, Deferred: 2 reqs, GPU KV cache usage: 88.5%, Prefix cache hit rate: 0.0%, External prefix cache hit rate: 89.8%
+(APIServer pid=1) INFO 10-08 20:47:04 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=270, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.007129305158741772, vllm:kv_offload_load_bytes=2041425920, vllm:kv_offload_load_time=0.1894051170349121, vllm:kv_offload_load_size_count=5, vllm:kv_offload_load_size_sum=2041425920, vllm:kv_offload_cpu_cache_usage_perc=0.1031390134529148, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.09566517189835576, vllm:kv_offload_store_bytes=309555200, vllm:kv_offload_store_time=0.028149279952049255, vllm:kv_offload_store_size_count=25, vllm:kv_offload_store_size_sum=309555200, vllm:kv_offload_cpu_allocation_size_count=25, vllm:kv_offload_cpu_allocation_size_sum=25
+(APIServer pid=1) INFO:     172.17.0.1:58700 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:51190 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:51198 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:51210 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:51216 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:47:14 [loggers.py:310] Engine 000: Avg prompt throughput: 2208.1 tokens/s, Avg generation throughput: 127.8 tokens/s, Running: 2 reqs, Waiting: 13 reqs, Deferred: 3 reqs, GPU KV cache usage: 85.9%, Prefix cache hit rate: 0.0%, External prefix cache hit rate: 89.9%
+(APIServer pid=1) INFO 10-08 20:47:14 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=268, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.006985125772189349, vllm:kv_offload_load_bytes=2041425920, vllm:kv_offload_load_time=0.19008399963378905, vllm:kv_offload_load_size_count=5, vllm:kv_offload_load_size_sum=2041425920, vllm:kv_offload_cpu_cache_usage_perc=0.09566517189835576, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.09566517189835576, vllm:kv_offload_store_bytes=309555200, vllm:kv_offload_store_time=0.028199967861175537, vllm:kv_offload_store_size_count=25, vllm:kv_offload_store_size_sum=309555200, vllm:kv_offload_cpu_allocation_size_count=20, vllm:kv_offload_cpu_allocation_size_sum=20
+(APIServer pid=1) INFO:     172.17.0.1:51232 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:42086 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:47:24 [loggers.py:310] Engine 000: Avg prompt throughput: 2207.9 tokens/s, Avg generation throughput: 125.1 tokens/s, Running: 5 reqs, Waiting: 11 reqs, GPU KV cache usage: 89.0%, Prefix cache hit rate: 0.0%, External prefix cache hit rate: 90.0%
+(APIServer pid=1) INFO 10-08 20:47:24 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=257, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.006657361052930355, vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_allocation_size_count=25, vllm:kv_offload_cpu_allocation_size_sum=25, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=1633140736, vllm:kv_offload_load_time=0.14754006958007812, vllm:kv_offload_load_size_count=4, vllm:kv_offload_load_size_sum=1633140736, vllm:kv_offload_store_bytes=309555200, vllm:kv_offload_store_time=0.028336128056049348, vllm:kv_offload_store_size_count=25, vllm:kv_offload_store_size_sum=309555200
+(APIServer pid=1) INFO:     172.17.0.1:42096 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:42100 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:42116 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:58014 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     172.17.0.1:58016 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:47:34 [loggers.py:310] Engine 000: Avg prompt throughput: 2278.4 tokens/s, Avg generation throughput: 101.7 tokens/s, Running: 5 reqs, Waiting: 11 reqs, GPU KV cache usage: 91.1%, Prefix cache hit rate: 0.0%, External prefix cache hit rate: 90.1%
+(APIServer pid=1) INFO 10-08 20:47:34 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=217, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.005921520001720637, vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=2092740608, vllm:kv_offload_load_time=0.19499510574340823, vllm:kv_offload_load_size_count=5, vllm:kv_offload_load_size_sum=2092740608, vllm:kv_offload_cpu_allocation_size_count=25, vllm:kv_offload_cpu_allocation_size_sum=25, vllm:kv_offload_store_bytes=309555200, vllm:kv_offload_store_time=0.028333728075027466, vllm:kv_offload_store_size_count=25, vllm:kv_offload_store_size_sum=309555200
+(APIServer pid=1) INFO:     172.17.0.1:58032 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 10-08 20:47:44 [loggers.py:310] Engine 000: Avg prompt throughput: 1836.8 tokens/s, Avg generation throughput: 118.8 tokens/s, Running: 5 reqs, Waiting: 7 reqs, GPU KV cache usage: 93.2%, Prefix cache hit rate: 0.0%, External prefix cache hit rate: 90.3%
+(APIServer pid=1) INFO 10-08 20:47:44 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=251, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.00642664497718215, vllm:kv_offload_cpu_cache_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_write_usage_perc=0.007473841554559043, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_load_bytes=2105569280, vllm:kv_offload_load_time=0.19358198165893553, vllm:kv_offload_load_size_count=5, vllm:kv_offload_load_size_sum=2105569280, vllm:kv_offload_cpu_allocation_size_count=25, vllm:kv_offload_cpu_allocation_size_sum=25, vllm:kv_offload_store_bytes=247644160, vllm:kv_offload_store_time=0.022559167861938477, vllm:kv_offload_store_size_count=20, vllm:kv_offload_store_size_sum=247644160
+(APIServer pid=1) INFO 10-08 20:47:54 [loggers.py:310] Engine 000: Avg prompt throughput: 2295.9 tokens/s, Avg generation throughput: 127.3 tokens/s, Running: 4 reqs, Waiting: 3 reqs, Deferred: 1 reqs, GPU KV cache usage: 90.6%, Prefix cache hit rate: 0.0%, External prefix cache hit rate: 90.4%
+(APIServer pid=1) INFO 10-08 20:47:54 [metrics.py:103] KV Transfer metrics: vllm:kv_offload_lookup_sync_delay_seconds_count=268, vllm:kv_offload_lookup_sync_delay_seconds_sum=0.006944064982235432, vllm:kv_offload_cpu_cache_usage_perc=0.0, vllm:kv_offload_cpu_cache_write_usage_perc=0.0, vllm:kv_offload_cpu_cache_read_usage_perc=0.0, vllm:kv_offload_store_bytes=309555200, vllm:kv_offload_store_time=0.028029983818531036, vllm:kv_offload_store_size_count=25, vllm:kv_offload_store_size_sum=309555200, vllm:kv_offload_load_bytes=2105569280, vllm:kv_offload_load_time=0.19276704406738282, vllm:kv_offload_load_size_count=5, vllm:kv_offload_load_size_sum=2105569280, vllm:kv_offload_cpu_allocation_size_count=20, vllm:kv_offload_cpu_allocation_size_sum=20
+(APIServer pid=1) INFO:     172.17.0.1:47500 - "GET /metrics HTTP/1.1" 200 OK
