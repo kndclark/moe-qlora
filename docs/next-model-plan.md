@@ -1711,8 +1711,9 @@ Thinking on used 480 tokens per item (12 of 478 truncated in think); thinking of
 
 GLM is not weaker at reasoning. On the reasoning rows, thinking on, it matches or edges
 Lightning's N1 mean (range): task 15 vs 13 (12-14), rocky_task 12 vs 12.67 (12-13),
-promql 14 vs 12, alert 8 vs 6 (5-7), trap3 5 vs 3.67 (3-4). Every loss is a
-hit_and_grounded row: flag lookups.
+promql 14 vs 12, alert 8 vs 6 (5-7), trap3 5 vs 3.67 (3-4). Against Lightning, all five
+thinking-on P1 losses are hit_and_grounded rows (flag lookups); thinking off, two are
+(held_out, rocky_held_out) and the third is trap.denied_heuristic.
 
 **The losses are behaviour, not a parsing artifact.** All 2,281 GLM tool-call strings
 parsed (`glm_arg`), none failed. On held_out GLM hit the call limit on 26 of 90 items
