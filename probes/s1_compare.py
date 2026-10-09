@@ -306,7 +306,15 @@ if __name__ == "__main__":  # q2_compare.py imports the helpers above
                              for g, runs in REPEATS.items() if g in MODELS},
                  "models": {x: row_items([lambda t, x=x: model_label(x, "think", t)]) for x in MODELS}}
     report["n1"] = {"sets": N1_SETS, "null": null, "repeats": repeats, "reasoning_rows": reasoning}
-    json.dump(report, open(os.path.join(R, "s1-compare.json"), "w"), indent=1)
+    # Merge into the saved report: a run over some tags must not drop models earlier runs added.
+    out = os.path.join(R, "s1-compare.json")
+    saved = json.load(open(out)) if os.path.exists(out) else {}
+    old = saved.get("n1", {})
+    rows = old.get("reasoning_rows", {})
+    n1 = dict(report["n1"], repeats={**old.get("repeats", {}), **repeats},
+              reasoning_rows=dict(reasoning, repeats={**rows.get("repeats", {}), **reasoning["repeats"]},
+                                  models={**rows.get("models", {}), **reasoning["models"]}))
+    json.dump({**saved, **report, "n1": n1}, open(out, "w"), indent=1)
 
 
     def pp(p):
