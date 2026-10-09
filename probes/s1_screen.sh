@@ -94,7 +94,9 @@ ev() {  # label thinking max_tokens set [extra...]
   python3 "$here/probes/g7a_eval.py" --base $B --model "$TAG" --label "$label" \
     --thinking "$think" --max-tokens "$mt" --set "$set" "${common[@]}" "$@" \
     --out "$out/research-eval-$label.json" > "$out/research-eval-$label.log" 2>&1
-  echo "  $label: exit $?, $(( $(date +%s)-t ))s"
+  local rc=$? net=${addr%.*}   # the direct link's /24: live PromQL answers carry it
+  sed -i -E "s/${net//./\\.}\.[0-9]+/LINK/g" "$out/research-eval-$label".*
+  echo "  $label: exit $rc, $(( $(date +%s)-t ))s"
 }
 sets=(v1:v1 v2:v2 rocky:rocky promqlcat:promql general:general alert:alert trap3:trap3)
 passes=(think nothink)
