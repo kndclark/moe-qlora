@@ -1,9 +1,10 @@
 # agent-v1: pre-registration of opening 2
 
-Draft of 2026-10-14. Two lines below are marked **DECISION** and are David's
-to set. Once they are set, this file is committed and nothing in it may
-change after the first run; anything learned afterwards goes in the results
-write-up, marked as such.
+Final, 2026-10-14. The two open decisions were set by David before the first
+run and are recorded below: 5 replicates per task per arm, and base becomes
+`agent` unless G6u passes significantly more. Nothing in this file may change
+from here; anything learned afterwards goes in the results write-up, marked
+as such.
 
 The set, its seal, its 30 tasks and the rule that counts openings are
 unchanged: see `PREREGISTRATION.md`. This is the second of the set's three
@@ -40,12 +41,12 @@ opening 1 measured it on both models and it is not what the lab serves.
 
 Two arms: `codex-base-on` and `codex-g6u-on`.
 
-**DECISION 1 — replicates per task per arm.** Drafted as **5** (300 runs).
-Opening 1's two arms each took about 11 minutes for their 30 runs (median run
-9 s and 12 s, slowest 210 s), so 5 replicates is about 2 hours, with a worst
-case of 43 hours if every run hits its timeout. The cheaper option is 3 (180
-runs, about 70 minutes), which still fixes the single-sample problem; 5 is
-recommended because a majority of 5 absorbs one noisy replicate per arm.
+**Replicates per task per arm: 5** (300 runs). Opening 1's two arms each took
+about 11 minutes for their 30 runs (median run 9 s and 12 s, slowest 210 s),
+so 5 replicates is about 2 hours, with a worst case of 43 hours if every run
+hits its timeout. The cheaper option was 3 (180 runs, about 70 minutes),
+which fixes the single-sample problem too; 5 was chosen because a majority of
+5 absorbs one noisy replicate per arm, and because an odd count cannot tie.
 
 Power does not come from more tasks: the set is 30 tasks and all 30 are
 already used. It comes from repeating each task, so that a per-task verdict
@@ -69,11 +70,12 @@ is a majority rather than a coin flip.
   whole 30-task pass then repeats, re-shuffled from the same generator, until
   the replicate count is met.
 - **Deadline.** A run's deadline is the task's `timeout_s`, as in opening 1.
-- **Runner.** gpu-lab `bench/agent_ab.py` with `bench/agent_ab_bwrap.sh`, at
-  the commit that lands "Run opening 2's arms with replicates"; the exact
-  commit on `main` goes in the ledger row.
-- **Commands.** The opening is these four, with the `--reps` value from
-  DECISION 1:
+- **Runner.** gpu-lab `bench/agent_ab.py` with `bench/agent_ab_bwrap.sh` at
+  commit `68722e9`, "Run opening 2's arms with replicates", pushed on branch
+  `agent-user` and checked out at that sha on the serving node for the run.
+  The ledger row records that sha; if the branch later lands on `main`, the
+  row records the merge commit beside it.
+- **Commands.** The opening is these four:
 
       agent_ab.py selftest --set DIR --out DIR --tag before
       agent_ab.py run      --set DIR --out DIR --reps 5 --seed 20261014 \
@@ -201,15 +203,20 @@ splits reach significance (arithmetic): 6–0 gives p = 0.031, 8–1 gives
 p = 0.039, 7–1 gives p = 0.070. Opening 1's codex-on pairs were 1–6, so if
 G6u's single discordant win was noise, 0–6 is significant and 1–7 is not.
 
-**DECISION 2 — which way the burden of proof runs.** Drafted as: **base
-becomes `agent` unless G6u passes significantly more.** Recommended, because
-base led every contrast in opening 1 and won the one that reached
-significance, and because serving base takes the adapter out of the serving
-path. The alternative is the conservative shape of opening 1's rule 2, G6u
-stays unless base wins significantly; with 30 tasks that will most likely
-return "not significant" a second time, and with one opening left the set
-would retire with the question open. Either way the rule is symmetric in
-procedure and the direction is fixed here, before the first run.
+**Rule 2, the burden of proof: base becomes `agent` unless G6u passes
+significantly more.** Chosen because base led every contrast in opening 1 and
+won the one that reached significance, and because serving base takes the
+adapter out of the serving path. The alternative was the conservative shape
+of opening 1's rule 2, G6u stays unless base wins significantly; with 30
+tasks that would most likely return "not significant" a second time, and with
+one opening left the set would retire with the question open. The rule is
+symmetric in procedure; only its direction differs, and the direction is
+fixed here, before the first run.
+
+Concretely, on the per-task majority verdicts over the tasks that are not
+void: if G6u passes significantly more than base, `agent` keeps serving G6u.
+In every other outcome, including "not significant", `agent` serves base and
+the G6u adapter leaves the serving path.
 
 Everything else is descriptive and changes nothing: per-arm pass rates with
 intervals, how many tasks flipped verdict between replicates (the noise this
